@@ -71,10 +71,19 @@ abstract final class Env {
   static double get weatherLat => double.tryParse(_get('WEATHER_LATITUDE', '28.6139')) ?? 28.6139;
   static double get weatherLon => double.tryParse(_get('WEATHER_LONGITUDE', '77.2090')) ?? 77.2090;
 
-  static String get cloudAiProvider => _get('CLOUD_AI_PROVIDER', 'anthropic').toLowerCase();
+  static String get cloudAiProvider => _get('CLOUD_AI_PROVIDER', 'gemini').toLowerCase();
   static String get cloudAiKey => _get('CLOUD_AI_API_KEY');
-  static String get cloudAiModel => _get('CLOUD_AI_MODEL', cloudAiProvider == 'openai' ? 'gpt-4o-mini' : 'claude-haiku-5-5');
-  static String get cloudAiBaseUrl => _get('CLOUD_AI_BASE_URL', cloudAiProvider == 'openai' ? 'https://api.openai.com' : 'https://api.anthropic.com');
+  /// Defaults per provider. `gemini-flash-latest` is Google's alias for the current free-tier Flash model.
+  static String get cloudAiModel => _get('CLOUD_AI_MODEL', switch (cloudAiProvider) {
+        'openai' => 'gpt-4o-mini',
+        'gemini' => 'gemini-flash-latest',
+        _ => 'claude-haiku-5-5',
+      });
+  static String get cloudAiBaseUrl => _get('CLOUD_AI_BASE_URL', switch (cloudAiProvider) {
+        'openai' => 'https://api.openai.com',
+        'gemini' => 'https://generativelanguage.googleapis.com',
+        _ => 'https://api.anthropic.com',
+      });
 
   // Firebase Cloud Messaging. Options are passed at runtime, so no google-services.json is needed.
   static String get firebaseApiKey => _get('FIREBASE_API_KEY');

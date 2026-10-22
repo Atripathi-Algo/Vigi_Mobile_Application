@@ -37,6 +37,9 @@ class VigilStore extends ChangeNotifier {
   int bedMin = 23 * 60;
   int accentIndex = 0;
   Persona persona = Persona.tactical;
+
+  /// In-app sound effect volume: 0 low, 1 medium, 2 high.
+  int sfxLevel = 1;
   Verbosity verbosity = Verbosity.terse;
   Set<String> modules = <String>{..._allModules};
   static const List<String> _allModules = <String>['OBJECTIVES', 'TIMELINE', 'PROTOCOLS', 'VITALS', 'DEEP OPS', 'FIELD LOG', 'LEDGER'];
@@ -52,6 +55,7 @@ class VigilStore extends ChangeNotifier {
     'autoFirstOp': true,
     'notifyOps': true,
     'notifyProtocols': true,
+    'sfx': true,
   };
   final Map<String, bool> toggles = <String, bool>{..._defaultToggles};
   static const List<String> linkKeys = <String>['Calendar link', 'Health Connect', 'Notifications', 'Step sensor', 'Usage access', 'Exact alarms', 'Voice uplink'];
@@ -238,6 +242,7 @@ class VigilStore extends ChangeNotifier {
     persona = Persona.values[_prefs.getInt('persona') ?? 0];
     verbosity = Verbosity.values[_prefs.getInt('verbosity') ?? 0];
     needMin = _prefs.getInt('needMin') ?? needMin;
+    sfxLevel = (_prefs.getInt('sfxLevel') ?? 1).clamp(0, 2);
     final List<String>? mods = _prefs.getStringList('modules');
     if (mods != null) modules = mods.toSet();
     final String? tg = _prefs.getString('toggles');
@@ -359,6 +364,7 @@ class VigilStore extends ChangeNotifier {
       ..setInt('persona', persona.index)
       ..setInt('verbosity', verbosity.index)
       ..setInt('needMin', needMin)
+      ..setInt('sfxLevel', sfxLevel)
       ..setStringList('modules', modules.toList())
       ..setString('toggles', jsonEncode(toggles))
       ..setString('links', jsonEncode(linkStatus))
@@ -443,6 +449,11 @@ class VigilStore extends ChangeNotifier {
     changed();
   }
 
+  void setSfxLevel(int i) {
+    sfxLevel = i.clamp(0, 2);
+    changed();
+  }
+
   void setVerbosity(Verbosity v) {
     verbosity = v;
     changed();
@@ -469,6 +480,7 @@ class VigilStore extends ChangeNotifier {
     persona = Persona.tactical;
     verbosity = Verbosity.terse;
     needMin = 435;
+    sfxLevel = 1;
     armedTonight = false;
     insightApplied = false;
     nightShieldArmed = false;

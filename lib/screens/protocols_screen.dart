@@ -9,6 +9,7 @@ import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
 import '../services/health.dart';
+import '../services/sfx.dart';
 import '../services/steps.dart';
 import 'log_sheets.dart';
 import '../vigil/vigil.dart';
@@ -150,6 +151,7 @@ class ProtocolsScreen extends ConsumerWidget {
                     onChanged: (bool v) {
                       HapticFeedback.lightImpact();
                       s.toggleProtocol(p.id);
+                      SfxService.play(p.doneToday ? Sfx.clear : Sfx.tick);
                     },
                   ),
                   const SizedBox(width: 4),
@@ -211,9 +213,9 @@ class ProtocolsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           Row(children: <Widget>[
-            Expanded(child: VigilButton(label: '+250 ml', variant: VigilButtonVariant.secondary, expand: true, onPressed: () => s.logWater(250))),
+            Expanded(child: VigilButton(label: '+250 ml', variant: VigilButtonVariant.secondary, expand: true, onPressed: () { SfxService.play(Sfx.water); s.logWater(250); })),
             const SizedBox(width: 8),
-            Expanded(child: VigilButton(label: '+500 ml', expand: true, onPressed: () => s.logWater(500))),
+            Expanded(child: VigilButton(label: '+500 ml', expand: true, onPressed: () { SfxService.play(Sfx.water); s.logWater(500); })),
           ]),
         ]),
       ),

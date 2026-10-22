@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screens/capture_sheet.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 
 /// Hosts the five tabs. The core button (index 2) is the assistant.
@@ -24,7 +25,10 @@ class AppShell extends StatelessWidget {
         body: shell,
         bottomNavigationBar: VigilNavBar(
           current: VigilTab.values[shell.currentIndex],
-          onSelected: (VigilTab t) => shell.goBranch(t.index, initialLocation: t.index == shell.currentIndex),
+          onSelected: (VigilTab t) {
+            if (t.index != shell.currentIndex) SfxService.play(Sfx.tick);
+            shell.goBranch(t.index, initialLocation: t.index == shell.currentIndex);
+          },
         ),
       ),
     );

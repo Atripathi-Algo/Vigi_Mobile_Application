@@ -35,7 +35,7 @@ All keys are optional. A blank value switches that feature off and the app stays
 | `GOOGLE_CLIENT_ID` | Future Google sign-in (private Calendar, Drive backup) |
 | `GOOGLE_CALENDAR_API_KEY`, `GOOGLE_CALENDAR_ID` | Today's events from a **public** calendar (full calendar id, not `primary`) |
 | `WEATHER_API_BASE_URL`, `WEATHER_LATITUDE`, `WEATHER_LONGITUDE` | Dawn Briefing conditions (Open-Meteo, no key) |
-| `CLOUD_AI_PROVIDER` (`anthropic`\|`openai`), `CLOUD_AI_BASE_URL`, `CLOUD_AI_MODEL`, `CLOUD_AI_API_KEY` | Cloud answers in Uplink, enabled in Loadout. Blank model/base URL use the provider default |
+| `CLOUD_AI_PROVIDER` (`gemini` free tier \| `openai` for Groq/OpenRouter/Ollama \| `anthropic` paid), `CLOUD_AI_BASE_URL`, `CLOUD_AI_MODEL`, `CLOUD_AI_API_KEY` | Cloud answers in Uplink, enabled in Loadout. Default provider is Gemini (model `gemini-flash-latest`). The Gemini free tier lets Google use what you send to improve its products |
 | `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET` | Firebase Cloud Messaging push. No `google-services.json` needed |
 
 `.env` is bundled into the APK, so anyone with the APK can read it. Do not put production secrets in it. Rebuild after editing.

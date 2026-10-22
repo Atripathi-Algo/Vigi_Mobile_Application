@@ -12,6 +12,7 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/store.dart';
 import '../services/health.dart';
+import '../services/sfx.dart';
 import '../services/notifications.dart';
 import '../services/steps.dart';
 import '../vigil/vigil.dart';
@@ -197,6 +198,7 @@ class _BootScreenState extends ConsumerState<BootScreen> {
                 icon: VigilIcons.arrowRight,
                 onPressed: () {
                   HapticFeedback.mediumImpact();
+                  SfxService.play(Sfx.boot);
                   s.completeBoot(name: _name.text, call: _call.text, wake: _wake, bed: _bed, armed: _armed);
                   context.go('/');
                 },

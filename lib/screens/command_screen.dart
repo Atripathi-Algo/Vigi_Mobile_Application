@@ -8,6 +8,7 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
 
@@ -161,6 +162,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
   void _water(int ml) {
     final VigilStore s = ref.read(storeProvider);
     HapticFeedback.lightImpact();
+    SfxService.play(Sfx.water);
     s.logWater(ml);
     showVigilSnack(context, '+$ml ml logged · ${Fmt.litres(s.waterMl)} L', action: 'UNDO', onAction: () => s.logWater(-ml));
   }
@@ -180,6 +182,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
             label: 'Log 500 ml',
             onPressed: () {
               HapticFeedback.mediumImpact();
+              SfxService.play(Sfx.water);
               s.logWater(500);
               _resolve('Logged. Hydration ${Fmt.litres(s.waterMl)} of ${Fmt.litres(s.waterTargetMl)} L. Next check at ${Fmt.hm((now.hour + 1) * 60 + 30)}.');
             },

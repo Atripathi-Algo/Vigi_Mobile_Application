@@ -9,6 +9,7 @@ import '../app/providers.dart';
 import '../data/assistant.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 
 /// 03 · VIGIL Uplink · Assistant (tab 3)
@@ -37,6 +38,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> {
     if (q.isEmpty || _busy) return;
     final VigilStore s = ref.read(storeProvider);
     final Assistant a = ref.read(assistantProvider);
+    SfxService.play(Sfx.tick);
     setState(() {
       s.chat.add(ChatMsg(fromUser: true, text: q, at: DateTime.now()));
       _ctl.clear();

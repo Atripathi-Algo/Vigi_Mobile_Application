@@ -8,6 +8,7 @@ import '../app/providers.dart';
 import '../data/capture_parser.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 
 Future<void> showCaptureSheet(BuildContext context, {String? type, String? initialText}) {
@@ -76,6 +77,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
     HapticFeedback.mediumImpact();
     final VoidCallback? undo = s.commitCapture(_draft, _threat);
     if (undo == null) return;
+    SfxService.play(Sfx.clear);
     final DateTime day = VigilStore.dateForLabel(_draft.whenLabel, DateTime.now());
     final String when = <String>[
       if (_draft.whenLabel != null && _draft.whenLabel != 'TODAY') Fmt.dayStamp(day) else if (_draft.when != null) 'TODAY',

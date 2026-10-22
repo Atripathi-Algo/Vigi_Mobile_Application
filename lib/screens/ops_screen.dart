@@ -9,6 +9,7 @@ import '../app/providers.dart';
 import '../app/shell.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
 
@@ -39,6 +40,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
 
   void _check(VigilStore s, Objective o, bool done) {
     HapticFeedback.lightImpact();
+    SfxService.play(done ? Sfx.clear : Sfx.tick);
     if (done) {
       _pinned.add(o.id);
     } else {
@@ -425,7 +427,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
                   const SizedBox(height: 6),
                   Text('${conflict.$1.title} (${Fmt.hm(conflict.$1.startMin)}–${Fmt.hm(conflict.$1.endMin)}) runs into ${conflict.$2.title}. Recommend moving ${conflict.$2.title} to ${Fmt.hm(conflict.$1.endMin)}.', style: t.body),
                   const SizedBox(height: 12),
-                  Align(alignment: Alignment.centerLeft, child: VigilButton(label: 'Resolve', onPressed: s.resolveConflict)),
+                  Align(alignment: Alignment.centerLeft, child: VigilButton(label: 'Resolve', onPressed: () { SfxService.play(Sfx.clear); s.resolveConflict(); })),
                 ]),
               )
             else if (s.justResolved)

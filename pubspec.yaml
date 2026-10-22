@@ -27,6 +27,7 @@ dependencies:
   home_widget: ^0.10.0
   flutter_secure_storage: ^11.2.0
   health: ^13.3.2
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +41,7 @@ flutter:
     - .env
     - assets/svg/
     - assets/svg/icons/
+    - assets/audio/
     - google_fonts/
 
 flutter_launcher_icons:

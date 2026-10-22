@@ -9,6 +9,7 @@ import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
 import '../services/health.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'log_sheets.dart';
 
@@ -105,6 +106,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                   expand: true,
                   onPressed: () {
                     HapticFeedback.mediumImpact();
+                    SfxService.play(Sfx.engage);
                     s.armedTonight = true;
                     s.changed();
                     showVigilSnack(context, 'Armed. Alarm bridge is not built, so nothing will ring yet');

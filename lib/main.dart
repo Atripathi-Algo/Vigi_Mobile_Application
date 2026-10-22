@@ -16,6 +16,7 @@ import 'services/home_widgets.dart';
 import 'services/notifications.dart';
 import 'services/output_sync.dart';
 import 'services/push.dart';
+import 'services/sfx.dart';
 import 'services/steps.dart';
 import 'vigil/vigil.dart';
 
@@ -31,6 +32,9 @@ Future<void> main() async {
   ));
   await Env.load();
   final VigilStore store = await VigilStore.load();
+  SfxService.configure(on: store.toggles['sfx'] ?? true, level: store.sfxLevel);
+  store.addListener(() => SfxService.configure(on: store.toggles['sfx'] ?? true, level: store.sfxLevel));
+  SfxService.init(); // loads the effects in the background; the first frame does not wait for it
   runApp(ProviderScope(
     overrides: <Override>[storeProvider.overrideWith((Ref ref) => store)],
     child: VigilApp(store: store),

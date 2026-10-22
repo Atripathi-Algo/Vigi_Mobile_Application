@@ -40,9 +40,9 @@ const List<_Group> _groups = <_Group>[
   _Group(
     'ai',
     'Cloud AI',
-    'Lets Uplink answer open-ended questions. Used only when Cloud AI is switched on in Loadout. Sends your SITREP and the question to the provider.',
+    'Lets Uplink answer open-ended questions. Used only when Cloud AI is switched on in Loadout. Sends your SITREP (objectives, sleep, spending totals) and the question to the provider.',
     <_KeyField>[
-      _KeyField('CLOUD_AI_API_KEY', 'API key', hint: 'sk-…', secret: true),
+      _KeyField('CLOUD_AI_API_KEY', 'API key', hint: 'paste your key', secret: true),
       _KeyField('CLOUD_AI_MODEL', 'Model', hint: 'blank = provider default'),
       _KeyField('CLOUD_AI_BASE_URL', 'Base URL', hint: 'blank = provider default'),
     ],
@@ -184,8 +184,9 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
           if (!Env.hasCloudAi) {
             out = 'No API key set.';
           } else {
-            final String? a = await askCloud('Reply with the single word: ready.', s.sitrep(DateTime.now()));
-            out = a == null ? 'Failed. Check the key, model and base URL.' : 'OK. Reply: ${a.length > 80 ? '${a.substring(0, 80)}…' : a}';
+            final CloudReply a = await askCloudDetailed('Reply with the single word: ready.', s.sitrep(DateTime.now()));
+            final String? text = a.text;
+            out = text == null ? 'Failed. ${a.error}' : 'OK. Reply: ${text.length > 80 ? '${text.substring(0, 80)}…' : text}';
           }
         case 'cal':
           out = !Env.hasCalendar ? 'Needs an API key and a calendar id.' : (await pullCalendar(s) ? 'OK. Events merged into the Timeline.' : 'Failed. The calendar must be public and the id exact.');
@@ -259,9 +260,18 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
           Text('PROVIDER', style: t.label.copyWith(color: c.textFaint)),
           const SizedBox(height: 6),
           VigilSegmented<String>(
-            segments: const <(String, String)>[('anthropic', 'ANTHROPIC'), ('openai', 'OPENAI')],
+            segments: const <(String, String)>[('gemini', 'GEMINI'), ('openai', 'OPENAI API'), ('anthropic', 'ANTHROPIC')],
             selected: _provider,
             onSelected: (String v) => setState(() => _provider = v),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            switch (_provider) {
+              'gemini' => 'FREE TIER · GOOGLE MAY USE WHAT YOU SEND TO IMPROVE ITS PRODUCTS',
+              'openai' => 'GROQ, OPENROUTER, OLLAMA OR OPENAI · SET THE MODEL AND BASE URL',
+              _ => 'PAID API · BILLED BY ANTHROPIC',
+            },
+            style: t.micro.copyWith(color: _provider == 'anthropic' ? c.critical : c.textFaint, fontSize: 9),
           ),
           const SizedBox(height: 12),
         ],

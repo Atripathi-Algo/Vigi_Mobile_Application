@@ -6,6 +6,7 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 
 Future<void> showLogSleepSheet(BuildContext context) => showModalBottomSheet<void>(
@@ -107,6 +108,7 @@ class _LogSleepSheetState extends ConsumerState<_LogSleepSheet> {
               expand: true,
               onPressed: valid
                   ? () {
+                      SfxService.play(Sfx.clear);
                       s.logSleep(_night, _bed, 1440 + _wake);
                       Navigator.pop(context);
                       showVigilSnack(context, 'Night logged · ${Fmt.dur(_asleep)}');
@@ -160,6 +162,7 @@ class _LogWeightSheetState extends ConsumerState<_LogWeightSheet> {
           label: 'Save weight',
           expand: true,
           onPressed: () {
+            SfxService.play(Sfx.clear);
             ref.read(storeProvider).logWeight(_kg);
             Navigator.pop(context);
             showVigilSnack(context, 'Weight logged');

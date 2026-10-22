@@ -11,6 +11,7 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 
 enum _Phase { ready, engaged, paused, done }
@@ -128,6 +129,7 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
   void _complete() {
     _tick?.cancel();
     HapticFeedback.mediumImpact();
+    SfxService.play(Sfx.pulse);
     final VigilStore s = ref.read(storeProvider);
     s.logFocus(_lengths[_len].$1);
     if (widget.workout) {
@@ -141,6 +143,7 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
   void _start() {
     _endAt = DateTime.now().add(Duration(seconds: _phase == _Phase.paused ? _pausedLeft : _planned));
     _phase = _Phase.engaged;
+    SfxService.play(Sfx.engage);
     _saveRun();
     _startTicker();
     setState(() {});
@@ -166,7 +169,10 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
         ],
       ),
     );
-    if (ok ?? false) _clearRun();
+    if (ok ?? false) {
+      SfxService.play(Sfx.deny);
+      _clearRun();
+    }
     return ok ?? false;
   }
 

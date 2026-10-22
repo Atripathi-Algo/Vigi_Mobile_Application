@@ -8,6 +8,7 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 
 /// 05 · Night Debrief
@@ -138,6 +139,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
           icon: VigilIcons.standDown,
           onPressed: () {
             HapticFeedback.mediumImpact();
+            SfxService.play(Sfx.pulse);
             if (_line.text.trim().isNotEmpty) s.notes.insert(0, Note(id: s.nextId(), title: 'Night log · ${Fmt.dayStamp(now)}', body: _line.text.trim(), at: now));
             s.nightShieldArmed = true;
             s.tomorrowFirstId = _first;

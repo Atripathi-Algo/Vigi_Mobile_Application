@@ -9,6 +9,7 @@ import '../app/providers.dart';
 import '../app/shell.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
 
@@ -284,6 +285,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                     expand: true,
                     onPressed: () {
                       HapticFeedback.mediumImpact();
+                      SfxService.play(Sfx.clear);
                       s.sealLog(_entry.text, s.logMood);
                       _entry.clear();
                     },

@@ -12,6 +12,7 @@ import '../data/store.dart';
 import '../services/health.dart';
 import '../services/notifications.dart';
 import '../services/push.dart';
+import '../services/sfx.dart';
 import '../services/steps.dart';
 import '../vigil/vigil.dart';
 
@@ -148,6 +149,53 @@ class LoadoutScreen extends ConsumerWidget {
             ),
           ),
         ]),
+        head('Sounds'),
+        RowList(children: <Widget>[
+          toggleRow('sfx', 'Sound effects', 'In-app cues · original audio'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+              Text('EFFECT VOLUME', style: t.micro.copyWith(color: c.textFaint)),
+              const SizedBox(height: 6),
+              VigilSegmented<int>(
+                segments: const <(int, String)>[(0, 'LOW'), (1, 'MEDIUM'), (2, 'HIGH')],
+                selected: s.sfxLevel,
+                onSelected: (int v) {
+                  s.setSfxLevel(v);
+                  SfxService.configure(on: s.toggles['sfx'] ?? true, level: v);
+                  SfxService.play(Sfx.tick);
+                },
+              ),
+              const SizedBox(height: 4),
+              Text('ALERT SOUNDS FOLLOW THE PHONE\'S NOTIFICATION VOLUME', style: t.micro.copyWith(color: c.textFaint, fontSize: 9)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              Text('PREVIEW EFFECTS', style: t.micro.copyWith(color: c.textFaint)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
+                for (final Sfx e in Sfx.values) VigilButton(label: e.name, variant: VigilButtonVariant.secondary, onPressed: () => SfxService.play(e)),
+              ]),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              Text('PREVIEW ALERT SOUNDS', style: t.micro.copyWith(color: c.textFaint)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
+                for (final (String, String) a in const <(String, String)>[('critical', 'critical'), ('ops', 'ops'), ('sleep', 'sleep'), ('briefings', 'briefing'), ('protocols', 'soft')])
+                  VigilButton(
+                    label: a.$2,
+                    variant: VigilButtonVariant.accent,
+                    onPressed: () => NotificationService.show('VIGIL // ${a.$2.toUpperCase()}', 'Alert sound preview', channel: a.$1, payload: '/loadout'),
+                  ),
+              ]),
+            ]),
+          ),
+        ]),
         head('Briefings'),
         RowList(children: <Widget>[
           toggleRow('spoken', 'Spoken replies', 'Wake phrase'),
@@ -197,8 +245,11 @@ class LoadoutScreen extends ConsumerWidget {
                   semanticLabel: 'Cloud AI for hard requests',
                   onChanged: (bool v) {
                     if (v && !Env.hasCloudAi) {
-                      showVigilSnack(context, 'Set CLOUD_AI_API_KEY in .env and rebuild');
+                      showVigilSnack(context, 'Add a Cloud AI key under API keys first');
                       return;
+                    }
+                    if (v && Env.cloudAiProvider == 'gemini') {
+                      showVigilSnack(context, 'Gemini free tier: Google may use what you send to improve its products');
                     }
                     s.setToggle('cloudAi', v);
                   },

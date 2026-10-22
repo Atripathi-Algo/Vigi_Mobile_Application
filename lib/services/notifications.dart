@@ -16,15 +16,22 @@ abstract final class NotificationService {
   static bool _ready = false;
   static void Function(String? payload)? _onTap;
 
-  static const List<(String, String, Importance, String)> _channels = <(String, String, Importance, String)>[
-    ('critical', 'Critical', Importance.high, 'Deadlines and critical conflicts'),
-    ('ops', 'Ops', Importance.defaultImportance, 'Next op and focus reminders'),
-    ('protocols', 'Protocols', Importance.low, 'Streaks at risk'),
-    ('sleep', 'Sleep', Importance.high, 'Wind-down and lights-out'),
-    ('screen', 'Screen', Importance.low, 'Screen-time limits'),
-    ('ledger', 'Ledger', Importance.defaultImportance, 'Bills due'),
-    ('briefings', 'Briefings', Importance.low, 'Dawn briefing and night debrief'),
+  /// One channel per kind of alert, each with its own original sound from
+  /// android/app/src/main/res/raw (made by tools/gen_sounds.py). Android fixes a
+  /// channel's sound when it is created, so the ids carry a version suffix; the
+  /// sound can still be changed per channel in the system settings.
+  static const List<_Chan> _channels = <_Chan>[
+    _Chan('critical', 'Critical', Importance.high, 'Deadlines and critical conflicts', 'bat_critical'),
+    _Chan('ops', 'Ops', Importance.defaultImportance, 'Next op and focus reminders', 'bat_ops'),
+    _Chan('protocols', 'Protocols', Importance.low, 'Streaks at risk', 'bat_soft'),
+    _Chan('sleep', 'Sleep', Importance.high, 'Wind-down and lights-out', 'bat_sleep'),
+    _Chan('screen', 'Screen', Importance.low, 'Screen-time limits', 'bat_soft'),
+    _Chan('ledger', 'Ledger', Importance.defaultImportance, 'Bills due', 'bat_soft'),
+    _Chan('briefings', 'Briefings', Importance.low, 'Dawn briefing and night debrief', 'bat_brief'),
   ];
+
+  /// Channel ids from before the sounds were added; removed on start so they do not clutter the settings.
+  static const List<String> _oldChannelIds = <String>['critical', 'ops', 'protocols', 'sleep', 'screen', 'ledger', 'briefings'];
 
   static AndroidFlutterLocalNotificationsPlugin? get _android => _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
@@ -39,8 +46,18 @@ abstract final class NotificationService {
         settings: const InitializationSettings(android: AndroidInitializationSettings('ic_stat_vigil')),
         onDidReceiveNotificationResponse: (NotificationResponse r) => _onTap?.call(r.payload),
       );
-      for (final (String, String, Importance, String) c in _channels) {
-        await _android?.createNotificationChannel(AndroidNotificationChannel(c.$1, c.$2, description: c.$4, importance: c.$3));
+      for (final String old in _oldChannelIds) {
+        await _android?.deleteNotificationChannel(channelId: old);
+      }
+      for (final _Chan c in _channels) {
+        await _android?.createNotificationChannel(AndroidNotificationChannel(
+          c.id,
+          c.name,
+          description: c.description,
+          importance: c.importance,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound(c.sound),
+        ));
       }
       _ready = true;
     } catch (e) {
@@ -75,17 +92,19 @@ abstract final class NotificationService {
   static Future<bool> canScheduleExact() async => (await _android?.canScheduleExactNotifications()) ?? false;
 
   static NotificationDetails _details(String channel) {
-    final (String, String, Importance, String) c = _channels.firstWhere(((String, String, Importance, String) e) => e.$1 == channel, orElse: () => _channels[1]);
+    final _Chan c = _channels.firstWhere((_Chan e) => e.key == channel, orElse: () => _channels[1]);
     return NotificationDetails(
       android: AndroidNotificationDetails(
-        c.$1,
-        c.$2,
-        channelDescription: c.$4,
-        importance: c.$3,
-        priority: c.$3 == Importance.high ? Priority.high : (c.$3 == Importance.low ? Priority.low : Priority.defaultPriority),
+        c.id,
+        c.name,
+        channelDescription: c.description,
+        importance: c.importance,
+        priority: c.importance == Importance.high ? Priority.high : (c.importance == Importance.low ? Priority.low : Priority.defaultPriority),
         icon: 'ic_stat_vigil',
         color: VigilPalette.signal,
         styleInformation: const BigTextStyleInformation(''),
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound(c.sound),
       ),
     );
   }
@@ -167,4 +186,19 @@ abstract final class NotificationService {
       debugPrint('syncReminders failed: $e');
     }
   }
+}
+
+class _Chan {
+  const _Chan(this.key, this.name, this.importance, this.description, this.sound);
+
+  /// What the rest of the app calls it (`critical`, `ops`, ...).
+  final String key;
+  final String name;
+  final Importance importance;
+  final String description;
+
+  /// Name of the file in res/raw, without the extension.
+  final String sound;
+
+  String get id => '${key}_v2';
 }
