@@ -1,0 +1,235 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+import '../app/common.dart';
+import '../app/env.dart';
+import '../app/fmt.dart';
+import '../app/providers.dart';
+import '../data/store.dart';
+import '../services/notifications.dart';
+import '../services/push.dart';
+import '../services/steps.dart';
+import '../vigil/vigil.dart';
+
+/// 20 · Loadout · Settings
+class LoadoutScreen extends ConsumerWidget {
+  const LoadoutScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.vigil;
+    final t = context.vtype;
+    final VigilStore s = ref.watch(storeProvider);
+
+    String sample() {
+      final String base = switch (s.persona) {
+        Persona.tactical => 'Hydration 1.2 of 3.0 L. Review at 19:00. Recommend 500 ml now.',
+        Persona.butler => 'You\'re at 1.2 of 3 litres, and the review is at seven. Perhaps some water first?',
+        Persona.quiet => '1.2 / 3.0 L · drink 500 ml',
+      };
+      return s.verbosity == Verbosity.detailed ? '$base Next check at 20:00.' : base;
+    }
+
+    Widget head(String text) => Padding(padding: const EdgeInsets.only(top: 18, bottom: 8), child: Text(text.toUpperCase(), style: t.label.copyWith(color: c.textFaint)));
+
+    Widget toggleRow(String key, String title, String sub) => SizedBox(
+          height: 60,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 14, right: 8),
+            child: Row(children: <Widget>[
+              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub.toUpperCase(), style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+              VigilSwitch(value: s.toggles[key] ?? false, onChanged: (bool v) => s.setToggle(key, v), semanticLabel: title),
+            ]),
+          ),
+        );
+
+    Widget linkRow(String title, String sub, String status, {VoidCallback? onTap}) => InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 60,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(children: <Widget>[
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub.toUpperCase(), style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+                StatusChip(status, on: status == 'LINKED' || status == 'ON' || status == 'OK'),
+              ]),
+            ),
+          ),
+        );
+
+    return VigilScaffold(
+      title: 'Loadout',
+      leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
+      body: ListView(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 28), children: <Widget>[
+        VigilCard(
+          child: Row(children: <Widget>[
+            Container(width: 48, height: 48, decoration: BoxDecoration(border: Border.all(color: c.lineStrong), color: c.surfaceHigh), child: const Center(child: VigilEmblem(size: 28, semanticLabel: ''))),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(s.fullName, style: t.title), Text('CALLSIGN ${s.callsign.toUpperCase()} · 24H CLOCK · ₹ INR', style: t.micro.copyWith(color: c.textFaint))])),
+          ]),
+        ),
+        head('Signal'),
+        Row(children: <Widget>[
+          for (int i = 0; i < VigilPalette.signalOptions.length; i++) ...<Widget>[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(
+              child: Semantics(
+                button: true,
+                selected: s.accentIndex == i,
+                label: <String>['Signal yellow', 'Cyan', 'Orange', 'White'][i],
+                excludeSemantics: true,
+                child: InkWell(
+                  onTap: () => s.setAccent(i),
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(border: Border.all(color: s.accentIndex == i ? c.text : c.lineStrong, width: s.accentIndex == i ? 2 : 1)),
+                    padding: const EdgeInsets.all(6),
+                    child: ColoredBox(color: VigilPalette.signalOptions[i]),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ]),
+        head('VIGIL · Voice'),
+        VigilCard(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+            Text('PERSONA', style: t.micro.copyWith(color: c.textFaint)),
+            const SizedBox(height: 6),
+            VigilSegmented<Persona>(segments: const <(Persona, String)>[(Persona.tactical, 'TACTICAL'), (Persona.butler, 'BUTLER'), (Persona.quiet, 'QUIET')], selected: s.persona, onSelected: s.setPersona),
+            const SizedBox(height: 10),
+            Text(sample(), style: t.caption.copyWith(color: c.textMuted)),
+            const SizedBox(height: 14),
+            Text('VERBOSITY', style: t.micro.copyWith(color: c.textFaint)),
+            const SizedBox(height: 6),
+            VigilSegmented<Verbosity>(segments: const <(Verbosity, String)>[(Verbosity.terse, 'TERSE'), (Verbosity.standard, 'STANDARD'), (Verbosity.detailed, 'DETAILED')], selected: s.verbosity, onSelected: s.setVerbosity),
+          ]),
+        ),
+        head('API keys'),
+        RowList(children: <Widget>[
+          linkRow('API keys & services', 'Cloud AI · Calendar · Weather · Firebase · Backend', 'EDIT', onTap: () => context.push('/loadout/keys')),
+        ]),
+        head('Notifications'),
+        RowList(children: <Widget>[
+          linkRow('Notifications', 'Reminders, wind-down, briefings', s.linkStatus['Notifications'] ?? 'ASK', onTap: () async {
+            final bool ok = await NotificationService.requestPermission();
+            s.setLink('Notifications', ok ? 'OK' : 'DENIED');
+            if (!ok && context.mounted) showVigilSnack(context, 'Allow notifications for VIGIL in system settings');
+          }),
+          toggleRow('notifyOps', 'Ops reminders', 'Due in 30 min · next op in 15 min'),
+          toggleRow('notifyProtocols', 'Protocol nudges', 'Streak at risk · 20:00'),
+          linkRow('Send a test notification', 'Checks the critical channel', 'TEST', onTap: () async {
+            await NotificationService.show('VIGIL // TEST', 'Systems nominal, ${s.callsign}.', channel: 'critical', payload: '/');
+          }),
+          linkRow('Exact reminder times', 'Alarms & reminders access', s.linkStatus['Exact alarms'] ?? 'ASK', onTap: () async {
+            await NotificationService.requestExactAlarms();
+            s.setLink('Exact alarms', await NotificationService.canScheduleExact() ? 'OK' : 'DENIED');
+          }),
+          linkRow('Background & battery', 'ColorOS: allow auto-start, no restrictions', 'OPEN', onTap: () => openAppSettings()),
+          ValueListenableBuilder<String>(
+            valueListenable: PushService.status,
+            builder: (BuildContext ctx, String st, Widget? _) => ValueListenableBuilder<String?>(
+              valueListenable: PushService.token,
+              builder: (BuildContext ctx2, String? tok, Widget? _) => linkRow(
+                'Firebase push',
+                Env.hasFirebase ? (tok == null ? 'Waiting for token' : 'Tap to copy device token') : 'Add FIREBASE_* keys to .env',
+                st,
+                onTap: tok == null
+                    ? null
+                    : () async {
+                        await Clipboard.setData(ClipboardData(text: tok));
+                        if (context.mounted) showVigilSnack(context, 'Device token copied');
+                      },
+              ),
+            ),
+          ),
+        ]),
+        head('Briefings'),
+        RowList(children: <Widget>[
+          toggleRow('spoken', 'Spoken replies', 'Wake phrase'),
+          toggleRow('dawn', 'Dawn briefing', Fmt.hm(s.wakeMin)),
+          toggleRow('debrief', 'Night debrief', Fmt.hm(s.bedMin - 30)),
+          linkRow('Open dawn briefing', 'Preview now', 'OPEN', onTap: () => context.push('/briefing')),
+          linkRow('Open night debrief', 'Preview now', 'OPEN', onTap: () => context.push('/debrief')),
+        ]),
+        head('Links'),
+        RowList(children: <Widget>[
+          linkRow('Step sensor', 'Phone step counter', s.linkStatus['Step sensor'] ?? 'ASK', onTap: () async {
+            final bool ok = await StepService.start(s, request: true);
+            s.setLink('Step sensor', ok ? 'OK' : 'DENIED');
+            if (!ok && context.mounted) showVigilSnack(context, 'Allow Physical activity for VIGIL in system settings');
+          }),
+          linkRow('Google Calendar', 'API key + calendar id from .env', Env.hasCalendar ? 'LINKED' : 'ASK', onTap: () => showVigilSnack(context, Env.hasCalendar ? 'Calendar key found in .env' : 'Add GOOGLE_CALENDAR_API_KEY and GOOGLE_CALENDAR_ID to .env')),
+          linkRow('Health Connect', 'Bridge not built', 'ASK', onTap: () => showVigilSnack(context, 'Health Connect bridge is not built')),
+          linkRow('Usage access', 'Bridge not built', 'ASK', onTap: () => showVigilSnack(context, 'Usage-stats bridge is not built')),
+          linkRow('Bank SMS parser', 'Sideload build only', 'OFF'),
+        ]),
+        head('Home screen'),
+        VigilCard(
+          child: Text('Long-press the home screen, open Widgets, and add VIGIL Objectives (4×2) or VIGIL Readiness (2×2). Tap an objective to check it off, or +250 ML to log water, without opening the app.', style: t.caption.copyWith(color: c.textMuted)),
+        ),
+        head('Data & privacy'),
+        RowList(children: <Widget>[
+          toggleRow('vaultLock', 'Vault lock', 'Locks when you leave the tab'),
+          SizedBox(
+            height: 60,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 14, right: 8),
+              child: Row(children: <Widget>[
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Cloud AI for hard requests', style: t.rowTitle), Text(Env.hasCloudAi ? 'SENDS SITREP + QUESTION · ${Env.cloudAiProvider.toUpperCase()}' : 'ADD CLOUD_AI_API_KEY TO .ENV', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+                VigilSwitch(
+                  value: s.toggles['cloudAi'] ?? false,
+                  semanticLabel: 'Cloud AI for hard requests',
+                  onChanged: (bool v) {
+                    if (v && !Env.hasCloudAi) {
+                      showVigilSnack(context, 'Set CLOUD_AI_API_KEY in .env and rebuild');
+                      return;
+                    }
+                    s.setToggle('cloudAi', v);
+                  },
+                ),
+              ]),
+            ),
+          ),
+          linkRow('Google Drive backup', 'Needs Google sign-in', 'OFF'),
+          linkRow('Export data', 'Copy JSON snapshot', 'OPEN', onTap: () async {
+            await Clipboard.setData(ClipboardData(text: s.sitrep(DateTime.now())));
+            if (context.mounted) showVigilSnack(context, 'Snapshot copied');
+          }),
+          linkRow('Assistant log', '${s.chat.length} messages this session', 'OPEN', onTap: () => context.go('/vigil')),
+          InkWell(
+            onTap: () => _erase(context, s),
+            child: SizedBox(height: 56, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: Align(alignment: Alignment.centerLeft, child: Text('ERASE ALL', style: t.button.copyWith(color: c.critical))))),
+          ),
+        ]),
+        const SizedBox(height: 22),
+        Center(child: Text('VIGIL v1.0 · BUILD 0002', style: t.micro.copyWith(color: c.textFaint))),
+      ]),
+    );
+  }
+
+  void _erase(BuildContext context, VigilStore s) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('ERASE ALL'),
+        content: const Text('Erase all VIGIL data on this phone? This can\'t be undone.'),
+        actions: <Widget>[
+          VigilButton(label: 'Cancel', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx)),
+          VigilButton(
+            label: 'Erase all',
+            variant: VigilButtonVariant.critical,
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await s.eraseAll();
+              if (context.mounted) context.go('/boot');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}

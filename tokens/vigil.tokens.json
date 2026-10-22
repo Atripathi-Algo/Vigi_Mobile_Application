@@ -1,0 +1,110 @@
+{
+  "$description": "VIGIL design tokens · Noir tactical HUD · v1.1 · W3C Design Tokens (DTCG) format. Dark only.",
+  "color": {
+    "$type": "color",
+    "ground":      { "$value": "#0A0B0D", "$description": "Scaffold background" },
+    "stealth":     { "$value": "#050607", "$description": "Deep Ops, widgets, lock-screen surfaces" },
+    "surface":     { "$value": "#121418", "$description": "Cards, sheets, inputs" },
+    "surfaceHigh": { "$value": "#1A1D22", "$description": "User chat bubbles, selected rows" },
+    "navBar":      { "$value": "#0E0F12", "$description": "Bottom navigation background" },
+    "line":        { "$value": "#262A31", "$description": "Card borders, dividers, empty bars" },
+    "lineStrong":  { "$value": "#363B44", "$description": "Inputs, secondary buttons, segmented outline" },
+    "rule":        { "$value": "#1E2126", "$description": "Chart gridlines, hour rules" },
+    "neutral":     { "$value": "#646A74", "$description": "Unchecked boxes, switch-off border, meeting blocks, inactive ticks. Raised from canvas #5A606A to meet 3:1 non-text contrast on surface (3.4:1) and surfaceHigh (3.1:1)." },
+    "text":        { "$value": "#ECEAE4", "$description": "Primary copy" },
+    "textMuted":   { "$value": "#A3A8B0", "$description": "Secondary copy" },
+    "textFaint":   { "$value": "#8A9099", "$description": "Mono labels; ≥ 5:1 on surface" },
+    "signal":      { "$value": "#F2C230", "$description": "Primary action, active state, progress. One accent only." },
+    "onSignal":    { "$value": "#0A0B0D", "$description": "Text/icons on signal fills" },
+    "critical":    { "$value": "#FF5A47", "$description": "Deadlines, overdue, risk. Never decorative." },
+    "steel":       { "$value": "#7FA7C9", "$description": "Water, sleep, second data series" },
+    "sleepBand":   { "$value": "#1F2630", "$description": "Sleep window shading in charts" },
+    "scrim":       { "$value": "#050607", "$description": "Use at 62% opacity behind sheets" }
+  },
+  "font": {
+    "family": {
+      "$type": "fontFamily",
+      "display": { "$value": ["Chakra Petch", "Arial Narrow", "sans-serif"] },
+      "body":    { "$value": ["IBM Plex Sans", "Roboto", "sans-serif"] },
+      "mono":    { "$value": ["IBM Plex Mono", "Roboto Mono", "monospace"] }
+    },
+    "weight": {
+      "$type": "fontWeight",
+      "regular": { "$value": 400 }, "medium": { "$value": 500 }, "semibold": { "$value": 600 }, "bold": { "$value": 700 }
+    }
+  },
+  "typography": {
+    "$type": "typography",
+    "display":  { "$value": { "fontFamily": "{font.family.display}", "fontSize": "66px", "fontWeight": 600, "lineHeight": 1.0,  "letterSpacing": "0.04em" }, "$description": "Deep Ops timer; use tabular figures" },
+    "hero":     { "$value": { "fontFamily": "{font.family.display}", "fontSize": "40px", "fontWeight": 700, "lineHeight": 1.0,  "letterSpacing": "0" }, "$description": "Sleep plan times, mission score uses 64px" },
+    "h1":       { "$value": { "fontFamily": "{font.family.display}", "fontSize": "31px", "fontWeight": 600, "lineHeight": 1.1,  "letterSpacing": "0.01em" } },
+    "section":  { "$value": { "fontFamily": "{font.family.display}", "fontSize": "26px", "fontWeight": 700, "lineHeight": 1.0,  "letterSpacing": "0.14em" }, "$description": "Screen titles: OPS, PROTOCOLS, VAULT, SLEEP…" },
+    "h2":       { "$value": { "fontFamily": "{font.family.display}", "fontSize": "24px", "fontWeight": 600, "lineHeight": 1.22, "letterSpacing": "0" } },
+    "metric":   { "$value": { "fontFamily": "{font.family.display}", "fontSize": "22px", "fontWeight": 700, "lineHeight": 1.05, "letterSpacing": "0" }, "$description": "Tile values" },
+    "title":    { "$value": { "fontFamily": "{font.family.body}",    "fontSize": "17px", "fontWeight": 600, "lineHeight": 1.3,  "letterSpacing": "0" } },
+    "rowTitle": { "$value": { "fontFamily": "{font.family.body}",    "fontSize": "15px", "fontWeight": 500, "lineHeight": 1.3,  "letterSpacing": "0" } },
+    "body":     { "$value": { "fontFamily": "{font.family.body}",    "fontSize": "15px", "fontWeight": 400, "lineHeight": 1.45, "letterSpacing": "0" } },
+    "caption":  { "$value": { "fontFamily": "{font.family.body}",    "fontSize": "13px", "fontWeight": 400, "lineHeight": 1.35, "letterSpacing": "0" } },
+    "button":   { "$value": { "fontFamily": "{font.family.mono}",    "fontSize": "12px", "fontWeight": 600, "lineHeight": 1.0,  "letterSpacing": "0.14em" }, "$description": "UPPERCASE" },
+    "cta":      { "$value": { "fontFamily": "{font.family.display}", "fontSize": "16px", "fontWeight": 700, "lineHeight": 1.0,  "letterSpacing": "0.22em" }, "$description": "Full-width primary CTA, UPPERCASE" },
+    "label":    { "$value": { "fontFamily": "{font.family.mono}",    "fontSize": "11px", "fontWeight": 500, "lineHeight": 1.2,  "letterSpacing": "0.16em" }, "$description": "Section labels, UPPERCASE" },
+    "meta":     { "$value": { "fontFamily": "{font.family.mono}",    "fontSize": "11px", "fontWeight": 400, "lineHeight": 1.3,  "letterSpacing": "0.04em" }, "$description": "Row metadata, UPPERCASE" },
+    "micro":    { "$value": { "fontFamily": "{font.family.mono}",    "fontSize": "10px", "fontWeight": 400, "lineHeight": 1.2,  "letterSpacing": "0.1em" },  "$description": "Nav labels, axis ticks, UPPERCASE" }
+  },
+  "space": {
+    "$type": "dimension",
+    "1": { "$value": "4px" }, "2": { "$value": "8px" }, "3": { "$value": "12px" }, "4": { "$value": "16px" },
+    "5": { "$value": "20px" }, "6": { "$value": "24px" }, "8": { "$value": "32px" },
+    "gutter":    { "$value": "20px", "$description": "Screen side padding" },
+    "stack":     { "$value": "12px", "$description": "Default gap between sections" },
+    "safeTop":   { "$value": "56px", "$description": "Design top inset incl. status bar; in Flutter use SafeArea + 12" }
+  },
+  "size": {
+    "$type": "dimension",
+    "touchMin":    { "$value": "44px" },
+    "iconButton":  { "$value": "44px" },
+    "button":      { "$value": "44px" },
+    "buttonLarge": { "$value": "54px" },
+    "input":       { "$value": "48px" },
+    "row":         { "$value": "56px" },
+    "rowCompact":  { "$value": "44px" },
+    "navBar":      { "$value": "84px", "$description": "Includes 18px bottom inset" },
+    "coreButton":  { "$value": "58px", "$description": "Octagon, raised 20px above nav" },
+    "fab":         { "$value": "56px" },
+    "checkbox":    { "$value": "20px" },
+    "switchTrack": { "$value": "44px × 24px" },
+    "icon":        { "$value": "22px", "$description": "Nav and inline icons; 24 grid" },
+    "phoneFrame":  { "$value": "390px × 844px" }
+  },
+  "shape": {
+    "$type": "dimension",
+    "radius":        { "$value": "0px", "$description": "Everything is square unless listed below" },
+    "chamferSmall":  { "$value": "8px",  "$description": "Widget buttons" },
+    "chamfer":       { "$value": "10px", "$description": "Buttons ≤ 44px, cards CTAs" },
+    "chamferLarge":  { "$value": "12px", "$description": "54–56px CTAs" },
+    "chamferWidget": { "$value": "14px", "$description": "Home-screen widgets, app icon" },
+    "sheetTop":      { "$value": "18px", "$description": "Bottom sheet top corners" },
+    "octagonCut":    { "$value": "30%",  "$description": "Core VIGIL button & FAB" },
+    "bracketLength": { "$value": "12px" },
+    "bracketStroke": { "$value": "2px" },
+    "frameRadius":   { "$value": "28px", "$description": "Device frame only (canvas), not UI" }
+  },
+  "border": {
+    "$type": "dimension",
+    "hairline": { "$value": "1px" }, "focus": { "$value": "2px" }, "checkbox": { "$value": "1.5px" }
+  },
+  "motion": {
+    "$type": "duration",
+    "fast":   { "$value": "120ms", "$description": "State changes, toggles, checks" },
+    "sheet":  { "$value": "220ms", "$description": "Sheets, route push" },
+    "reveal": { "$value": "600ms", "$description": "Boot log line-by-line; visor lights last" },
+    "easing": { "$type": "cubicBezier", "$value": [0.215, 0.61, 0.355, 1], "$description": "easeOutCubic" }
+  },
+  "opacity": {
+    "$type": "number",
+    "gridTexture": { "$value": 0.03, "$description": "26px grid lines, text color" },
+    "focusFill":   { "$value": 0.14, "$description": "Signal tint behind focus blocks" },
+    "switchOn":    { "$value": 0.15, "$description": "Signal tint in switch track" },
+    "scrim":       { "$value": 0.62 }
+  }
+}

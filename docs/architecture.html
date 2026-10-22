@@ -1,0 +1,376 @@
+<title>VIGIL Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: AWS-style reference diagram. Nested boundary groups, service tiles with category colour, numbered flows.
+   Left: diagram (scrolls sideways on phones). Right: detail panel for the selected component. */
+:root{
+  --bg:#f2f3f3; --panel:#ffffff; --ink:#16191f; --muted:#545b64; --line:#aab7b8; --halo:#f2f3f3;
+  --group-device:#1d8102; --group-cloud:#687078; --group-ui:#8c4fff; --group-state:#ed7100; --group-store:#7aa116; --group-int:#e7157b; --group-plat:#dd344c; --group-build:#3b48cc;
+  --built:#1d8102; --partial:#b7791f; --planned:#687078; --focus:#0972d3;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace; --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1419; --panel:#161d26; --ink:#e9ebed; --muted:#9ba7b4; --line:#5f6b7a; --halo:#0f1419;
+  --built:#4cc35a; --partial:#e0a63a; --planned:#8a96a3; --focus:#539fe5; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0f1419; --panel:#161d26; --ink:#e9ebed; --muted:#9ba7b4; --line:#5f6b7a; --halo:#0f1419;
+  --built:#4cc35a; --partial:#e0a63a; --planned:#8a96a3; --focus:#539fe5; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;
+  padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1480px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font-size:22px;line-height:1.2;margin:0;font-weight:600;text-wrap:balance}
+.sub{color:var(--muted);margin:4px 0 0;max-width:80ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center}
+.bar .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.bar .lbl{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+button{font:500 12px var(--mono);color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:7px 11px;min-height:34px;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:baseline;border:2px solid transparent}
+.dot.built{background:var(--built)} .dot.partial{background:var(--partial)} .dot.planned{background:transparent;border-color:var(--planned)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+.canvas{background:var(--panel);border:1px solid var(--line);overflow-x:auto}
+svg{display:block;width:100%;min-width:1000px;height:auto}
+.side{background:var(--panel);border:1px solid var(--line);padding:16px;position:sticky;top:12px;min-width:0}
+.side h2{font-size:17px;margin:0 0 2px;font-weight:600}
+.side .path{font:400 12px var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.pill{display:inline-flex;align-items:center;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line);margin:10px 0}
+.side p{margin:8px 0}
+.side h3{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+.links{display:flex;flex-direction:column;gap:4px;padding:0;margin:0;list-style:none}
+.links button{width:100%;text-align:left;font:400 12.5px var(--sans);display:flex;gap:8px;min-height:36px}
+.links .dir{font:500 11px var(--mono);color:var(--muted);flex:none;width:30px}
+.steps{margin:0;padding-left:20px} .steps li{margin:4px 0}
+.flowbox{background:var(--panel);border:1px solid var(--line);padding:12px 16px}
+.flowbox ol{margin:6px 0 0;padding-left:22px}
+.flowbox li{margin:3px 0}
+.hint{color:var(--muted);font-size:12.5px}
+/* svg */
+.gbox{fill:none;stroke-width:1.6}
+.gtitle{font:600 12.5px var(--sans);fill:var(--ink)}
+.gnote{font:400 11px var(--mono);fill:var(--muted)}
+.node{cursor:pointer;transition:opacity .15s}
+.node .name{font:600 12.5px var(--sans);fill:var(--ink)}
+.node .sub{font:400 10.5px var(--mono);fill:var(--muted);margin:0}
+.node .glyph{font:600 15px var(--mono);fill:#fff}
+.node .ring{fill:none;stroke:var(--focus);stroke-width:3;opacity:0}
+.node.sel .ring{opacity:1}
+.node:hover .tile{stroke:var(--ink);stroke-width:1.5}
+.edge path{fill:none;stroke:var(--ink);stroke-width:1.5;opacity:.8}
+.edge.planned path{stroke-dasharray:5 4;stroke:var(--planned)}
+.edge .elbl{font:500 11px var(--mono);fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:5px;stroke-linejoin:round}
+.edge.planned .elbl{fill:var(--muted)}
+.edge{cursor:pointer;transition:opacity .15s}
+.edge.hot path{stroke:var(--focus);stroke-width:2.6;opacity:1}
+.edge.hot .elbl{fill:var(--focus)}
+.edge .hit{stroke:transparent;stroke-width:14;fill:none}
+.step{fill:var(--focus)} .stepn{font:600 11px var(--mono);fill:#fff;text-anchor:middle}
+.dim{opacity:.16}
+.arrow{fill:var(--ink)}
+@media (max-width:980px){.main{grid-template-columns:minmax(0,1fr)}.side{position:static}}
+@media (prefers-reduced-motion:reduce){.node,.edge{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>VIGIL application architecture</h1>
+    <p class="sub">Flutter app for Android. Everything runs inside the phone. Outbound calls (weather, calendar, cloud AI, Firebase push) are all optional and driven by keys in <code>.env</code>. Select a component or an arrow, or trace a flow.</p>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Diagram controls">
+    <div class="grp"><span class="lbl">Trace</span>
+      <button data-flow="capture" aria-pressed="false">Quick capture</button>
+      <button data-flow="uplink" aria-pressed="false">Ask VIGIL</button>
+      <button data-flow="dawn" aria-pressed="false">Dawn briefing</button>
+      <button data-flow="remind" aria-pressed="false">Reminders &amp; widgets</button>
+      <button data-flow="push" aria-pressed="false">Firebase push</button>
+      <button data-flow="build" aria-pressed="false">Build to APK</button>
+    </div>
+    <div class="grp"><span class="lbl">Status</span>
+      <button data-st="built" aria-pressed="true"><span class="dot built"></span>Built</button>
+      <button data-st="partial" aria-pressed="true"><span class="dot partial"></span>Partly wired</button>
+      <button data-st="planned" aria-pressed="true"><span class="dot planned"></span>Not built</button>
+    </div>
+  </div>
+
+  <div id="flowbox" class="flowbox" hidden></div>
+
+  <div class="main">
+    <div class="canvas">
+      <svg id="dia" viewBox="0 0 1200 900" role="img" aria-label="VIGIL architecture: Flutter screens read and write one in-memory store backed by local storage; engines and an assistant sit on the store; env-driven API clients call weather, calendar and optional AI services outside the phone; platform services for steps, notifications and home widgets are built, while health, usage stats, biometrics and voice are not.">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>
+        </defs>
+        <g id="groups"></g><g id="edges"></g><g id="nodes"></g>
+      </svg>
+    </div>
+    <aside class="side" id="side" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script>
+(function(){
+var CAT={ui:'#8c4fff',state:'#ed7100',store:'#7aa116',integ:'#e7157b',plat:'#dd344c',ext:'#232f3e',build:'#3b48cc'};
+var ST={built:'Built in this repo',partial:'Partly wired',planned:'Not built yet'};
+
+var G=[
+ {id:'dev',x:20,y:20,w:860,h:730,c:'--group-device',t:'Android device',n:'Oppo Reno 8 5G · one process · portrait · dark only',dash:'7 5'},
+ {id:'ui',x:40,y:56,w:820,h:150,c:'--group-ui',t:'Presentation',n:'Flutter · lib/app · lib/screens · lib/vigil'},
+ {id:'state',x:40,y:236,w:820,h:150,c:'--group-state',t:'State and engines',n:'lib/data · pure Dart'},
+ {id:'store',x:40,y:416,w:400,h:190,c:'--group-store',t:'Storage and config',n:'on device'},
+ {id:'api',x:460,y:416,w:400,h:190,c:'--group-int',t:'Outbound integration',n:'lib/api · http'},
+ {id:'plat',x:40,y:636,w:820,h:100,c:'--group-plat',t:'Platform services',n:'lib/services · Kotlin widgets'},
+ {id:'cloud',x:920,y:56,w:260,h:680,c:'--group-cloud',t:'Outside the phone',n:'optional · off without keys'},
+ {id:'bld',x:20,y:770,w:1160,h:110,c:'--group-build',t:'Build pipeline',n:'local machine · D:\\flutter · D:\\Android\\Sdk'}
+];
+
+var N=[
+ {id:'router',x:100,y:116,l:'go_router shell',s:'5 tabs · 3 modals',g:'RT',c:'ui',st:'built',p:'lib/app/router.dart · lib/app/shell.dart',
+  d:'StatefulShellRoute.indexedStack keeps each tab alive, so Ops, Protocols and Vault remember their segment. Segmented views are sibling routes. Android back on a tab returns to Command; back on Command exits. Notification and widget taps deep-link through it.'},
+ {id:'screens',x:290,y:116,l:'Screens',s:'Boot to Loadout',g:'UI',c:'ui',st:'built',p:'lib/screens/',
+  d:'Boot, Dawn Briefing, Command, Uplink, Capture sheet, Night Debrief, Objectives, Timeline, Protocols, Vitals, Sleep tracker and schedule, Screen, Ledger, Field Log, Deep Ops, Loadout. Each reads the store and calls its methods.'},
+ {id:'ds',x:480,y:116,l:'Design system',s:'tokens · widgets',g:'DS',c:'ui',st:'built',p:'lib/vigil/',
+  d:'Handoff package code: colour and type tokens as a ThemeExtension, chamfered shapes, corner brackets, 20+ widgets, and charts drawn with CustomPaint. The accent comes from buildVigilTheme(signal:), so the four Loadout swatches recolour every screen.'},
+ {id:'assets',x:670,y:116,l:'Bundled assets',s:'fonts · icons',g:'AS',c:'store',st:'built',p:'google_fonts/ · assets/svg/ · assets/app_icon/',
+  d:'Chakra Petch, IBM Plex Sans and Mono as TTFs, 31 SVG icons and the emblem. Nothing is fetched at runtime.'},
+ {id:'capture',x:100,y:296,l:'Capture parser',s:'regex rules',g:'CP',c:'state',st:'built',p:'lib/data/capture_parser.dart',
+  d:'Turns "lunch 180" or "call home 9pm" into type, time, amount and tag on every keystroke. Whole-word weekdays, Indian-grouped amounts, and a clear "needs an amount" state for spends.'},
+ {id:'store',x:290,y:296,l:'VigilStore',s:'source of truth',g:'ST',c:'state',st:'built',p:'lib/data/store.dart',
+  d:'One ChangeNotifier exposed through Riverpod. Holds objectives, timeline blocks, protocols, vitals, sleep schedule, ledger, notes and settings. Every write saves, notifies the screens, and re-arms reminders and widgets. Handles day rollover for streaks, water and cleared objectives.'},
+ {id:'engines',x:495,y:296,l:'Engines',s:'score · sleep · SITREP',g:'EN',c:'state',st:'built',p:'lib/data/store.dart',
+  d:'Pure functions over store state. Readiness blends objectives, protocols, focus, hydration and sleep. Tonight\'s lights-out is wake minus need minus latency, pulled earlier to repay debt, rounded to 5 min and clamped to plan -45/+30. SITREP is the compact JSON snapshot the assistant reads.'},
+ {id:'assistant',x:700,y:296,l:'Assistant router',s:'keyword to action',g:'AR',c:'state',st:'built',p:'lib/data/assistant.dart',
+  d:'Commands (add, remind, log) are matched first, then intents (plan, overdue, water, steps, sleep, spend, screen). Writes return a diff card with UNDO. Open-ended questions go to the cloud model only when Cloud AI is on and a key exists.'},
+ {id:'push',x:810,y:296,l:'Push service',s:'Firebase (optional)',g:'FM',c:'integ',st:'built',p:'lib/services/push.dart',
+  d:'Initialises Firebase from the FIREBASE_* keys in .env (no google-services.json), asks for permission, reads the device token (copy it from Loadout) and shows foreground messages through the local notification channels. Does nothing until the keys are filled in.'},
+ {id:'prefs',x:130,y:506,l:'Local storage',s:'SharedPreferences',g:'LS',c:'store',st:'partial',p:'shared_preferences',
+  d:'Settings, objectives, notes, ledger entries, protocols, timeline blocks, water, steps, bills paid and the sleep schedule persist as JSON. The spec calls for encrypted SQLite (drift + SQLCipher). That upgrade is not built, so data is not encrypted at rest.'},
+ {id:'env',x:330,y:506,l:'.env',s:'keys · base URLs',g:'EV',c:'store',st:'built',p:'.env · .env.example · lib/app/env.dart',
+  d:'Bundled as an asset and read by flutter_dotenv at startup. Every key is optional; blank means the feature is off. The file ships inside the APK, so anyone with the APK can read it. Use restricted or development keys, or a backend proxy.'},
+ {id:'api',x:700,y:506,l:'API clients',s:'weather · calendar · AI',g:'AP',c:'integ',st:'built',p:'lib/api/weather_api.dart · calendar_api.dart · cloud_ai.dart',
+  d:'Three small http clients. Each returns null on any failure, and callers fall back to on-device behaviour. Base URLs, keys and the model name come from Env.'},
+ {id:'steps',x:90,y:686,l:'Step sensor',s:'phone pedometer',g:'ST',c:'plat',st:'built',p:'lib/services/steps.dart',
+  d:'Reads the phone\'s built-in step counter (Android TYPE_STEP_COUNTER) after the Physical activity permission. The sensor counts since boot, so the store keeps a per-day baseline and handles reboots. Feeds Vitals, the assistant and the widgets.'},
+ {id:'notif',x:190,y:686,l:'Notifications',s:'7 channels',g:'NT',c:'plat',st:'built',p:'lib/services/notifications.dart',
+  d:'Local notifications on the handoff\'s seven channels. Reminders (due in 30 min, next op in 15 min, streak at risk, wind-down, dawn briefing, night debrief) are re-armed after every change, capped at six proactive nudges a day. Taps deep-link into the app. Needs the Android 13 permission; Oppo may also need background access.'},
+ {id:'widgets',x:290,y:686,l:'Home widgets',s:'4×2 · 2×2',g:'WD',c:'plat',st:'built',p:'lib/services/home_widgets.dart · android/.../VigilWidgets.kt',
+  d:'Two widgets: VIGIL Objectives (next op, three objectives, steps, water) and VIGIL Readiness. Tapping an objective checks it off and +250 ML logs water through a background callback, without opening the app. Data is pushed after every change.'},
+ {id:'alarm',x:390,y:686,l:'Exact alarms',s:'reminder timing',g:'AL',c:'plat',st:'partial',p:'NotificationService.requestExactAlarms',
+  d:'The Alarms & reminders permission flow works and reminders use exact timing when it is granted, otherwise they may arrive a few minutes late. There is no wake alarm yet.'},
+ {id:'hc',x:490,y:686,l:'Health',s:'Connect · not built',g:'HC',c:'plat',st:'planned',p:'MethodChannel',d:'Would feed sleep sessions and weight. Sleep nights and body numbers are sample data today.'},
+ {id:'usage',x:590,y:686,l:'Usage stats',s:'screen time',g:'US',c:'plat',st:'planned',p:'MethodChannel',d:'UsageStatsManager for the Screen tab and Night Shield. The Screen tab shows sample data.'},
+ {id:'bio',x:690,y:686,l:'Biometric',s:'Vault gate',g:'BL',c:'plat',st:'planned',p:'local_auth',d:'The Vault locks when you leave the tab and after 60 s in the background, but unlocking is a tap, not a fingerprint check.'},
+ {id:'voice',x:790,y:686,l:'Voice',s:'STT · TTS',g:'VO',c:'plat',st:'planned',p:'speech_to_text · flutter_tts',d:'Mic in Uplink and spoken Dawn Briefing. Buttons are present; audio is not wired.'},
+ {id:'fcm',x:1050,y:120,l:'Firebase FCM',s:'push messages',g:'FC',c:'ext',st:'built',p:'FIREBASE_* in .env',d:'Optional. Fill in the five FIREBASE_* values from your Firebase project (Android app com.algoanalytics.vigil), rebuild, copy the device token from Loadout and send a test from the Firebase console.'},
+ {id:'meteo',x:1050,y:225,l:'Open-Meteo',s:'current weather',g:'OM',c:'ext',st:'built',p:'WEATHER_API_BASE_URL',d:'No key needed. Feeds the CONDITIONS tile in Dawn Briefing. If the call fails the tile becomes SLEEP, as the spec says.'},
+ {id:'gcal',x:1050,y:330,l:'Google Calendar',s:'REST v3',g:'GC',c:'ext',st:'partial',p:'GOOGLE_CALENDAR_API_KEY · _ID',d:'Today\'s events merge into the Timeline at launch. An API key can read public calendars only (give the full calendar id). A private calendar needs Google sign-in, which is not wired.'},
+ {id:'llm',x:1050,y:435,l:'Cloud LLM',s:'Anthropic / OpenAI',g:'LL',c:'ext',st:'built',p:'CLOUD_AI_PROVIDER · _MODEL · _API_KEY',d:'Used only for open-ended Uplink questions, only if Cloud AI is on in Loadout and a key is set. Receives the SITREP JSON and the question.'},
+ {id:'backend',x:1050,y:540,l:'VIGIL backend',s:'optional',g:'BE',c:'ext',st:'partial',p:'VIGIL_API_BASE_URL · VIGIL_API_KEY',d:'Reserved in .env. The spec has no server, so nothing calls it yet. Add calls in lib/api when you have endpoints.'},
+ {id:'drive',x:1050,y:645,l:'Google Drive',s:'encrypted backup',g:'GD',c:'ext',st:'planned',p:'appDataFolder',d:'Nightly encrypted snapshot and RESTORE FROM DRIVE. Needs Google sign-in.'},
+ {id:'src',x:100,y:826,l:'Source',s:'lib · assets · .env',g:'SRC',c:'build',st:'built',p:'D:\\Personal\\Vigil-Mobile-app',d:'Flutter 3.47.7, Dart 3.13. Repo: Atripathi-Algo/Vigi_Mobile_Application.'},
+ {id:'fb',x:360,y:826,l:'flutter build',s:'apk --split-per-abi',g:'FB',c:'build',st:'built',p:'flutter build apk --release --split-per-abi',d:'Packs Dart AOT, assets and .env into one APK per CPU: arm64-v8a for the Oppo Reno 8 5G, x86_64 for the emulator.'},
+ {id:'grad',x:620,y:826,l:'Gradle',s:'SDK 36 · JDK 17',g:'GR',c:'build',st:'built',p:'android/',d:'Uses the existing command-line SDK; Android Studio is not needed. Kotlin incremental compile is off (project and pub cache are on different drives), and code shrinking is off because R8 broke shared_preferences.'},
+ {id:'apk',x:880,y:826,l:'app-release.apk',s:'com.algoanalytics.vigil',g:'APK',c:'build',st:'built',p:'build/app/outputs/flutter-apk/',d:'Signed with the debug key for now. Create a keystore before a Play Store upload.'},
+ {id:'repo',x:1100,y:826,l:'GitHub',s:'Vigi_Mobile_Application',g:'GH',c:'build',st:'planned',p:'origin/main',d:'Not pushed yet. The .env file with your keys stays out of git.'}
+];
+
+// edges: points are absolute; arrow on the last point of each polyline
+var E=[
+ {id:'rt',a:'router',b:'screens',pts:[[[128,116],[262,116]]],lx:195,ly:106,t:'routes'},
+ {id:'ren',a:'screens',b:'ds',pts:[[[318,116],[452,116]]],lx:385,ly:106,t:'renders with'},
+ {id:'ass',a:'ds',b:'assets',pts:[[[508,116],[642,116]]],lx:575,ly:106,t:'fonts · icons'},
+ {id:'sto',a:'screens',b:'store',pts:[[[290,146],[290,268]]],lx:298,ly:212,t:'watch · mutate',anc:'start'},
+ {id:'cap',a:'store',b:'capture',pts:[[[262,296],[128,296]]],lx:195,ly:286,t:'parse text'},
+ {id:'eng',a:'store',b:'engines',pts:[[[318,296],[467,296]]],lx:392,ly:286,t:'score · rank'},
+ {id:'sit',a:'engines',b:'assistant',pts:[[[523,296],[672,296]]],lx:597,ly:286,t:'SITREP'},
+ {id:'per',a:'store',b:'prefs',pts:[[[290,324],[290,390],[130,390],[130,478]]],lx:210,ly:382,t:'persist JSON'},
+ {id:'ast',a:'assistant',b:'api',pts:[[[700,324],[700,478]]],lx:708,ly:400,t:'hard intents',anc:'start'},
+ {id:'env',a:'env',b:'api',pts:[[[358,506],[672,506]]],lx:515,ly:496,t:'keys · base URLs'},
+ {id:'brg',a:'engines',b:'plat',both:1,pts:[[[495,324],[495,380],[450,380],[450,636]]],lx:444,ly:600,t:'reminders out · steps in',anc:'end'},
+ {id:'psh',a:'fcm',b:'push',pts:[[[1022,120],[890,120],[890,296],[838,296]]],lx:956,ly:110,t:'push messages'},
+ {id:'wx',a:'api',b:'meteo',pts:[[[728,506],[900,506],[900,225],[1022,225]]],lx:961,ly:215,t:'GET weather'},
+ {id:'cal',a:'api',b:'gcal',pts:[[[900,330],[1022,330]]],lx:961,ly:320,t:'GET events'},
+ {id:'ai',a:'api',b:'llm',pts:[[[900,435],[1022,435]]],lx:961,ly:425,t:'POST prompt'},
+ {id:'be',a:'api',b:'backend',pts:[[[900,540],[1022,540]]],lx:961,ly:556,t:'REST (reserved)',planned:1},
+ {id:'drv',a:'api',b:'drive',pts:[[[900,506],[900,645],[1022,645]]],lx:961,ly:635,t:'backup',planned:1},
+ {id:'p1',a:'src',b:'fb',pts:[[[128,826],[332,826]]],lx:230,ly:816,t:'analyze · compile'},
+ {id:'p2',a:'fb',b:'grad',pts:[[[388,826],[592,826]]],lx:490,ly:816,t:'assembleRelease'},
+ {id:'p3',a:'grad',b:'apk',pts:[[[648,826],[852,826]]],lx:750,ly:816,t:'package · sign'},
+ {id:'p4',a:'apk',b:'repo',pts:[[[908,826],[1072,826]]],lx:990,ly:816,t:'attach to release',planned:1}
+];
+
+var FLOWS={
+ capture:{t:'Quick capture',e:['sto','cap','per'],n:['screens','store','capture','prefs'],
+  s:['The CAPTURE sheet sends each keystroke to the store.','CaptureParser returns type, time, amount and tag; chips update live.','COMMIT writes an objective, event, note or spend through VigilStore and returns an UNDO.','The store saves the JSON to local storage, notifies every screen, and re-arms reminders and widgets.']},
+ uplink:{t:'Ask VIGIL',e:['sto','eng','sit','ast','ai'],n:['screens','store','engines','assistant','api','llm'],
+  s:['Uplink passes the message to the assistant.','Engines build the SITREP from store state.','The router answers on-device from store numbers whenever it recognises the intent.','Otherwise, with Cloud AI on and a key set, the API client sends SITREP plus question to the model.','With no key, the reply is "Local mode: reduced planning."']},
+ dawn:{t:'Dawn briefing',e:['sto','eng','wx'],n:['screens','store','engines','api','meteo'],
+  s:['The briefing screen asks the store for objectives, ledger and sleep.','Engines rank the primary objectives and compute the ops window.','The weather client calls Open-Meteo using the URL and coordinates in .env.','A failed or blank call swaps the CONDITIONS tile for SLEEP.']},
+ remind:{t:'Reminders, steps and widgets',e:['eng','brg'],n:['engines','plat','steps','notif','widgets','alarm'],
+  s:['After every change the store debounces 1.5 s, then re-arms reminders and pushes widget data.','Notifications schedules due-in-30, next-op, streak, wind-down and briefing alerts on the seven channels.','Widgets receive the next op, three objectives, steps and water. Tapping one runs a background callback that writes the store.','The step sensor reports a count since boot; the store turns it into today\'s steps and refreshes the widgets.']},
+ push:{t:'Firebase push',e:['psh'],n:['fcm','push','notif'],
+  s:['FCM delivers a message to the device token shown in Loadout.','The push service receives it while the app is open and shows it on the matching channel.','With the app closed, notification messages are shown by Android; data-only messages run a background handler that does the same.','All of this stays off until the FIREBASE_* keys are set in .env.']},
+ build:{t:'Build to APK',e:['p1','p2','p3','p4'],n:['src','fb','grad','apk','repo'],
+  s:['flutter analyze and compile the Dart code.','Gradle assembles the release variant with the SDK in D:\\Android\\Sdk.','One APK per CPU is packaged and signed with the debug key.','Pushing to GitHub waits for your go-ahead.']}
+};
+
+var $=function(i){return document.getElementById(i)};
+var NS='http://www.w3.org/2000/svg';
+function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+var nodeEls={},edgeEls={},groupEls={};
+var sel=null,flow=null,hidden={};
+
+G.forEach(function(g){
+  var o=el('g',{},$('groups')); groupEls[g.id]=o;
+  var col='var('+g.c+')';
+  var r=el('rect',{x:g.x,y:g.y,width:g.w,height:g.h,'class':'gbox',stroke:col,fill:'none'},o);
+  if(g.dash)r.setAttribute('stroke-dasharray',g.dash);
+  el('rect',{x:g.x,y:g.y,width:22,height:22,fill:col},o);
+  var t=el('text',{x:g.x+30,y:g.y+16,'class':'gtitle'},o);t.textContent=g.t;
+  var tw=g.t.length*7+40;
+  var n=el('text',{x:g.x+tw,y:g.y+16,'class':'gnote'},o);n.textContent=g.n;
+});
+
+E.forEach(function(e){
+  var o=el('g',{'class':'edge'+(e.planned?' planned':''),tabindex:0,role:'button','aria-label':'Connection: '+e.t},$('edges'));
+  e.pts.forEach(function(poly){
+    var d='M'+poly.map(function(p){return p[0]+' '+p[1]}).join(' L');
+    var attrs={d:d,'marker-end':'url(#ah)'};if(e.both)attrs['marker-start']='url(#ah)';el('path',attrs,o);
+    el('path',{d:d,'class':'hit'},o);
+  });
+  var l=el('text',{x:e.lx,y:e.ly,'class':'elbl','text-anchor':e.anc||'middle'},o);l.textContent=e.t;
+  o.addEventListener('click',function(ev){ev.stopPropagation();selectEdge(e.id)});
+  o.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectEdge(e.id)}});
+  edgeEls[e.id]=o;
+});
+
+N.forEach(function(n){
+  var o=el('g',{'class':'node',tabindex:0,role:'button','aria-label':n.l+', '+ST[n.st]},$('nodes'));
+  var x=n.x-28,y=n.y-28;
+  el('rect',{x:x-5,y:y-5,width:66,height:66,'class':'ring'},o);
+  var t=el('rect',{x:x,y:y,width:56,height:56,fill:CAT[n.c],'class':'tile',rx:3},o);
+  if(n.st==='planned'){t.setAttribute('opacity','.5');t.setAttribute('stroke','var(--planned)');t.setAttribute('stroke-dasharray','4 3');t.setAttribute('stroke-width','1.5')}
+  var g=el('text',{x:n.x,y:n.y+5,'class':'glyph','text-anchor':'middle'},o);g.textContent=n.g;
+  var sc=n.st==='built'?'var(--built)':n.st==='partial'?'var(--partial)':'var(--panel)';
+  var b=el('circle',{cx:x+56,cy:y,r:7,fill:sc,stroke:n.st==='planned'?'var(--planned)':'var(--panel)','stroke-width':n.st==='planned'?2:2},o);
+  var nm=el('text',{x:n.x,y:n.y+44,'class':'name','text-anchor':'middle'},o);nm.textContent=n.l;
+  var sb=el('text',{x:n.x,y:n.y+58,'class':'sub','text-anchor':'middle'},o);sb.textContent=n.s;
+  o.addEventListener('click',function(ev){ev.stopPropagation();selectNode(n.id)});
+  o.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectNode(n.id)}});
+  nodeEls[n.id]=o;
+});
+$('dia').addEventListener('click',function(){sel=null;paint();renderSide()});
+
+function nodeById(i){return N.filter(function(n){return n.id===i})[0]}
+function edgeById(i){return E.filter(function(e){return e.id===i})[0]}
+function groupHas(gid,nid){
+  if(gid==='plat')return ['hc','usage','alarm','notif','bio','voice'].indexOf(nid)>-1;
+  return false;
+}
+
+function selectNode(i){flow=null;sel={k:'n',id:i};paint();renderSide()}
+function selectEdge(i){flow=null;sel={k:'e',id:i};paint();renderSide()}
+
+function paint(){
+  var hotN={},hotE={},active=false;
+  if(flow){active=true;FLOWS[flow].n.forEach(function(i){hotN[i]=1});FLOWS[flow].e.forEach(function(i){hotE[i]=1})}
+  else if(sel){
+    active=true;
+    if(sel.k==='n'){hotN[sel.id]=1;E.forEach(function(e){if(e.a===sel.id||e.b===sel.id){hotE[e.id]=1;hotN[e.a]=1;hotN[e.b]=1}})}
+    else{var e0=edgeById(sel.id);hotE[e0.id]=1;hotN[e0.a]=1;hotN[e0.b]=1}
+  }
+  N.forEach(function(n){
+    var o=nodeEls[n.id];
+    var isHot=!active||hotN[n.id]||(active&&n.c==='plat'&&hotN.plat);
+    var hide=hidden[n.st];
+    o.classList.toggle('dim',!isHot||hide);
+    o.classList.toggle('sel',!!sel&&sel.k==='n'&&sel.id===n.id);
+  });
+  E.forEach(function(e){
+    var o=edgeEls[e.id];
+    var an=nodeById(e.a),bn=nodeById(e.b);
+    var hide=(hidden[an.st]&&hidden[bn.st]);
+    o.classList.toggle('hot',!!hotE[e.id]);
+    o.classList.toggle('dim',(active&&!hotE[e.id])||hide);
+  });
+  Object.keys(groupEls).forEach(function(k){
+    var g=groupEls[k];
+    var keep=!active;
+    if(active){
+      if(k==='plat')keep=!!(flow&&FLOWS[flow].n.indexOf('plat')>-1)||(sel&&sel.k==='e'&&edgeById(sel.id).b==='plat')||(sel&&sel.k==='n'&&groupHas('plat',sel.id));
+      else keep=true;
+    }
+    g.classList.toggle('dim',!keep&&k==='plat');
+  });
+  // step badges in a flow
+  var old=document.querySelectorAll('.stepbadge');for(var i=0;i<old.length;i++)old[i].remove();
+  if(flow){FLOWS[flow].e.forEach(function(id,idx){
+    var e=edgeById(id),p=e.pts[0],mid=p[Math.floor(p.length/2)];
+    var a=p[Math.max(0,Math.floor(p.length/2)-1)];
+    var cx=(mid[0]+a[0])/2,cy=(mid[1]+a[1])/2;
+    if(p.length===2){cx=(p[0][0]+p[1][0])/2;cy=(p[0][1]+p[1][1])/2}
+    var g=el('g',{'class':'stepbadge'},$('edges'));
+    el('circle',{cx:cx,cy:cy+ (p.length===2&&p[0][1]===p[1][1]?10:0),r:9,'class':'step'},g);
+    var t=el('text',{x:cx,y:cy+(p.length===2&&p[0][1]===p[1][1]?14:4),'class':'stepn'},g);t.textContent=idx+1;
+  })}
+}
+
+function renderSide(){
+  var s=$('side');
+  if(!sel){
+    s.innerHTML='<h2>How to read this</h2><p class="hint">Tiles are components, coloured by layer. The dot on a tile shows status. Solid arrows exist in the code; dashed grey arrows are planned. Select a tile or arrow for its file, role and neighbours.</p>'+
+    '<h3>Layers</h3><ul class="steps" style="list-style:none;padding:0">'+
+    [['ui','Presentation'],['state','State and engines'],['store','Storage and config'],['integ','Integration'],['plat','Platform bridges'],['ext','Outside the phone'],['build','Build']].map(function(x){return '<li><svg width="12" height="12" style="min-width:0;display:inline;vertical-align:-1px;margin-right:8px"><rect width="12" height="12" fill="'+CAT[x[0]]+'"/></svg>'+x[1]+'</li>'}).join('')+'</ul>'+
+    '<h3>Rules the code follows</h3><ol class="steps"><li>Every number on screen comes from the store, never from the model.</li><li>Every outbound call is optional and returns null on failure.</li><li>Keys and URLs live in <code>.env</code>, nowhere else.</li></ol>';
+    return;
+  }
+  var h='';
+  function links(id){
+    var out=E.filter(function(e){return e.a===id||e.b===id}).map(function(e){
+      var other=nodeById(e.a===id?e.b:e.a);
+      return '<li><button data-n="'+other.id+'"><span class="dir">'+(e.a===id?'to':'from')+'</span><span>'+other.l+' · '+e.t+'</span></button></li>';
+    }).join('');
+    return out?'<h3>Talks to</h3><ul class="links">'+out+'</ul>':'';
+  }
+  if(sel.k==='n'){
+    var n=nodeById(sel.id);
+    h='<h2>'+n.l+'</h2><div class="path">'+n.p+'</div><div class="pill"><span class="dot '+n.st+'"></span>'+ST[n.st]+'</div><p>'+n.d+'</p>'+links(n.id);
+  }else{
+    var e=edgeById(sel.id),a=nodeById(e.a),b=nodeById(e.b);
+    h='<h2>'+e.t+'</h2><div class="path">'+a.l+' → '+b.l+'</div><div class="pill"><span class="dot '+(e.planned?'planned':'built')+'"></span>'+(e.planned?'Not built yet':'Built in this repo')+'</div>'+
+      '<h3>Endpoints</h3><ul class="links"><li><button data-n="'+a.id+'"><span class="dir">from</span><span>'+a.l+'</span></button></li><li><button data-n="'+b.id+'"><span class="dir">to</span><span>'+b.l+'</span></button></li></ul>';
+  }
+  s.innerHTML=h;
+}
+$('side').addEventListener('click',function(ev){
+  var b=ev.target.closest('button[data-n]');if(b)selectNode(b.getAttribute('data-n'));
+});
+
+function renderFlow(){
+  var fb=$('flowbox');
+  if(!flow){fb.hidden=true;return}
+  var f=FLOWS[flow];
+  fb.hidden=false;
+  fb.innerHTML='<strong>'+f.t+'</strong><ol>'+f.s.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ol>';
+}
+document.querySelectorAll('[data-flow]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var k=b.getAttribute('data-flow');
+    flow=(flow===k)?null:k;sel=null;
+    document.querySelectorAll('[data-flow]').forEach(function(x){x.setAttribute('aria-pressed',String(x.getAttribute('data-flow')===flow))});
+    paint();renderFlow();renderSide();
+  });
+});
+document.querySelectorAll('[data-st]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var k=b.getAttribute('data-st');hidden[k]=!hidden[k];
+    b.setAttribute('aria-pressed',String(!hidden[k]));paint();
+  });
+});
+paint();renderSide();
+})();
+</script>

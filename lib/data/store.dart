@@ -1,0 +1,873 @@
+import 'dart:convert';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Color;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../api/calendar_api.dart';
+import '../app/fmt.dart';
+import '../vigil/vigil.dart';
+import 'models.dart';
+
+enum Persona { tactical, butler, quiet }
+
+enum Verbosity { terse, standard, detailed }
+
+/// Single in-memory source of truth, persisted to SharedPreferences.
+/// Engines (readiness, sleep recommender, capture parser) are plain functions
+/// over this state, as described in the architecture spec. The store only uses
+/// `foundation` and SharedPreferences, so the home-screen widget callback can
+/// load it in a background isolate.
+class VigilStore extends ChangeNotifier {
+  VigilStore(this._prefs);
+
+  final SharedPreferences _prefs;
+  int _seq = 0;
+
+  /// Set by the app: pushes widget data and re-arms reminders after a change.
+  VoidCallback? afterChange;
+
+  // ---- settings ---------------------------------------------------------
+  bool booted = false;
+  String fullName = 'Abhishek';
+  String callsign = 'Batman';
+  int wakeMin = 6 * 60 + 30;
+  int bedMin = 23 * 60;
+  int accentIndex = 0;
+  Persona persona = Persona.tactical;
+  Verbosity verbosity = Verbosity.terse;
+  Set<String> modules = <String>{..._allModules};
+  static const List<String> _allModules = <String>['OBJECTIVES', 'TIMELINE', 'PROTOCOLS', 'VITALS', 'DEEP OPS', 'FIELD LOG', 'LEDGER'];
+  static const Map<String, bool> _defaultToggles = <String, bool>{
+    'spoken': true,
+    'dawn': true,
+    'debrief': true,
+    'vaultLock': true,
+    'cloudAi': false,
+    'drive': false,
+    'ramp': true,
+    'windDown': true,
+    'autoFirstOp': true,
+    'notifyOps': true,
+    'notifyProtocols': true,
+  };
+  final Map<String, bool> toggles = <String, bool>{..._defaultToggles};
+  static const List<String> linkKeys = <String>['Calendar link', 'Health Connect', 'Notifications', 'Step sensor', 'Usage access', 'Exact alarms', 'Voice uplink'];
+  final Map<String, String> linkStatus = <String, String>{for (final String k in linkKeys) k: 'ASK'};
+
+  Color get accent => VigilPalette.signalOptions[accentIndex];
+
+  // ---- objectives & timeline ---------------------------------------------
+  late List<Objective> objectives;
+  late List<Block> blocks;
+  bool justResolved = false;
+  int selectedDayIndex = DateTime.now().weekday - 1;
+  final Map<String, String> carry = <String, String>{}; // id -> moved|dropped
+  String? tomorrowFirstId;
+
+  // ---- protocols ----------------------------------------------------------
+  late List<Protocol> protocols;
+
+  // ---- vitals -----------------------------------------------------------
+  int waterMl = 0;
+  final int waterTargetMl = 3000;
+
+  /// Steps today from the phone's step-counter sensor; null until it reports.
+  int? steps;
+  final int stepTarget = 8000;
+  double weightKg = 74.2;
+  double weightDelta = -0.6;
+  int restingHr = 62;
+
+  // ---- sleep ------------------------------------------------------------
+  int needMin = 435;
+  final int latencyMin = 15;
+  bool armedTonight = false;
+  bool insightApplied = false;
+  late List<ScheduleRow> schedule;
+  late List<SleepNight> nights;
+
+  // ---- screen -----------------------------------------------------------
+  final int screenTodayMin = 192;
+  final int screenLineMin = 210;
+  final int screenAvgMin = 228;
+  final List<AppCategory> categories = const <AppCategory>[
+    AppCategory('Social', 78, 65),
+    AppCategory('Video', 42, 60),
+    AppCategory('Messaging', 36, 60),
+    AppCategory('Work', 22, null),
+    AppCategory('Browser', 14, null),
+  ];
+  final List<double> hourly = const <double>[0, 0, 0, 0, 0, 0, 6, 11, 9, 4, 5, 6, 12, 8, 5, 7, 6, 14, 19, 22, 24, 18, 6, 0];
+  bool nightShieldArmed = false;
+
+  // ---- ledger -----------------------------------------------------------
+  final int monthBudgetPaise = 4000000;
+  static const Map<String, int> categoryBase = <String, int>{'FOOD': 842000, 'BILLS': 720000, 'SHOPPING': 390000, 'TRANSPORT': 364000, 'OTHER': 170000};
+  static const Map<String, int> categoryBudget = <String, int>{'FOOD': 700000, 'BILLS': 900000, 'SHOPPING': 600000, 'TRANSPORT': 500000, 'OTHER': 1300000};
+  late List<Bill> bills;
+  late List<Txn> txns;
+
+  // ---- field log --------------------------------------------------------
+  late List<Note> notes;
+  int logStreak = 15;
+  String? sealedAt;
+  int sealedMood = 2;
+  String logDraft = '';
+  int logMood = 2;
+
+  // ---- deep ops ---------------------------------------------------------
+  int focusTodayMin = 130;
+  final int focusTargetMin = 240;
+  int deepSessionsDone = 0;
+  bool shieldSilence = true;
+  bool shieldBlock = true;
+  bool shieldRain = false;
+
+  // ---- assistant --------------------------------------------------------
+  final List<ChatMsg> chat = <ChatMsg>[];
+
+  SharedPreferences get prefs => _prefs;
+
+  String nextId() => '${DateTime.now().microsecondsSinceEpoch}-${_seq++}';
+
+  // =========================================================================
+  // Load / save
+  // =========================================================================
+  static Future<VigilStore> load() async {
+    final VigilStore s = VigilStore(await SharedPreferences.getInstance());
+    s._seed();
+    s._restore();
+    return s;
+  }
+
+  /// Re-read what a background isolate (home-screen widget) wrote.
+  Future<void> reloadFromDisk() async {
+    await _prefs.reload();
+    _seed();
+    _restore();
+    notifyListeners();
+  }
+
+  void _seed() {
+    final DateTime now = DateTime.now();
+    final int t = now.millisecondsSinceEpoch;
+    objectives = <Objective>[
+      Objective(id: 'o1', title: 'Submit client deck v2', threat: Threat.crit, dueMin: 20 * 60, sub: '3/5', estimate: 90),
+      Objective(id: 'o2', title: 'Reply to legal on NDA', threat: Threat.high, dueMin: 17 * 60),
+      Objective(id: 'o3', title: 'Book dentist appointment', threat: Threat.high, dueMin: 21 * 60, tag: 'HOME'),
+      Objective(id: 'o4', title: 'Prep Monday standup', threat: Threat.high, dueLabel: 'FRI', estimate: 30),
+      Objective(id: 'o5', title: 'Renew car insurance', tag: 'HOME'),
+      Objective(id: 'o6', title: 'Read 20 pages', tag: 'HOME', recurring: true),
+      Objective(id: 'c1', title: 'Pay electricity bill', tag: 'HOME', done: true, doneAt: t),
+      Objective(id: 'c2', title: 'Send weekly report', threat: Threat.high, done: true, doneAt: t),
+      Objective(id: 'c3', title: 'Review pull requests', done: true, doneAt: t),
+    ];
+    blocks = _sampleBlocks();
+    protocols = <Protocol>[
+      Protocol(id: 'p1', name: 'Read 20 pages', streak: 12, week: <bool>[true, true, true, true, true, true, false], unit: 'pages', target: 20),
+      Protocol(id: 'p2', name: 'Workout 30 min', streak: 0, missedDays: 2, week: <bool>[true, true, true, true, false, false, false], unit: 'min', target: 30),
+      Protocol(id: 'p3', name: 'Hydrate 3 L', streak: 4, week: <bool>[false, true, true, true, true, true, true], doneToday: true),
+      Protocol(id: 'p4', name: 'Lights out by 23:00', streak: 3, week: <bool>[false, false, false, false, true, true, false]),
+      Protocol(id: 'p5', name: 'Meditate 10 min', streak: 20, week: List<bool>.filled(7, true), doneToday: true, unit: 'min', target: 10),
+      Protocol(id: 'p6', name: 'No added sugar', streak: 6, week: List<bool>.filled(7, true), doneToday: true),
+    ];
+    schedule = <ScheduleRow>[
+      ScheduleRow(night: 'MON → TUE', bed: 23 * 60, wake: 6 * 60 + 30),
+      ScheduleRow(night: 'TUE → WED', bed: 23 * 60, wake: 6 * 60 + 30),
+      ScheduleRow(night: 'WED → THU', bed: 23 * 60 + 30, wake: 6 * 60 + 30),
+      ScheduleRow(night: 'THU → FRI', bed: 23 * 60, wake: 6 * 60 + 30),
+      ScheduleRow(night: 'FRI → SAT', bed: 24 * 60, wake: 8 * 60),
+      ScheduleRow(night: 'SAT → SUN', bed: 24 * 60 + 15, wake: 8 * 60 + 30),
+      ScheduleRow(night: 'SUN → MON', bed: 23 * 60, wake: 6 * 60 + 30),
+    ];
+    const int pb = 23 * 60, pw = 1440 + 6 * 60 + 30;
+    nights = const <SleepNight>[
+      SleepNight(label: 'WED', bed: 1428, wake: 1860, planBed: pb, planWake: pw),
+      SleepNight(label: 'TUE', bed: 1425, wake: 1830, planBed: pb, planWake: pw),
+      SleepNight(label: 'MON', bed: 1450, wake: 1840, planBed: pb, planWake: pw, inferred: true),
+      SleepNight(label: 'SUN', bed: 1395, wake: 1840, planBed: pb, planWake: pw),
+      SleepNight(label: 'SAT', bed: 1480, wake: 1860, planBed: pb, planWake: pw),
+      SleepNight(label: 'FRI', bed: 1450, wake: 1870, planBed: pb, planWake: pw),
+      SleepNight(label: 'THU', bed: 1440, wake: 1890, planBed: pb, planWake: pw),
+    ];
+    bills = <Bill>[
+      Bill(id: 'bl1', name: 'Electricity', due: 'TODAY', paise: 184000, dueToday: true),
+      Bill(id: 'bl2', name: 'Broadband', due: '25 OCT', paise: 99900),
+      Bill(id: 'bl3', name: 'Mobile postpaid', due: '28 OCT', paise: 59900),
+    ];
+    final DateTime yday = DateTime(now.year, now.month, now.day).subtract(const Duration(hours: 4));
+    txns = <Txn>[
+      Txn(id: 't1', title: 'Swiggy', category: 'FOOD', paise: 18000, at: now.subtract(const Duration(hours: 1, minutes: 20))),
+      Txn(id: 't2', title: 'Uber', category: 'TRANSPORT', paise: 24500, at: now.subtract(const Duration(hours: 5))),
+      Txn(id: 't3', title: 'Metro recharge', category: 'TRANSPORT', paise: 50000, at: yday),
+      Txn(id: 't4', title: 'Groceries', category: 'FOOD', paise: 112000, at: yday.subtract(const Duration(hours: 3))),
+    ];
+    notes = <Note>[
+      Note(id: 'n1', title: 'Q4 priorities', body: 'Ship deck, close vendor contract, hire intern.', kind: NoteKind.pinned, at: now.subtract(const Duration(days: 3))),
+      Note(id: 'n2', title: 'Voice memo · taxi idea', body: 'Transcript: build a quick split-fare view.', kind: NoteKind.voice, at: now.subtract(const Duration(hours: 2))),
+      Note(id: 'n3', title: 'Gift ideas for Mom', body: 'Scarf, book, tea set.', at: now.subtract(const Duration(days: 1))),
+    ];
+  }
+
+  List<Block> _sampleBlocks() => <Block>[
+        Block(id: 'b1', kind: BlockKind.event, title: 'Daily standup', startMin: 9 * 60, endMin: 9 * 60 + 30, attendees: 6),
+        Block(id: 'b2', kind: BlockKind.focus, title: 'Deep ops · client deck', startMin: 10 * 60, endMin: 12 * 60),
+        Block(id: 'b3', kind: BlockKind.personal, title: 'Lunch', startMin: 13 * 60, endMin: 14 * 60),
+        Block(id: 'b4', kind: BlockKind.event, title: 'Vendor sync', startMin: 15 * 60, endMin: 16 * 60 + 30, attendees: 4),
+        Block(id: 'b5', kind: BlockKind.focus, title: 'Deep ops · review', startMin: 17 * 60, endMin: 18 * 60 + 30),
+        Block(id: 'b6', kind: BlockKind.event, title: 'Intern review sync', startMin: 19 * 60, endMin: 19 * 60 + 45, attendees: 3),
+        Block(id: 'b7', kind: BlockKind.event, title: 'Budget call', startMin: 19 * 60 + 30, endMin: 20 * 60 + 15, attendees: 2),
+        Block(id: 'b8', kind: BlockKind.task, title: 'Submit client deck v2', startMin: 20 * 60, endMin: 20 * 60 + 30),
+      ];
+
+  static String dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
+  void _restore() {
+    final DateTime now = DateTime.now();
+    final String today = dayKey(now);
+    booted = _prefs.getBool('booted') ?? false;
+    fullName = _prefs.getString('fullName') ?? fullName;
+    callsign = _prefs.getString('callsign') ?? callsign;
+    wakeMin = _prefs.getInt('wakeMin') ?? wakeMin;
+    bedMin = _prefs.getInt('bedMin') ?? bedMin;
+    accentIndex = _prefs.getInt('accent') ?? 0;
+    persona = Persona.values[_prefs.getInt('persona') ?? 0];
+    verbosity = Verbosity.values[_prefs.getInt('verbosity') ?? 0];
+    needMin = _prefs.getInt('needMin') ?? needMin;
+    final List<String>? mods = _prefs.getStringList('modules');
+    if (mods != null) modules = mods.toSet();
+    final String? tg = _prefs.getString('toggles');
+    if (tg != null) {
+      (jsonDecode(tg) as Map<String, dynamic>).forEach((String k, dynamic v) => toggles[k] = v as bool);
+    }
+    final String? ls = _prefs.getString('links');
+    if (ls != null) {
+      (jsonDecode(ls) as Map<String, dynamic>).forEach((String k, dynamic v) => linkStatus[k] = v as String);
+    }
+    logStreak = _prefs.getInt('logStreak') ?? logStreak;
+    final List<String>? paid = _prefs.getStringList('billsPaid');
+    if (paid != null) {
+      for (final Bill b in bills) {
+        b.paid = paid.contains(b.id);
+      }
+    }
+    final String? ob = _prefs.getString('objectives');
+    if (ob != null) {
+      objectives = (jsonDecode(ob) as List<dynamic>).map((dynamic e) => Objective.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    final String? nt = _prefs.getString('notes');
+    if (nt != null) notes = (jsonDecode(nt) as List<dynamic>).map((dynamic e) => Note.fromJson(e as Map<String, dynamic>)).toList();
+    final String? tx = _prefs.getString('txns');
+    if (tx != null) txns = (jsonDecode(tx) as List<dynamic>).map((dynamic e) => Txn.fromJson(e as Map<String, dynamic>)).toList();
+    final String? sc = _prefs.getString('schedule');
+    if (sc != null) {
+      final List<dynamic> l = jsonDecode(sc) as List<dynamic>;
+      for (int i = 0; i < schedule.length && i < l.length; i++) {
+        schedule[i].bed = (l[i] as List<dynamic>)[0] as int;
+        schedule[i].wake = (l[i] as List<dynamic>)[1] as int;
+      }
+    }
+    tomorrowFirstId = _prefs.getString('tomorrowFirst');
+
+    // ---- state that belongs to one calendar day -----------------------
+    final String lastDay = _prefs.getString('day') ?? today;
+    final bool sameDay = lastDay == today;
+    final String? pr = _prefs.getString('protocols');
+    if (pr != null) {
+      final Map<String, dynamic> byId = <String, dynamic>{for (final dynamic e in jsonDecode(pr) as List<dynamic>) (e as Map<String, dynamic>)['id'] as String: e};
+      for (final Protocol p in protocols) {
+        final dynamic j = byId[p.id];
+        if (j != null) p.applyJson(j as Map<String, dynamic>);
+      }
+    }
+    final String? bl = _prefs.getString('blocks');
+    if (bl != null) {
+      blocks = (jsonDecode(bl) as List<dynamic>).map((dynamic e) => Block.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    if (sameDay) {
+      waterMl = _prefs.getInt('water') ?? 0;
+      focusTodayMin = _prefs.getInt('focusToday') ?? focusTodayMin;
+      deepSessionsDone = _prefs.getInt('deepSessions') ?? 0;
+      armedTonight = _prefs.getBool('armedTonight') ?? false;
+      insightApplied = _prefs.getBool('insightApplied') ?? false;
+      justResolved = _prefs.getBool('justResolved') ?? false;
+      if (_prefs.getString('sealDay') == today) {
+        sealedAt = _prefs.getString('sealedAt');
+        sealedMood = _prefs.getInt('sealedMood') ?? 2;
+      }
+      steps = _prefs.getString('stepsDay') == today ? _prefs.getInt('stepsToday') : null;
+    } else {
+      waterMl = 0;
+      focusTodayMin = 0;
+      deepSessionsDone = 0;
+      final DateTime? last = _parseDayKey(lastDay);
+      final int gap = last == null ? 1 : math.max(1, DateTime(now.year, now.month, now.day).difference(last).inDays);
+      for (final Protocol p in protocols) {
+        p.rollOver(gap);
+      }
+      objectives.removeWhere((Objective o) => o.dropped || (o.done && !o.recurring && !o.clearedToday(now)));
+      for (final Objective o in objectives) {
+        if (o.recurring && o.done) {
+          o.done = false;
+          o.doneAt = null;
+        }
+      }
+      // Fresh sample day; keep anything the user or the calendar added.
+      blocks = <Block>[..._sampleBlocks(), ...blocks.where((Block b) => !b.isSample && (b.dayKey == null ? false : _keyAtOrAfter(b.dayKey!, now)))];
+      steps = null;
+    }
+    nightShieldArmed = _prefs.getBool('nightShield') ?? false;
+  }
+
+  static DateTime? _parseDayKey(String k) {
+    final List<String> p = k.split('-');
+    if (p.length != 3) return null;
+    return DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+  }
+
+  static bool _keyAtOrAfter(String k, DateTime now) {
+    final DateTime? d = _parseDayKey(k);
+    return d != null && !d.isBefore(DateTime(now.year, now.month, now.day));
+  }
+
+  void _save() {
+    final String today = dayKey(DateTime.now());
+    _prefs
+      ..setBool('booted', booted)
+      ..setString('fullName', fullName)
+      ..setString('callsign', callsign)
+      ..setInt('wakeMin', wakeMin)
+      ..setInt('bedMin', bedMin)
+      ..setInt('accent', accentIndex)
+      ..setInt('persona', persona.index)
+      ..setInt('verbosity', verbosity.index)
+      ..setInt('needMin', needMin)
+      ..setStringList('modules', modules.toList())
+      ..setString('toggles', jsonEncode(toggles))
+      ..setString('links', jsonEncode(linkStatus))
+      ..setInt('logStreak', logStreak)
+      ..setStringList('billsPaid', bills.where((Bill b) => b.paid).map((Bill b) => b.id).toList())
+      ..setString('objectives', jsonEncode(objectives.map((Objective o) => o.toJson()).toList()))
+      ..setString('notes', jsonEncode(notes.map((Note n) => n.toJson()).toList()))
+      ..setString('txns', jsonEncode(txns.map((Txn t) => t.toJson()).toList()))
+      ..setString('protocols', jsonEncode(protocols.map((Protocol p) => p.toJson()).toList()))
+      ..setString('blocks', jsonEncode(blocks.map((Block b) => b.toJson()).toList()))
+      ..setString('schedule', jsonEncode(schedule.map((ScheduleRow r) => <int>[r.bed, r.wake]).toList()))
+      ..setBool('nightShield', nightShieldArmed)
+      ..setInt('water', waterMl)
+      ..setInt('focusToday', focusTodayMin)
+      ..setInt('deepSessions', deepSessionsDone)
+      ..setBool('armedTonight', armedTonight)
+      ..setBool('insightApplied', insightApplied)
+      ..setBool('justResolved', justResolved)
+      ..setString('day', today);
+    if (tomorrowFirstId != null) _prefs.setString('tomorrowFirst', tomorrowFirstId!);
+    if (steps != null) {
+      _prefs
+        ..setInt('stepsToday', steps!)
+        ..setString('stepsDay', today);
+    }
+    if (sealedAt != null) {
+      _prefs
+        ..setString('sealedAt', sealedAt!)
+        ..setInt('sealedMood', sealedMood)
+        ..setString('sealDay', today);
+    }
+  }
+
+  void changed() {
+    _save();
+    notifyListeners();
+    afterChange?.call();
+  }
+
+  // =========================================================================
+  // Boot / settings
+  // =========================================================================
+  void completeBoot({required String name, required String call, required int wake, required int bed, required Set<String> armed}) {
+    if (name.trim().isNotEmpty) fullName = name.trim();
+    if (call.trim().isNotEmpty) callsign = call.trim();
+    wakeMin = wake;
+    // The picker returns 00:00-23:59; anything before 06:00 is after midnight.
+    bedMin = bed < 360 ? bed + 1440 : bed;
+    modules = armed;
+    // Boot asks for weekdays: Mon-Thu nights and Sunday night. Fri/Sat keep their weekend defaults.
+    for (final int i in <int>[0, 1, 2, 3, 6]) {
+      schedule[i].bed = bedMin;
+      schedule[i].wake = wake;
+    }
+    booted = true;
+    changed();
+  }
+
+  void setLink(String key, String status) {
+    linkStatus[key] = status;
+    changed();
+  }
+
+  void setToggle(String key, bool v) {
+    toggles[key] = v;
+    changed();
+  }
+
+  void setAccent(int i) {
+    accentIndex = i;
+    changed();
+  }
+
+  void setPersona(Persona p) {
+    persona = p;
+    changed();
+  }
+
+  void setVerbosity(Verbosity v) {
+    verbosity = v;
+    changed();
+  }
+
+  Future<void> eraseAll() async {
+    await _prefs.clear();
+    _seed();
+    booted = false;
+    fullName = 'Abhishek';
+    callsign = 'Batman';
+    wakeMin = 6 * 60 + 30;
+    bedMin = 23 * 60;
+    modules = <String>{..._allModules};
+    toggles
+      ..clear()
+      ..addAll(_defaultToggles);
+    linkStatus
+      ..clear()
+      ..addAll(<String, String>{for (final String k in linkKeys) k: 'ASK'});
+    waterMl = 0;
+    steps = null;
+    accentIndex = 0;
+    persona = Persona.tactical;
+    verbosity = Verbosity.terse;
+    needMin = 435;
+    armedTonight = false;
+    insightApplied = false;
+    nightShieldArmed = false;
+    justResolved = false;
+    focusTodayMin = 130;
+    deepSessionsDone = 0;
+    logStreak = 15;
+    sealedAt = null;
+    sealedMood = 2;
+    logDraft = '';
+    logMood = 2;
+    tomorrowFirstId = null;
+    carry.clear();
+    chat.clear();
+    notifyListeners();
+    afterChange?.call();
+  }
+
+  // =========================================================================
+  // Objectives / timeline
+  // =========================================================================
+  List<Objective> get open => objectives.where((Objective o) => !o.done && !o.dropped).toList();
+
+  List<Objective> get cleared {
+    final DateTime now = DateTime.now();
+    return objectives.where((Objective o) => o.clearedToday(now)).toList();
+  }
+
+  /// Today's total for progress bars: open plus cleared today.
+  int get objectivesToday => open.length + cleared.length;
+
+  int get overdueCount {
+    final DateTime now = DateTime.now();
+    return open.where((Objective o) => o.isOverdue(now)).length;
+  }
+
+  int get critCount => open.where((Objective o) => o.threat == Threat.crit).length;
+
+  void toggleObjective(String id, [bool? value]) {
+    final Objective o = objectives.firstWhere((Objective e) => e.id == id);
+    o.done = value ?? !o.done;
+    o.doneAt = o.done ? DateTime.now().millisecondsSinceEpoch : null;
+    changed();
+  }
+
+  void rescheduleObjective(String id, String label) {
+    final Objective o = objectives.firstWhere((Objective e) => e.id == id);
+    o.dueMin = null;
+    o.dueLabel = label;
+    changed();
+  }
+
+  void dropObjective(String id) {
+    objectives.firstWhere((Objective e) => e.id == id).dropped = true;
+    changed();
+  }
+
+  Objective addObjective(String title, {Threat threat = Threat.routine, int? dueMin, String? dueLabel, String tag = 'WORK', bool recurring = false}) {
+    final Objective o = Objective(id: nextId(), title: title, threat: threat, dueMin: dueMin, dueLabel: dueLabel, tag: tag, recurring: recurring);
+    objectives.insert(0, o);
+    changed();
+    return o;
+  }
+
+  void removeObjective(String id) {
+    objectives.removeWhere((Objective o) => o.id == id);
+    changed();
+  }
+
+  List<Block> get todayBlocks {
+    final String k = dayKey(DateTime.now());
+    return blocks.where((Block b) => b.dayKey == null || b.dayKey == k).toList();
+  }
+
+  List<Block> blocksFor(DateTime day) {
+    final DateTime t = DateTime.now();
+    if (day.year == t.year && day.month == t.month && day.day == t.day) return todayBlocks;
+    final int seed = day.weekday;
+    return <Block>[
+      Block(id: 'x$seed-1', kind: BlockKind.event, title: 'Team sync', startMin: 9 * 60 + 30, endMin: 10 * 60, attendees: 5),
+      if (seed.isEven) Block(id: 'x$seed-2', kind: BlockKind.focus, title: 'Deep ops block', startMin: 11 * 60, endMin: 13 * 60),
+      if (seed % 3 != 0) Block(id: 'x$seed-3', kind: BlockKind.event, title: 'Client call', startMin: 15 * 60, endMin: 16 * 60, attendees: 2),
+      if (seed == 6 || seed == 7) Block(id: 'x$seed-4', kind: BlockKind.personal, title: 'Family time', startMin: 18 * 60, endMin: 20 * 60),
+      ...blocks.where((Block b) => b.dayKey == dayKey(day)),
+    ];
+  }
+
+  /// First overlapping pair of events today, or null.
+  (Block, Block)? get conflict {
+    final List<Block> ev = todayBlocks.where((Block b) => b.kind == BlockKind.event).toList()..sort((Block a, Block b) => a.startMin.compareTo(b.startMin));
+    for (int i = 0; i < ev.length - 1; i++) {
+      if (ev[i].overlaps(ev[i + 1])) return (ev[i], ev[i + 1]);
+    }
+    return null;
+  }
+
+  void selectDay(int i) {
+    selectedDayIndex = i.clamp(0, 6);
+    notifyListeners();
+  }
+
+  void resolveConflict() {
+    final (Block, Block)? c = conflict;
+    if (c == null) return;
+    final int len = c.$2.endMin - c.$2.startMin;
+    c.$2.startMin = c.$1.endMin;
+    c.$2.endMin = c.$1.endMin + len;
+    justResolved = true;
+    changed();
+  }
+
+  Block? nextBlock(DateTime now) {
+    final int m = now.hour * 60 + now.minute;
+    final List<Block> l = todayBlocks.where((Block b) => b.kind == BlockKind.event && b.startMin > m).toList()..sort((Block a, Block b) => a.startMin.compareTo(b.startMin));
+    return l.isEmpty ? null : l.first;
+  }
+
+  int get focusMinPlanned => todayBlocks.where((Block b) => b.kind == BlockKind.focus).fold(0, (int a, Block b) => a + b.endMin - b.startMin);
+
+  /// Replace today's Google Calendar events with a fresh pull.
+  void mergeRemoteEvents(List<RemoteEvent> events) {
+    blocks.removeWhere((Block b) => b.id.startsWith('g:'));
+    final DateTime now = DateTime.now();
+    int i = 0;
+    for (final RemoteEvent e in events) {
+      if (e.start.day != now.day || e.start.month != now.month) continue;
+      blocks.add(Block(
+        id: 'g:${i++}',
+        kind: BlockKind.event,
+        title: e.title,
+        startMin: e.start.hour * 60 + e.start.minute,
+        endMin: math.max(e.end.hour * 60 + e.end.minute, e.start.hour * 60 + e.start.minute + 15),
+        dayKey: dayKey(now),
+      ));
+    }
+    changed();
+  }
+
+  // =========================================================================
+  // Protocols
+  // =========================================================================
+  void toggleProtocol(String id) {
+    final Protocol p = protocols.firstWhere((Protocol e) => e.id == id);
+    p.doneToday = !p.doneToday;
+    if (p.doneToday) p.missedDays = 0;
+    p.week = <bool>[...p.week.sublist(0, 6), p.doneToday];
+    changed();
+  }
+
+  int get protocolsDone => protocols.where((Protocol p) => p.doneToday).length;
+
+  /// 12 weeks x 7 days of levels 0-4 (oldest first); -1 is a future day. Deterministic.
+  List<List<int>> get heatmap {
+    final math.Random r = math.Random(22);
+    final int todayIdx = DateTime.now().weekday - 1;
+    return List<List<int>>.generate(12, (int w) => List<int>.generate(7, (int d) {
+          final double base = 0.35 + w * 0.045;
+          final double v = r.nextDouble();
+          if (w == 11 && d > todayIdx) return -1;
+          if (v > base + 0.35) return 0;
+          return (v * 5 * (base + 0.5)).clamp(0, 4).floor();
+        }));
+  }
+
+  // =========================================================================
+  // Vitals
+  // =========================================================================
+  void logWater(int ml) {
+    waterMl = math.max(0, waterMl + ml);
+    changed();
+  }
+
+  // ---- steps (phone step-counter sensor) -----------------------------
+  /// [counter] is the cumulative count since boot reported by the sensor.
+  /// We keep a per-day baseline so "today" survives restarts and reboots.
+  void onStepCounter(int counter) {
+    final String today = dayKey(DateTime.now());
+    int? base = _prefs.getInt('stepBase');
+    int carryOver = _prefs.getInt('stepCarry') ?? 0;
+    final String? baseDay = _prefs.getString('stepBaseDay');
+    final int? last = _prefs.getInt('stepLast');
+    if (baseDay != today) {
+      base = (last != null && last <= counter) ? last : counter;
+      carryOver = 0;
+    } else if (base == null) {
+      base = counter;
+    } else if (counter < base) {
+      // The phone rebooted and the sensor restarted from zero.
+      carryOver += math.max(0, (last ?? base) - base);
+      base = 0;
+    }
+    final int total = carryOver + counter - base;
+    _prefs
+      ..setInt('stepBase', base)
+      ..setInt('stepCarry', carryOver)
+      ..setString('stepBaseDay', today)
+      ..setInt('stepLast', counter);
+    if (steps != total) {
+      steps = total;
+      // Not a full _save(): this runs in the background and must not overwrite
+      // what the home-screen widget wrote to the same preferences.
+      _prefs
+        ..setInt('stepsToday', total)
+        ..setString('stepsDay', today);
+      notifyListeners();
+      afterChange?.call();
+    }
+  }
+
+  // =========================================================================
+  // Sleep
+  // =========================================================================
+  int get debtMin => math.max(0, needMin * nights.length - nights.fold<int>(0, (int a, SleepNight n) => a + n.asleep));
+  int get avgSleep => nights.fold<int>(0, (int a, SleepNight n) => a + n.asleep) ~/ nights.length;
+
+  int get bedtimeVariance {
+    final List<int> b = nights.map((SleepNight n) => n.bed).toList()..sort();
+    return b.last - b.first;
+  }
+
+  ScheduleRow get tonightRow => schedule[(DateTime.now().weekday - 1) % 7];
+
+  /// Spec 8.2: wake - (need + latency), pulled earlier to repay debt, rounded
+  /// to 5 min and clamped to [plan - 45, plan + 30].
+  int get recommendedBed {
+    final ScheduleRow r = tonightRow;
+    final int shift = math.min(20, ((debtMin / 6) / 5).round() * 5);
+    final int raw = 1440 + r.wake - (needMin + latencyMin) - shift;
+    final int rounded = (raw / 5).round() * 5;
+    return rounded.clamp(r.bed - 45, r.bed + 30);
+  }
+
+  int get windDownAt => recommendedBed - 30;
+
+  // =========================================================================
+  // Capture
+  // =========================================================================
+  /// Commit a draft. Returns an undo closure, or null if nothing was written.
+  VoidCallback? commitCapture(CaptureDraft d, Threat threat) {
+    final String raw = d.raw.trim();
+    if (raw.isEmpty) return null;
+    final DateTime now = DateTime.now();
+    final String? label = d.whenLabel;
+    final bool today = label == null || label == 'TODAY' || label == 'TONIGHT';
+    switch (d.type) {
+      case CaptureType.obj:
+      case CaptureType.habit:
+        final bool habit = d.type == CaptureType.habit;
+        final Objective o = addObjective(
+          raw,
+          threat: threat,
+          dueMin: today ? d.when : null,
+          dueLabel: today ? null : (d.when != null ? '$label ${Fmt.hm(d.when!)}' : label),
+          tag: d.tag ?? 'WORK',
+          recurring: habit,
+        );
+        return () => removeObjective(o.id);
+      case CaptureType.event:
+        final int s = d.when ?? math.min(23 * 60, (now.hour + 1) * 60);
+        final Block b = Block(id: 'u:${nextId()}', kind: BlockKind.event, title: raw, startMin: s, endMin: math.min(s + 30, 24 * 60), dayKey: dayKey(dateForLabel(label, now)));
+        blocks.add(b);
+        changed();
+        return () {
+          blocks.removeWhere((Block e) => e.id == b.id);
+          changed();
+        };
+      case CaptureType.note:
+        final Note n = Note(id: nextId(), title: raw.length > 40 ? '${raw.substring(0, 40)}…' : raw, body: raw, at: now);
+        notes.insert(0, n);
+        changed();
+        return () {
+          notes.removeWhere((Note e) => e.id == n.id);
+          changed();
+        };
+      case CaptureType.spend:
+        if (d.paise == null || d.paise! <= 0) return null;
+        final Txn t = Txn(id: nextId(), title: d.title.isEmpty ? raw : d.title, category: (d.tag ?? 'OTHER').toUpperCase(), paise: d.paise!, at: now);
+        txns.insert(0, t);
+        changed();
+        return () {
+          txns.removeWhere((Txn e) => e.id == t.id);
+          changed();
+        };
+    }
+  }
+
+  /// Next calendar date for a day label (TODAY, TOMORROW, MON..SUN).
+  static DateTime dateForLabel(String? label, DateTime now) {
+    final DateTime base = DateTime(now.year, now.month, now.day);
+    switch (label) {
+      case null:
+      case 'TODAY':
+      case 'TONIGHT':
+        return base;
+      case 'TOMORROW':
+        return base.add(const Duration(days: 1));
+    }
+    const List<String> days = <String>['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    final int idx = days.indexOf(label);
+    if (idx < 0) return base;
+    int add = (idx + 1) - base.weekday;
+    if (add <= 0) add += 7;
+    return base.add(Duration(days: add));
+  }
+
+  // ---- ledger -----------------------------------------------------------
+  int get monthSpentPaise => categoryBase.values.fold(0, (int a, int b) => a + b) + userSpend.fold(0, (int a, Txn t) => a + t.paise).toInt();
+
+  List<Txn> get userSpend => txns.where((Txn t) => t.isUser).toList();
+
+  Map<String, int> get categorySpend {
+    final Map<String, int> m = Map<String, int>.of(categoryBase);
+    for (final Txn t in userSpend) {
+      m[t.category] = (m[t.category] ?? 0) + t.paise;
+    }
+    return m;
+  }
+
+  /// Worst category versus its budget at today's pace, as a whole percent over, or null.
+  (String, int)? get overPaceCategory {
+    final DateTime now = DateTime.now();
+    final double pace = now.day / DateUtils2.daysInMonth(now);
+    (String, int)? worst;
+    categorySpend.forEach((String k, int v) {
+      final int budget = categoryBudget[k] ?? 0;
+      if (budget == 0) return;
+      final int over = ((v / (budget * pace) - 1) * 100).round();
+      if (over > 0 && (worst == null || over > worst!.$2)) worst = (k, over);
+    });
+    return worst;
+  }
+
+  int get safeToSpendPaise {
+    final DateTime now = DateTime.now();
+    final int daysLeft = DateUtils2.daysInMonth(now) - now.day + 1;
+    return math.max(0, (monthBudgetPaise - monthSpentPaise) ~/ daysLeft);
+  }
+
+  int yesterdaySpendPaise(DateTime now) {
+    final DateTime y = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    return txns.where((Txn t) => t.at.year == y.year && t.at.month == y.month && t.at.day == y.day).fold(0, (int a, Txn t) => a + t.paise);
+  }
+
+  // ---- field log / deep ops ----------------------------------------------
+  void logFocus(int minutes) {
+    focusTodayMin += minutes;
+    deepSessionsDone++;
+    changed();
+  }
+
+  void sealLog(String text, int mood) {
+    final DateTime now = DateTime.now();
+    notes.insert(0, Note(id: nextId(), title: 'Night log · ${Fmt.dayStamp(now)}', body: text, at: now));
+    sealedAt = Fmt.time(now);
+    sealedMood = mood;
+    logStreak++;
+    logDraft = '';
+    changed();
+  }
+
+  // =========================================================================
+  // Readiness / intel
+  // =========================================================================
+  int get readiness {
+    final int total = objectivesToday;
+    final double obj = total == 0 ? 0 : cleared.length / total;
+    final double prot = protocols.isEmpty ? 0 : protocolsDone / protocols.length;
+    final double focus = (focusTodayMin / focusTargetMin).clamp(0, 1).toDouble();
+    final double water = (waterMl / waterTargetMl).clamp(0, 1).toDouble();
+    final double sleep = (nights.first.asleep / needMin).clamp(0, 1).toDouble();
+    return (100 * (0.25 * obj + 0.25 * prot + 0.15 * focus + 0.15 * water + 0.2 * sleep)).round();
+  }
+
+  /// Water expected by now, linear 07:00 -> 21:00.
+  int expectedWater(DateTime now) {
+    final double f = ((now.hour + now.minute / 60) - 7) / 14;
+    return (waterTargetMl * f.clamp(0, 1)).round();
+  }
+
+  bool hydrationBehind(DateTime now) => waterMl + 250 < expectedWater(now);
+
+  /// Open objectives, most urgent first: threat, then due time, then newest.
+  List<Objective> prioritised() {
+    final List<Objective> l = open;
+    int rank(Threat t) => t == Threat.crit ? 0 : (t == Threat.high ? 1 : 2);
+    l.sort((Objective a, Objective b) {
+      if (a.id == tomorrowFirstId) return -1;
+      if (b.id == tomorrowFirstId) return 1;
+      final int r = rank(a.threat).compareTo(rank(b.threat));
+      if (r != 0) return r;
+      return (a.dueMin ?? 9999).compareTo(b.dueMin ?? 9999);
+    });
+    return l;
+  }
+
+  /// Compact situation report for the assistant (spec section 6).
+  String sitrep(DateTime now) {
+    final Block? nb = nextBlock(now);
+    final (Block, Block)? c = conflict;
+    return jsonEncode(<String, dynamic>{
+      'now': now.toIso8601String(),
+      'callsign': callsign,
+      'objectives_open': open.map((Objective o) => <String, dynamic>{'t': o.title, 'threat': o.threat.name, 'due': o.dueMin != null ? Fmt.hm(o.dueMin!) : o.dueLabel, 'overdue': o.isOverdue(now)}).toList(),
+      'cleared_today': cleared.length,
+      'next_op': nb == null ? null : <String, dynamic>{'t': nb.title, 'start': Fmt.hm(nb.startMin)},
+      'conflict': c == null ? null : '${c.$1.title} vs ${c.$2.title}',
+      'protocols': <String, dynamic>{'done': protocolsDone, 'total': protocols.length, 'at_risk': protocols.where((Protocol p) => p.atRisk).map((Protocol p) => p.name).toList()},
+      'water_ml': waterMl,
+      'water_target': waterTargetMl,
+      'steps': steps,
+      'sleep': <String, dynamic>{'debt_min': debtMin, 'tonight_bed': Fmt.hm(recommendedBed), 'wake': Fmt.hm(tonightRow.wake)},
+      'screen': <String, dynamic>{'today_min': screenTodayMin, 'line_min': screenLineMin},
+      'ledger': <String, dynamic>{'spent_paise': monthSpentPaise, 'budget_paise': monthBudgetPaise},
+      'persona': persona.name,
+      'verbosity': verbosity.name,
+    });
+  }
+}
+
+/// Small helper so the store does not depend on Flutter's material library.
+abstract final class DateUtils2 {
+  static int daysInMonth(DateTime d) => DateTime(d.year, d.month + 1, 0).day;
+}

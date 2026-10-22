@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_objectives_desc">Next op, top objectives, steps and water</string>
+    <string name="widget_small_desc">Ops readiness, steps and a water button</string>
+</resources>
