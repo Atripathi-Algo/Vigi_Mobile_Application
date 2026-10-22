@@ -175,7 +175,7 @@ var N=[
  {id:'fb',x:360,y:826,l:'flutter build',s:'apk --split-per-abi',g:'FB',c:'build',st:'built',p:'flutter build apk --release --split-per-abi',d:'Packs Dart AOT, assets and .env into one APK per CPU: arm64-v8a for the Oppo Reno 8 5G, x86_64 for the emulator.'},
  {id:'grad',x:620,y:826,l:'Gradle',s:'SDK 36 · JDK 17',g:'GR',c:'build',st:'built',p:'android/',d:'Uses the existing command-line SDK; Android Studio is not needed. Kotlin incremental compile is off (project and pub cache are on different drives), and code shrinking is off because R8 broke shared_preferences.'},
  {id:'apk',x:880,y:826,l:'app-release.apk',s:'com.algoanalytics.vigil',g:'APK',c:'build',st:'built',p:'build/app/outputs/flutter-apk/',d:'Signed with the debug key for now. Create a keystore before a Play Store upload.'},
- {id:'repo',x:1100,y:826,l:'GitHub',s:'Vigi_Mobile_Application',g:'GH',c:'build',st:'planned',p:'origin/main',d:'Not pushed yet. The .env file with your keys stays out of git.'}
+ {id:'repo',x:1100,y:826,l:'GitHub',s:'Vigi_Mobile_Application',g:'GH',c:'build',st:'built',p:'origin/main',d:'Source, docs and this diagram are pushed to Atripathi-Algo/Vigi_Mobile_Application. The .env file with your keys, keystores and APKs are git-ignored.'}
 ];
 
 // edges: points are absolute; arrow on the last point of each polyline
@@ -200,7 +200,7 @@ var E=[
  {id:'p1',a:'src',b:'fb',pts:[[[128,826],[332,826]]],lx:230,ly:816,t:'analyze · compile'},
  {id:'p2',a:'fb',b:'grad',pts:[[[388,826],[592,826]]],lx:490,ly:816,t:'assembleRelease'},
  {id:'p3',a:'grad',b:'apk',pts:[[[648,826],[852,826]]],lx:750,ly:816,t:'package · sign'},
- {id:'p4',a:'apk',b:'repo',pts:[[[908,826],[1072,826]]],lx:990,ly:816,t:'attach to release',planned:1}
+ {id:'p4',a:'apk',b:'repo',pts:[[[908,826],[1072,826]]],lx:990,ly:816,t:'push source'}
 ];
 
 var FLOWS={
@@ -215,7 +215,7 @@ var FLOWS={
  push:{t:'Firebase push',e:['psh'],n:['fcm','push','notif'],
   s:['FCM delivers a message to the device token shown in Loadout.','The push service receives it while the app is open and shows it on the matching channel.','With the app closed, notification messages are shown by Android; data-only messages run a background handler that does the same.','All of this stays off until the FIREBASE_* keys are set in .env.']},
  build:{t:'Build to APK',e:['p1','p2','p3','p4'],n:['src','fb','grad','apk','repo'],
-  s:['flutter analyze and compile the Dart code.','Gradle assembles the release variant with the SDK in D:\\Android\\Sdk.','One APK per CPU is packaged and signed with the debug key.','Pushing to GitHub waits for your go-ahead.']}
+  s:['flutter analyze and compile the Dart code.','Gradle assembles the release variant with the SDK in D:\\Android\\Sdk.','One APK per CPU is packaged and signed with the debug key.','Source is committed and pushed to GitHub; APKs stay out of git (copied to release/).']}
 };
 
 var $=function(i){return document.getElementById(i)};
