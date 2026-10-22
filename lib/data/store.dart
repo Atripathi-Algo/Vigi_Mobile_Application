@@ -600,22 +600,33 @@ class VigilStore extends ChangeNotifier {
 
   int get focusMinPlanned => todayBlocks.where((Block b) => b.kind == BlockKind.focus).fold(0, (int a, Block b) => a + b.endMin - b.startMin);
 
-  /// Replace today's Google Calendar events with a fresh pull.
-  void mergeRemoteEvents(List<RemoteEvent> events) {
-    blocks.removeWhere((Block b) => b.id.startsWith('g:'));
-    final DateTime now = DateTime.now();
-    int i = 0;
+  /// Replace today's Google Calendar events with a fresh pull. A source in [failedSources] (its label)
+  /// could not be reached this time, so what it showed before stays, unless the new pull already has it.
+  void mergeRemoteEvents(List<RemoteEvent> events, {Set<String> failedSources = const <String>{}, DateTime? now}) {
+    final DateTime t = now ?? DateTime.now();
+    final String today = dayKey(t);
+    int mins(DateTime d) => d.hour * 60 + d.minute;
+    final List<({String title, int start, int end, String? src})> rows = <({String title, int start, int end, String? src})>[];
     for (final RemoteEvent e in events) {
-      if (e.start.day != now.day || e.start.month != now.month) continue;
-      blocks.add(Block(
-        id: 'g:${i++}',
-        kind: BlockKind.event,
-        title: e.title,
-        startMin: e.start.hour * 60 + e.start.minute,
-        endMin: math.max(e.end.hour * 60 + e.end.minute, e.start.hour * 60 + e.start.minute + 15),
-        dayKey: dayKey(now),
-      ));
+      if (e.start.year != t.year || e.start.month != t.month || e.start.day != t.day) continue;
+      rows.add((title: e.title, start: mins(e.start), end: math.max(mins(e.end), mins(e.start) + 15), src: e.account));
     }
+    for (final Block b in blocks) {
+      if (!b.id.startsWith('g:') || b.dayKey != today) continue;
+      final bool fromFailed = (b.src ?? '').split('+').any(failedSources.contains);
+      final bool inNewPull = rows.any((r) => r.title == b.title && r.start == b.startMin && r.end == b.endMin);
+      if (fromFailed && !inNewPull) rows.add((title: b.title, start: b.startMin, end: b.endMin, src: b.src));
+    }
+    blocks.removeWhere((Block b) => b.id.startsWith('g:'));
+    int i = 0;
+    for (final r in rows) {
+      blocks.add(Block(id: 'g:${i++}', kind: BlockKind.event, title: r.title, startMin: r.start, endMin: r.end, dayKey: today, src: r.src));
+    }
+    changed();
+  }
+
+  void removeBlock(String id) {
+    blocks.removeWhere((Block b) => b.id == id);
     changed();
   }
 

@@ -196,7 +196,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
         tag: 'VIGIL · ALERT',
         tone: IntelTone.alert,
         time: Fmt.time(now),
-        message: '${conflict.$1.title} overlaps ${conflict.$2.title} by ${conflict.$1.endMin - conflict.$2.startMin} min. Recommend moving ${conflict.$2.title}.',
+        message: '${conflict.$1.title} overlaps ${conflict.$2.title} by ${conflict.$1.endMin - conflict.$2.startMin} min${conflict.$1.clashWith(conflict.$2) == null ? '' : ' (${conflict.$1.clashWith(conflict.$2)})'}. Recommend moving ${conflict.$2.title}.',
         actions: <Widget>[VigilButton(label: 'Resolve', onPressed: () => context.go('/ops/timeline'))],
       );
     }

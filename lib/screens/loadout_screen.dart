@@ -9,6 +9,7 @@ import '../app/env.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/store.dart';
+import '../services/google_accounts.dart';
 import '../services/health.dart';
 import '../services/notifications.dart';
 import '../services/push.dart';
@@ -25,6 +26,7 @@ class LoadoutScreen extends ConsumerWidget {
     final c = context.vigil;
     final t = context.vtype;
     final VigilStore s = ref.watch(storeProvider);
+    final GoogleAccounts accounts = ref.watch(googleAccountsProvider);
 
     String sample() {
       final String base = switch (s.persona) {
@@ -211,7 +213,12 @@ class LoadoutScreen extends ConsumerWidget {
             s.setLink('Step sensor', ok ? 'OK' : 'DENIED');
             if (!ok && context.mounted) showVigilSnack(context, 'Allow Physical activity for VIGIL in system settings');
           }),
-          linkRow('Google Calendar', 'API key + calendar id from .env', Env.hasCalendar ? 'LINKED' : 'ASK', onTap: () => showVigilSnack(context, Env.hasCalendar ? 'Calendar key found in .env' : 'Add GOOGLE_CALENDAR_API_KEY and GOOGLE_CALENDAR_ID to .env')),
+          linkRow(
+            'Google accounts',
+            accounts.hasAny ? accounts.accounts.map((GoogleAccount a) => '${a.label} ${a.email}').join(' · ') : 'Link up to two · calendar',
+            accounts.hasAny || Env.hasCalendar ? 'LINKED' : 'ASK',
+            onTap: () => context.push('/loadout/accounts'),
+          ),
           ValueListenableBuilder<String>(
             valueListenable: HealthService.status,
             builder: (BuildContext ctx, String st, Widget? _) => linkRow(

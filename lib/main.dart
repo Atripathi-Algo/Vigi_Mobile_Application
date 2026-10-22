@@ -11,6 +11,7 @@ import 'app/router.dart';
 import 'data/store.dart';
 import 'screens/capture_sheet.dart';
 import 'services/calendar_sync.dart';
+import 'services/google_accounts.dart';
 import 'services/health.dart';
 import 'services/home_widgets.dart';
 import 'services/notifications.dart';
@@ -106,8 +107,9 @@ class _VigilAppState extends ConsumerState<VigilApp> {
     // Health Connect (sleep, weight, resting heart rate), if already allowed.
     await HealthService.sync(s);
 
-    // Calendar (public calendar via API key), then push widgets and reminders.
-    if (Env.hasCalendar) await pullCalendar(s);
+    // Calendars (linked Google accounts and the public API-key calendar), then push widgets and reminders.
+    await GoogleAccounts.instance.load();
+    await syncCalendars(s);
     await _sync.run();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/store.dart';
+import '../screens/accounts_screen.dart';
 import '../screens/api_keys_screen.dart';
 import '../screens/boot_screen.dart';
 import '../screens/briefing_screen.dart';
@@ -33,6 +34,7 @@ GoRouter buildRouter(VigilStore store) {
         builder: (BuildContext c, GoRouterState s) => const LoadoutScreen(),
         routes: <RouteBase>[
           GoRoute(path: 'keys', builder: (BuildContext c, GoRouterState s) => const ApiKeysScreen()),
+          GoRoute(path: 'accounts', builder: (BuildContext c, GoRouterState s) => const AccountsScreen()),
         ],
       ),
       GoRoute(

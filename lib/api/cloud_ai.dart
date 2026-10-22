@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../app/env.dart';
+import 'api_error.dart';
 
 const String _system = 'You are VIGIL, a terse tactical personal-ops assistant. Lead with the number, then the risk, '
     'then one recommendation. 24h times, rupees with Indian grouping. No exclamation marks, no praise, no emoji. '
@@ -78,7 +79,7 @@ Future<CloudReply> askCloudDetailed(String question, String sitrep, {http.Client
         };
     }
     final http.Response r = await c.post(uri, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 25));
-    if (r.statusCode != 200) return CloudReply.fail('HTTP ${r.statusCode}: ${_apiMessage(r.body)}');
+    if (r.statusCode != 200) return CloudReply.fail('HTTP ${r.statusCode}: ${apiErrorMessage(r.body)}');
     final String? text = _extractText(provider, r.body);
     if (text == null || text.isEmpty) return const CloudReply.fail('The model returned no text.');
     return CloudReply.ok(text);
@@ -110,20 +111,4 @@ String? _extractText(String provider, String body) {
   } catch (_) {
     return null;
   }
-}
-
-/// The provider's own error message, shortened, or the start of the body.
-String _apiMessage(String body) {
-  String msg = body;
-  try {
-    final dynamic j = jsonDecode(body);
-    final dynamic err = j is Map ? j['error'] : null;
-    if (err is Map && err['message'] is String) {
-      msg = err['message'] as String;
-    } else if (err is String) {
-      msg = err;
-    }
-  } catch (_) {}
-  msg = msg.replaceAll(RegExp(r'\s+'), ' ').trim();
-  return msg.length > 160 ? '${msg.substring(0, 160)}…' : msg;
 }

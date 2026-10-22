@@ -11,6 +11,7 @@ import '../data/models.dart';
 import '../data/store.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
+import 'calendar_sheets.dart';
 import 'capture_sheet.dart';
 
 /// 10 · Objectives and 11 · Timeline (tab 2).
@@ -340,12 +341,14 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
           widthFactor: inConflict ? 0.5 : 1,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () => showVigilSnack(context, '${b.title} · ${Fmt.hm(b.startMin)}–${Fmt.hm(b.endMin)}'),
+            onTap: () => canAddToCalendar(b)
+                ? showAddToCalendarSheet(context, s, b)
+                : showVigilSnack(context, '${b.title} · ${Fmt.hm(b.startMin)}–${Fmt.hm(b.endMin)}${b.src == null ? '' : ' · ${b.src}'}'),
             child: Container(
               margin: const EdgeInsets.only(left: 4, bottom: 1),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(color: fill, border: Border.all(color: border)),
-              child: Text('${b.title}\n${Fmt.hm(b.startMin)}–${Fmt.hm(b.endMin)}',
+              child: Text('${b.title}\n${Fmt.hm(b.startMin)}–${Fmt.hm(b.endMin)}${b.src == null ? '' : ' · ${b.src}'}',
                   maxLines: height < 40 ? 1 : 2, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: dashed ? c.textMuted : c.text, fontSize: 11, height: 1.25)),
             ),
           ),
@@ -371,7 +374,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
                 padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
                 child: Row(children: <Widget>[
                   Expanded(child: Text('Calendar not linked', style: t.caption.copyWith(color: c.textMuted))),
-                  VigilButton(label: 'Link', variant: VigilButtonVariant.accent, onPressed: () => showVigilSnack(context, 'Set GOOGLE_CALENDAR_API_KEY and GOOGLE_CALENDAR_ID in .env')),
+                  VigilButton(label: 'Link', variant: VigilButtonVariant.accent, onPressed: () => context.push('/loadout/accounts')),
                 ]),
               ),
             ),
@@ -423,7 +426,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
               VigilCard(
                 borderColor: c.critical,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-                  Text('CONFLICT · ${conflict.$1.endMin - conflict.$2.startMin} MIN OVERLAP', style: t.label.copyWith(color: c.critical)),
+                  Text('CONFLICT · ${conflict.$1.endMin - conflict.$2.startMin} MIN OVERLAP${conflict.$1.clashWith(conflict.$2) == null ? '' : ' · ${conflict.$1.clashWith(conflict.$2)}'}', style: t.label.copyWith(color: c.critical)),
                   const SizedBox(height: 6),
                   Text('${conflict.$1.title} (${Fmt.hm(conflict.$1.startMin)}–${Fmt.hm(conflict.$1.endMin)}) runs into ${conflict.$2.title}. Recommend moving ${conflict.$2.title} to ${Fmt.hm(conflict.$1.endMin)}.', style: t.body),
                   const SizedBox(height: 12),

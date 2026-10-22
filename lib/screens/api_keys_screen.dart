@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../api/ai_models.dart';
 import '../api/cloud_ai.dart';
 import '../api/weather_api.dart';
 import '../app/common.dart';
@@ -10,8 +11,8 @@ import '../app/providers.dart';
 import '../data/store.dart';
 import '../services/calendar_sync.dart';
 import '../services/push.dart';
-import '../services/output_sync.dart';
 import '../vigil/vigil.dart';
+import 'model_picker.dart';
 
 class _KeyField {
   const _KeyField(this.key, this.label, {this.hint = '', this.secret = false, this.number = false});
@@ -52,11 +53,10 @@ const List<_Group> _groups = <_Group>[
   _Group(
     'cal',
     'Google Calendar',
-    'Reads today\'s events into the Timeline. An API key works for public calendars only. Use the full calendar id, for example you@gmail.com.',
+    'A public calendar only: an API key cannot read a private one. For private calendars link your Google accounts in Loadout instead. Use the full calendar id, for example you@gmail.com.',
     <_KeyField>[
       _KeyField('GOOGLE_CALENDAR_API_KEY', 'API key', secret: true),
       _KeyField('GOOGLE_CALENDAR_ID', 'Calendar id', hint: 'you@gmail.com'),
-      _KeyField('GOOGLE_CLIENT_ID', 'OAuth client id', hint: 'for future sign-in'),
     ],
     required: <String>['GOOGLE_CALENDAR_API_KEY', 'GOOGLE_CALENDAR_ID'],
     testLabel: 'Sync now',
@@ -114,6 +114,11 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
   final Set<String> _busy = <String>{};
   String _provider = Env.cloudAiProvider;
 
+  /// Cloud AI keys are kept per service, so switching service never sends one company's key to another.
+  final Map<AiService, String> _svcKeys = <AiService, String>{};
+
+  static String _svcKeyName(AiService s) => 'CLOUD_AI_KEY_${s.name.toUpperCase()}';
+
   @override
   void initState() {
     super.initState();
@@ -122,6 +127,85 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
         _ctl[f.key] = TextEditingController(text: Env.value(f.key));
       }
     }
+    for (final AiService s in AiService.values) {
+      _svcKeys[s] = Env.value(_svcKeyName(s));
+    }
+    // A key saved before per-service keys existed belongs to the service in use.
+    final AiService? cur = _service;
+    if (cur != null && (_svcKeys[cur] ?? '').isEmpty) _svcKeys[cur] = Env.value('CLOUD_AI_API_KEY');
+  }
+
+  AiService? get _service => AiService.detect(_provider, _ctl['CLOUD_AI_BASE_URL']!.text);
+
+  /// The model in effect on screen: the field, or the provider's default when it is blank.
+  String get _modelId {
+    final String v = _ctl['CLOUD_AI_MODEL']!.text.trim();
+    return v.isEmpty ? defaultModelFor(_provider) : v;
+  }
+
+  void _stashKey() {
+    final AiService? s = _service;
+    if (s != null) _svcKeys[s] = _ctl['CLOUD_AI_API_KEY']!.text.trim();
+  }
+
+  /// Points the Cloud AI fields at [s]: provider, base URL, model and that service's own key.
+  void _useService(AiService s, {String model = ''}) {
+    _stashKey();
+    _provider = s.provider;
+    _ctl['CLOUD_AI_MODEL']!.text = model;
+    _ctl['CLOUD_AI_BASE_URL']!.text = (s == AiService.groq || s == AiService.openrouter) ? s.baseUrl : '';
+    _ctl['CLOUD_AI_API_KEY']!.text = _svcKeys[s] ?? '';
+  }
+
+  Future<void> _pickModel() async {
+    final AiService? before = _service;
+    final AiModel? m = await showModelPicker(context, service: before, apiKey: _ctl['CLOUD_AI_API_KEY']!.text, selectedId: _modelId);
+    if (m == null || !mounted) return;
+    if (m.tier.costsMoney && !await _confirmPaid(m)) return;
+    if (!mounted) return;
+    setState(() {
+      if (m.service == before) {
+        _ctl['CLOUD_AI_MODEL']!.text = m.id;
+      } else {
+        _useService(m.service, model: m.id);
+      }
+    });
+    if (m.service != before && (_svcKeys[m.service] ?? '').isEmpty) showVigilSnack(context, 'Paste your ${m.service.label} key, then Save');
+  }
+
+  /// Anything off a free tier can bill the account behind the key, so it is never picked silently.
+  Future<bool> _confirmPaid(AiModel m) async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: Text(m.tier == ModelTier.unrated ? 'PRICE UNKNOWN' : 'PAID MODEL'),
+        content: Text('${m.label} is not on a free tier (${m.price}). Calls are billed to the account behind your ${m.service.label} key. Use it?'),
+        actions: <Widget>[
+          VigilButton(label: 'Keep current', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx, false)),
+          VigilButton(label: 'Use it', onPressed: () => Navigator.pop(ctx, true)),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
+  Widget _modelRating(BuildContext context) {
+    final c = context.vigil;
+    final t = context.vtype;
+    final AiService? svc = _service;
+    final String id = _modelId;
+    final String line = catalogModel(svc, id)?.price ??
+        (svc == null ? 'Custom endpoint: cost depends on what runs there' : 'Not in the list: check the provider\'s price');
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(children: <Widget>[
+        ModelTierBadge(rateModel(svc, id)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('${_ctl['CLOUD_AI_MODEL']!.text.trim().isEmpty ? 'DEFAULT · ' : ''}$id · $line', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
+        ),
+      ]),
+    );
   }
 
   @override
@@ -132,10 +216,16 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
     super.dispose();
   }
 
-  Map<String, String> _values(_Group g) => <String, String>{
-        for (final _KeyField f in g.fields) f.key: _ctl[f.key]!.text.trim(),
-        if (g.id == 'ai') 'CLOUD_AI_PROVIDER': _provider,
-      };
+  Map<String, String> _values(_Group g) {
+    if (g.id == 'ai') _stashKey();
+    return <String, String>{
+      for (final _KeyField f in g.fields) f.key: _ctl[f.key]!.text.trim(),
+      if (g.id == 'ai') ...<String, String>{
+        'CLOUD_AI_PROVIDER': _provider,
+        for (final MapEntry<AiService, String> e in _svcKeys.entries) _svcKeyName(e.key): e.value,
+      },
+    };
+  }
 
   bool _ready(_Group g) => g.required.isNotEmpty && g.required.every((String k) => Env.value(k).isNotEmpty);
 
@@ -158,13 +248,20 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
   }
 
   Future<void> _clear(_Group g) async {
-    await Env.save(<String, String>{for (final _KeyField f in g.fields) f.key: '', if (g.id == 'ai') 'CLOUD_AI_PROVIDER': ''});
+    await Env.save(<String, String>{
+      for (final _KeyField f in g.fields) f.key: '',
+      if (g.id == 'ai') ...<String, String>{'CLOUD_AI_PROVIDER': '', for (final AiService s in AiService.values) _svcKeyName(s): ''},
+    });
     if (!mounted) return;
     setState(() {
       for (final _KeyField f in g.fields) {
         _ctl[f.key]!.text = Env.value(f.key);
       }
-      if (g.id == 'ai') _provider = Env.cloudAiProvider;
+      if (g.id == 'ai') {
+        _provider = Env.cloudAiProvider;
+        _svcKeys.updateAll((AiService _, String __) => '');
+        _stashKey();
+      }
       _result[g.id] = 'App values cleared. Using .env where set.';
     });
   }
@@ -262,7 +359,14 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
           VigilSegmented<String>(
             segments: const <(String, String)>[('gemini', 'GEMINI'), ('openai', 'OPENAI API'), ('anthropic', 'ANTHROPIC')],
             selected: _provider,
-            onSelected: (String v) => setState(() => _provider = v),
+            onSelected: (String v) {
+              if (v == _provider) return;
+              setState(() => _useService(switch (v) {
+                    'gemini' => AiService.gemini,
+                    'anthropic' => AiService.anthropic,
+                    _ => AiService.openai,
+                  }));
+            },
           ),
           const SizedBox(height: 6),
           Text(
@@ -282,14 +386,22 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
             hint: f.hint,
             obscure: f.secret && !_shown.contains(f.key),
             keyboardType: f.number ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
-            suffix: f.secret
+            onChanged: g.id == 'ai' ? (_) => setState(() {}) : null,
+            suffix: f.key == 'CLOUD_AI_MODEL'
                 ? IconButton(
-                    tooltip: _shown.contains(f.key) ? 'Hide' : 'Show',
-                    icon: Icon(_shown.contains(f.key) ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: c.textMuted),
-                    onPressed: () => setState(() => _shown.contains(f.key) ? _shown.remove(f.key) : _shown.add(f.key)),
+                    tooltip: 'Choose a model',
+                    icon: Icon(Icons.arrow_drop_down_rounded, size: 30, color: c.signal),
+                    onPressed: _pickModel,
                   )
-                : null,
+                : f.secret
+                    ? IconButton(
+                        tooltip: _shown.contains(f.key) ? 'Hide' : 'Show',
+                        icon: Icon(_shown.contains(f.key) ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: c.textMuted),
+                        onPressed: () => setState(() => _shown.contains(f.key) ? _shown.remove(f.key) : _shown.add(f.key)),
+                      )
+                    : null,
           ),
+          if (f.key == 'CLOUD_AI_MODEL') _modelRating(context),
           Padding(
             padding: const EdgeInsets.only(top: 3, bottom: 10),
             child: Text(f.key, style: t.micro.copyWith(color: c.textFaint, fontSize: 9)),

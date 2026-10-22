@@ -32,8 +32,7 @@ All keys are optional. A blank value switches that feature off and the app stays
 | Key | Used for |
 |-----|----------|
 | `VIGIL_API_BASE_URL`, `VIGIL_API_KEY` | Optional backend (reserved, not called yet) |
-| `GOOGLE_CLIENT_ID` | Future Google sign-in (private Calendar, Drive backup) |
-| `GOOGLE_CALENDAR_API_KEY`, `GOOGLE_CALENDAR_ID` | Today's events from a **public** calendar (full calendar id, not `primary`) |
+| `GOOGLE_CALENDAR_API_KEY`, `GOOGLE_CALENDAR_ID` | Today's events from a **public** calendar (full calendar id, not `primary`). For private calendars link Google accounts instead (below) |
 | `WEATHER_API_BASE_URL`, `WEATHER_LATITUDE`, `WEATHER_LONGITUDE` | Dawn Briefing conditions (Open-Meteo, no key) |
 | `CLOUD_AI_PROVIDER` (`gemini` free tier \| `openai` for Groq/OpenRouter/Ollama \| `anthropic` paid), `CLOUD_AI_BASE_URL`, `CLOUD_AI_MODEL`, `CLOUD_AI_API_KEY` | Cloud answers in Uplink, enabled in Loadout. Default provider is Gemini (model `gemini-flash-latest`). The Gemini free tier lets Google use what you send to improve its products |
 | `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET` | Firebase Cloud Messaging push. No `google-services.json` needed |
@@ -64,18 +63,36 @@ ColorOS stops background apps aggressively. For reliable reminders and widget up
 ```
 lib/app        env, formatting, providers, router, shell
 lib/data       store, models, capture parser, assistant
-lib/api        weather, calendar, cloud AI clients
-lib/services   notifications, Firebase push, step sensor, home widgets, output sync
+lib/api        weather, calendar, cloud AI clients, model catalog
+lib/services   notifications, Firebase push, step sensor, home widgets, output sync, Google accounts, calendar sync
 lib/screens    the 16 screens
 lib/vigil      design system from the handoff
-android/       manifest, widget providers and layouts (Kotlin)
+android/       manifest, widget providers and layouts, Google sign-in bridge (Kotlin)
 ```
 
 ## Status
 
-Built: all screens and routes, design system, local persistence (SharedPreferences) with day rollover, capture parser, readiness and sleep recommender, rules-based assistant, env-driven weather, calendar and cloud AI calls, local notifications, optional Firebase push, step counter, home-screen widgets, API keys screen, **Health Connect sleep, weight and resting heart rate (read-only) with manual logging as a fallback**.
+Built: all screens and routes, design system, local persistence (SharedPreferences) with day rollover, capture parser, readiness and sleep recommender, rules-based assistant, env-driven weather, calendar and cloud AI calls, local notifications, optional Firebase push, step counter, home-screen widgets, API keys screen, **model picker with cost badges, two linked Google accounts (calendar read and add)**, **Health Connect sleep, weight and resting heart rate (read-only) with manual logging as a fallback**.
 
-Not built: usage stats, wake alarm, biometric lock, voice (STT/TTS), Google sign-in and Drive backup, encrypted SQLite, per-app limits. The Screen tab and the Ledger categories still show sample data and say so.
+Not built: usage stats, wake alarm, biometric lock, voice (STT/TTS), Drive backup, encrypted SQLite, per-app limits. The Screen tab and the Ledger categories still show sample data and say so.
+
+### Choosing a model (Loadout, API keys & services, Cloud AI)
+
+The arrow on the Model field opens a list with a cost badge on every model: **green** FREE (a free tier, rate limited) or CHEAP (paid, up to $1.50 per 1M output tokens), **amber** PAID (up to $10), **red** PREMIUM (above $10), grey UNRATED (price not known). Picking anything that is not free asks you to confirm first. The list is curated, with prices as published around October 2026; they change, so check the provider. **Load live list** asks the service which models your key can use (OpenRouter's list includes real prices, so those are rated exactly). Each service keeps its own key, so switching service never sends one company's key to another.
+
+### Google accounts (Loadout, Google accounts)
+
+Link up to two accounts (PERSONAL and WORK). Their calendars merge into the Timeline with a tag on each event, a meeting that is in both shows once, and an overlap between the two is flagged as a conflict naming both. Tap an event you made in VIGIL to add it to either calendar. VIGIL asks Google only for calendar events.
+
+It uses Google's own Android authorization, so **no secret or redirect is stored in the app**: the phone keeps the approval and VIGIL asks for a short-lived token each time. Google only lets an app do this once its owner registers it (free, about five minutes):
+
+1. [console.cloud.google.com](https://console.cloud.google.com): create a project.
+2. APIs & Services, Library: enable **Google Calendar API**.
+3. OAuth consent screen: user type External, add both Gmail addresses as **Test users**.
+4. Credentials, Create credentials, OAuth client ID, type **Android**. The package name (`com.algoanalytics.vigil`) and this build's SHA-1 are on the Google accounts screen, with copy buttons. A build signed with a different key has a different SHA-1: add it to the same client.
+5. Open Loadout, Google accounts, Link account.
+
+While the consent screen is in Testing, Google asks you to approve again every 7 days (the screen then shows APPROVE AGAIN). Set the publishing status to **In production** to stop that; Google shows an "unverified app" screen once, which is fine for your own use (limit 100 users). Needs Google Play services on the phone. Not verified against a live Google account yet.
 
 ### Sleep and body data
 

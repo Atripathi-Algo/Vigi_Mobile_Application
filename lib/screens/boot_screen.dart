@@ -5,12 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../api/calendar_api.dart';
 import '../app/common.dart';
 import '../app/env.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/store.dart';
+import '../services/calendar_sync.dart';
+import '../services/google_accounts.dart';
 import '../services/health.dart';
 import '../services/sfx.dart';
 import '../services/notifications.dart';
@@ -73,15 +74,15 @@ class _BootScreenState extends ConsumerState<BootScreen> {
   Future<void> _grant(String key) async {
     final VigilStore s = ref.read(storeProvider);
     if (key == 'Calendar link') {
-      if (!Env.hasCalendar) {
-        showVigilSnack(context, 'Add GOOGLE_CALENDAR_API_KEY to .env to link');
+      if (!Env.hasCalendar && !GoogleAccounts.instance.hasAny) {
+        context.push('/loadout/accounts');
         return;
       }
-      final List<RemoteEvent>? ev = await fetchTodayEvents();
+      final CalendarSyncResult r = await syncCalendars(s);
       if (!mounted) return;
-      if (ev == null) {
+      if (!r.anyOk) {
         s.setLink(key, 'DENIED');
-        showVigilSnack(context, 'Calendar sync failed. Check the key and calendar id');
+        showVigilSnack(context, 'Calendar sync failed. ${r.summary}');
       } else {
         s.setLink(key, 'OK');
       }

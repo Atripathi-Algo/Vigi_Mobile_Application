@@ -1,6 +1,8 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../api/ai_models.dart';
+
 /// Typed access to configuration. Two layers, highest first:
 ///  1. values saved in the app (Loadout > API keys), kept in encrypted storage;
 ///  2. the bundled `.env` file (see `.env.example`).
@@ -63,7 +65,6 @@ abstract final class Env {
   static String get vigilApiBaseUrl => _get('VIGIL_API_BASE_URL');
   static String get vigilApiKey => _get('VIGIL_API_KEY');
 
-  static String get googleClientId => _get('GOOGLE_CLIENT_ID');
   static String get googleCalendarApiKey => _get('GOOGLE_CALENDAR_API_KEY');
   static String get googleCalendarId => _get('GOOGLE_CALENDAR_ID');
 
@@ -74,11 +75,7 @@ abstract final class Env {
   static String get cloudAiProvider => _get('CLOUD_AI_PROVIDER', 'gemini').toLowerCase();
   static String get cloudAiKey => _get('CLOUD_AI_API_KEY');
   /// Defaults per provider. `gemini-flash-latest` is Google's alias for the current free-tier Flash model.
-  static String get cloudAiModel => _get('CLOUD_AI_MODEL', switch (cloudAiProvider) {
-        'openai' => 'gpt-4o-mini',
-        'gemini' => 'gemini-flash-latest',
-        _ => 'claude-haiku-5-5',
-      });
+  static String get cloudAiModel => _get('CLOUD_AI_MODEL', defaultModelFor(cloudAiProvider));
   static String get cloudAiBaseUrl => _get('CLOUD_AI_BASE_URL', switch (cloudAiProvider) {
         'openai' => 'https://api.openai.com',
         'gemini' => 'https://generativelanguage.googleapis.com',

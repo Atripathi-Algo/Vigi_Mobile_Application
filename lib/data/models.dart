@@ -100,6 +100,7 @@ class Block {
     required this.endMin,
     this.attendees = 0,
     this.dayKey,
+    this.src,
   });
 
   final String id;
@@ -112,9 +113,15 @@ class Block {
   /// `yyyy-m-d`. Null means "today" (sample day).
   String? dayKey;
 
+  /// Which calendar a pulled event came from (a linked account's label, or PUBLIC); `A+B` when it is in both.
+  final String? src;
+
   bool get isSample => RegExp(r'^b\d+$').hasMatch(id);
 
   bool overlaps(Block o) => startMin < o.endMin && o.startMin < endMin;
+
+  /// "WORK × PERSONAL" when this block and [o] come from different calendars, else null.
+  String? clashWith(Block o) => (src != null && o.src != null && src != o.src) ? '$src × ${o.src}' : null;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
@@ -124,6 +131,7 @@ class Block {
         'end': endMin,
         'att': attendees,
         'day': dayKey,
+        if (src != null) 'src': src,
       };
 
   factory Block.fromJson(Map<String, dynamic> j) => Block(
@@ -134,6 +142,7 @@ class Block {
         endMin: j['end'] as int,
         attendees: (j['att'] as int?) ?? 0,
         dayKey: j['day'] as String?,
+        src: j['src'] as String?,
       );
 }
 

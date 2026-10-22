@@ -2,7 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/assistant.dart';
 import '../data/store.dart';
+import '../services/google_accounts.dart';
 import '../services/output_sync.dart';
+
+/// The linked Google accounts (up to two).
+final ChangeNotifierProvider<GoogleAccounts> googleAccountsProvider = ChangeNotifierProvider<GoogleAccounts>((Ref ref) => GoogleAccounts.instance);
 
 /// Overridden in main() with the loaded store.
 final ChangeNotifierProvider<VigilStore> storeProvider =
