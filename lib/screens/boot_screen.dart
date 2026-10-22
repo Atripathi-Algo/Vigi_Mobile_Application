@@ -11,6 +11,7 @@ import '../app/env.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/store.dart';
+import '../services/health.dart';
 import '../services/notifications.dart';
 import '../services/steps.dart';
 import '../vigil/vigil.dart';
@@ -83,6 +84,11 @@ class _BootScreenState extends ConsumerState<BootScreen> {
       } else {
         s.setLink(key, 'OK');
       }
+      return;
+    }
+    if (key == 'Health Connect') {
+      final bool ok = await HealthService.connect(s);
+      if (mounted && !ok) showVigilSnack(context, 'Health Connect: ${HealthService.status.value}. Install or allow it from Loadout later');
       return;
     }
     if (key == 'Notifications') {

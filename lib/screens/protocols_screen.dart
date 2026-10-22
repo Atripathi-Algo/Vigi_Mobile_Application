@@ -8,7 +8,9 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/health.dart';
 import '../services/steps.dart';
+import 'log_sheets.dart';
 import '../vigil/vigil.dart';
 
 enum ProtocolsView { habits, vitals, screen }
@@ -26,7 +28,7 @@ class ProtocolsScreen extends ConsumerWidget {
     final DateTime now = ref.now;
     final (String, String) head = switch (view) {
       ProtocolsView.habits => ('Protocols', '${s.protocolsDone} / ${s.protocols.length} TODAY'),
-      ProtocolsView.vitals => ('Vitals', 'STEPS · PHONE SENSOR · ${Fmt.time(now)}'),
+      ProtocolsView.vitals => ('Vitals', s.healthSyncedAt == null ? 'STEPS · PHONE SENSOR' : 'HEALTH CONNECT · SYNCED ${Fmt.time(s.healthSyncedAt!)}'),
       ProtocolsView.screen => ('Screen', 'USAGE ACCESS · DATA STAYS ON-DEVICE'),
     };
     return VigilScaffold(
@@ -35,14 +37,7 @@ class ProtocolsScreen extends ConsumerWidget {
       actions: <Widget>[
         switch (view) {
           ProtocolsView.habits => VigilIconButton(icon: VigilIcons.plus, semanticLabel: 'Add protocol', onPressed: () => showVigilSnack(context, 'Protocol editor is not designed yet')),
-          ProtocolsView.vitals => VigilIconButton(
-              icon: VigilIcons.sync,
-              semanticLabel: 'Connect step sensor',
-              onPressed: () async {
-                final bool ok = await StepService.start(s, request: true);
-                if (ok) s.setLink('Step sensor', 'OK');
-                if (context.mounted) showVigilSnack(context, ok ? 'Step sensor connected' : 'Activity permission denied');
-              }),
+          ProtocolsView.vitals => VigilIconButton(icon: VigilIcons.sync, semanticLabel: 'Sync vitals', onPressed: () => _syncVitals(context, s)),
           ProtocolsView.screen => VigilIconButton(icon: VigilIcons.shield, semanticLabel: 'App limits', onPressed: () => showVigilSnack(context, 'App-limit editor is not designed yet')),
         },
       ],
@@ -70,6 +65,13 @@ class ProtocolsScreen extends ConsumerWidget {
   static String _month(DateTime d) => const <String>['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][d.month - 1];
 
   static String _grouped(int n) => n.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (Match m) => '${m[1]},');
+
+  /// Step sensor first, then Health Connect (ask on first use, otherwise a forced sync).
+  static Future<void> _syncVitals(BuildContext context, VigilStore s) async {
+    if (await StepService.start(s, request: true)) s.setLink('Step sensor', 'OK');
+    final bool hc = s.linkStatus['Health Connect'] == 'OK' ? await HealthService.sync(s, force: true) : await HealthService.connect(s);
+    if (context.mounted) showVigilSnack(context, hc ? 'Health Connect · ${HealthService.status.value}' : 'Health Connect · ${HealthService.status.value}. Install or allow it, or log by hand');
+  }
 
   // ------------------------------------------------------------------ habits
   List<Widget> _habits(BuildContext context, VigilStore s, VigilColors c) {
@@ -184,7 +186,7 @@ class ProtocolsScreen extends ConsumerWidget {
     final int tanks = 12;
     final int filled = (s.waterMl / 250).floor().clamp(0, tanks);
     final Protocol workout = s.protocols.firstWhere((Protocol p) => p.name.startsWith('Workout'));
-    final SleepNight last = s.nights.first;
+    final SleepNight? last = s.lastNight;
     return <Widget>[
       VigilCard(
         brackets: true,
@@ -220,21 +222,29 @@ class ProtocolsScreen extends ConsumerWidget {
         Expanded(
           child: VigilCard(
             onTap: () => context.push('/protocols/vitals/sleep'),
-            semanticLabel: 'Sleep ${Fmt.dur(last.asleep)}',
+            semanticLabel: last == null ? 'Sleep, no data' : 'Sleep ${Fmt.dur(last.asleep)}',
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
               Row(children: <Widget>[Expanded(child: Text('SLEEP', style: t.micro.copyWith(color: c.textFaint))), VigilIcon(VigilIcons.chevronRight, size: 16, color: c.textMuted)]),
               const SizedBox(height: 4),
-              Text(Fmt.dur(last.asleep), style: t.metric),
-              Text('${Fmt.hm(last.bed)} → ${Fmt.hm(last.wake)}', style: t.meta.copyWith(color: c.textMuted)),
-              const SizedBox(height: 10),
-              MiniBars(
-                values: s.nights.reversed.map((SleepNight n) => n.asleep.toDouble()).toList(),
-                colors: <Color>[for (int i = 0; i < 7; i++) i == 6 ? c.signal : c.steel],
-                height: 36,
-                gap: 3,
-                refLine: s.needMin.toDouble(),
-                semanticLabel: 'Sleep, last 7 nights',
-              ),
+              if (last == null) ...<Widget>[
+                Text('No data', style: t.metric.copyWith(color: c.textMuted)),
+                const SizedBox(height: 4),
+                Text('CONNECT OR LOG A NIGHT', style: t.micro.copyWith(color: c.textMuted)),
+              ] else ...<Widget>[
+                Text(Fmt.dur(last.asleep), style: t.metric),
+                Text('${Fmt.hm(last.bed)} → ${Fmt.hm(last.wake)}', style: t.meta.copyWith(color: c.textMuted)),
+                if (s.nights.length >= 2) ...<Widget>[
+                  const SizedBox(height: 10),
+                  MiniBars(
+                    values: s.nights.reversed.map((SleepNight n) => n.asleep.toDouble()).toList(),
+                    colors: <Color>[for (int i = 0; i < s.nights.length; i++) i == s.nights.length - 1 ? c.signal : c.steel],
+                    height: 36,
+                    gap: 3,
+                    refLine: s.needMin.toDouble(),
+                    semanticLabel: 'Sleep, last ${s.nights.length} nights',
+                  ),
+                ],
+              ],
             ]),
           ),
         ),
@@ -292,23 +302,32 @@ class ProtocolsScreen extends ConsumerWidget {
       const SizedBox(height: 12),
       VigilCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Text('BODY', style: t.micro.copyWith(color: c.textFaint)),
-          const SizedBox(height: 4),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
-            Text('${s.weightKg} kg', style: t.metric),
-            const SizedBox(width: 8),
-            Text('−${s.weightDelta.abs()} KG', style: t.meta.copyWith(color: c.steel)),
-            const Spacer(),
-            Text('RESTING HR ${s.restingHr}', style: t.meta.copyWith(color: c.textMuted)),
+          Row(children: <Widget>[
+            Expanded(child: Text('BODY', style: t.micro.copyWith(color: c.textFaint))),
+            VigilButton(label: 'Log weight', variant: VigilButtonVariant.secondary, onPressed: () => showLogWeightSheet(context)),
           ]),
-          const SizedBox(height: 10),
-          MiniBars(
-            values: <double>[74.8, 74.9, 74.7, 74.6, 74.6, 74.5, 74.4, 74.5, 74.3, 74.4, 74.3, 74.2].map((double v) => v - 73.5).toList(),
-            colors: <Color>[c.steel],
-            height: 30,
-            gap: 3,
-            semanticLabel: 'Weight, 30 day trend, down 0.6 kilograms',
-          ),
+          const SizedBox(height: 4),
+          if (s.weightKg == null && s.restingHr == null)
+            Text('No data · connect Health Connect or log your weight', style: t.meta.copyWith(color: c.textMuted))
+          else ...<Widget>[
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
+              if (s.weightKg != null) Text('${s.weightKg!.toStringAsFixed(1)} kg', style: t.metric),
+              if (s.weightKg != null) const SizedBox(width: 8),
+              if (s.weightDelta != null) Text('${s.weightDelta! < 0 ? '\u2212' : '+'}${s.weightDelta!.abs().toStringAsFixed(1)} KG', style: t.meta.copyWith(color: c.steel)),
+              const Spacer(),
+              if (s.restingHr != null) Text('RESTING HR ${s.restingHr}', style: t.meta.copyWith(color: c.textMuted)),
+            ]),
+            if (s.weightSeries.length >= 2) ...<Widget>[
+              const SizedBox(height: 10),
+              MiniBars(
+                values: <double>[for (final double v in s.weightSeries) v - (s.weightSeries.reduce((double a, double b) => a < b ? a : b) - 1)],
+                colors: <Color>[c.steel],
+                height: 30,
+                gap: 3,
+                semanticLabel: 'Weight trend, last 30 days',
+              ),
+            ],
+          ],
         ]),
       ),
     ];

@@ -73,6 +73,12 @@ android/       manifest, widget providers and layouts (Kotlin)
 
 ## Status
 
-Built: all screens and routes, design system, local persistence (SharedPreferences) with day rollover, capture parser, readiness and sleep recommender, rules-based assistant, env-driven weather, calendar and cloud AI calls, local notifications, optional Firebase push, step counter, home-screen widgets.
+Built: all screens and routes, design system, local persistence (SharedPreferences) with day rollover, capture parser, readiness and sleep recommender, rules-based assistant, env-driven weather, calendar and cloud AI calls, local notifications, optional Firebase push, step counter, home-screen widgets, API keys screen, **Health Connect sleep, weight and resting heart rate (read-only) with manual logging as a fallback**.
 
-Not built: Health Connect, usage stats, wake alarm, biometric lock, voice (STT/TTS), Google sign-in and Drive backup, encrypted SQLite, per-app limits. Screens that depend on them show sample data and say so.
+Not built: usage stats, wake alarm, biometric lock, voice (STT/TTS), Google sign-in and Drive backup, encrypted SQLite, per-app limits. The Screen tab and the Ledger categories still show sample data and say so.
+
+### Sleep and body data
+
+- **Health Connect** is free and on-device. It only holds what other apps write, so you need a watch, band or sleep app that writes to it. On Android 13 and older, install the Health Connect app from the Play Store first (Android 14+ has it built in).
+- **No watch?** Use **Log night** on the Sleep tracker and **Log weight** on Vitals. Manual entries win over Health Connect for the same night.
+- Averages and debt appear after 3 nights, as in the handoff.

@@ -9,6 +9,7 @@ import '../api/calendar_api.dart';
 import '../app/fmt.dart';
 import '../vigil/vigil.dart';
 import 'models.dart';
+import 'sleep_analyzer.dart';
 
 enum Persona { tactical, butler, quiet }
 
@@ -76,9 +77,12 @@ class VigilStore extends ChangeNotifier {
   /// Steps today from the phone's step-counter sensor; null until it reports.
   int? steps;
   final int stepTarget = 8000;
-  double weightKg = 74.2;
-  double weightDelta = -0.6;
-  int restingHr = 62;
+  /// Body data from Health Connect or manual entries (newest last).
+  List<WeightPoint> weights = <WeightPoint>[];
+  int? restingHr;
+
+  /// When Health Connect was last read, and whether the last read failed.
+  DateTime? healthSyncedAt;
 
   // ---- sleep ------------------------------------------------------------
   int needMin = 435;
@@ -86,7 +90,11 @@ class VigilStore extends ChangeNotifier {
   bool armedTonight = false;
   bool insightApplied = false;
   late List<ScheduleRow> schedule;
-  late List<SleepNight> nights;
+  /// Every stored night (health + manual), unsorted. See [nights] for the display view.
+  List<SleepNight> _sleep = <SleepNight>[];
+
+  /// Health Connect nights the user deleted; they stay hidden after the next sync.
+  Set<String> _hiddenNights = <String>{};
 
   // ---- screen -----------------------------------------------------------
   final int screenTodayMin = 192;
@@ -182,16 +190,10 @@ class VigilStore extends ChangeNotifier {
       ScheduleRow(night: 'SAT → SUN', bed: 24 * 60 + 15, wake: 8 * 60 + 30),
       ScheduleRow(night: 'SUN → MON', bed: 23 * 60, wake: 6 * 60 + 30),
     ];
-    const int pb = 23 * 60, pw = 1440 + 6 * 60 + 30;
-    nights = const <SleepNight>[
-      SleepNight(label: 'WED', bed: 1428, wake: 1860, planBed: pb, planWake: pw),
-      SleepNight(label: 'TUE', bed: 1425, wake: 1830, planBed: pb, planWake: pw),
-      SleepNight(label: 'MON', bed: 1450, wake: 1840, planBed: pb, planWake: pw, inferred: true),
-      SleepNight(label: 'SUN', bed: 1395, wake: 1840, planBed: pb, planWake: pw),
-      SleepNight(label: 'SAT', bed: 1480, wake: 1860, planBed: pb, planWake: pw),
-      SleepNight(label: 'FRI', bed: 1450, wake: 1870, planBed: pb, planWake: pw),
-      SleepNight(label: 'THU', bed: 1440, wake: 1890, planBed: pb, planWake: pw),
-    ];
+    _sleep = <SleepNight>[];
+    weights = <WeightPoint>[];
+    restingHr = null;
+    healthSyncedAt = null;
     bills = <Bill>[
       Bill(id: 'bl1', name: 'Electricity', due: 'TODAY', paise: 184000, dueToday: true),
       Bill(id: 'bl2', name: 'Broadband', due: '25 OCT', paise: 99900),
@@ -270,6 +272,19 @@ class VigilStore extends ChangeNotifier {
       }
     }
     tomorrowFirstId = _prefs.getString('tomorrowFirst');
+    final DateTime cutoff = now.subtract(const Duration(days: 45));
+    final String? sl = _prefs.getString('sleepLog');
+    if (sl != null) {
+      _sleep = (jsonDecode(sl) as List<dynamic>).map((dynamic e) => SleepNight.fromJson(e as Map<String, dynamic>)).where((SleepNight n) => n.nightOf.isAfter(cutoff)).toList();
+    }
+    final String? wl = _prefs.getString('weights');
+    if (wl != null) {
+      weights = (jsonDecode(wl) as List<dynamic>).map((dynamic e) => WeightPoint.fromJson(e as Map<String, dynamic>)).where((WeightPoint w) => w.at.isAfter(now.subtract(const Duration(days: 120)))).toList();
+    }
+    restingHr = _prefs.getInt('rhr');
+    _hiddenNights = (_prefs.getStringList('sleepHidden') ?? <String>[]).toSet();
+    final int? hs = _prefs.getInt('hcSync');
+    healthSyncedAt = hs == null ? null : DateTime.fromMillisecondsSinceEpoch(hs);
 
     // ---- state that belongs to one calendar day -----------------------
     final String lastDay = _prefs.getString('day') ?? today;
@@ -364,6 +379,12 @@ class VigilStore extends ChangeNotifier {
       ..setBool('justResolved', justResolved)
       ..setString('day', today);
     if (tomorrowFirstId != null) _prefs.setString('tomorrowFirst', tomorrowFirstId!);
+    _prefs
+      ..setString('sleepLog', jsonEncode(_sleep.map((SleepNight n) => n.toJson()).toList()))
+      ..setString('weights', jsonEncode(weights.map((WeightPoint w) => w.toJson()).toList()));
+    if (restingHr != null) _prefs.setInt('rhr', restingHr!);
+    _prefs.setStringList('sleepHidden', _hiddenNights.toList());
+    if (healthSyncedAt != null) _prefs.setInt('hcSync', healthSyncedAt!.millisecondsSinceEpoch);
     if (steps != null) {
       _prefs
         ..setInt('stepsToday', steps!)
@@ -660,12 +681,115 @@ class VigilStore extends ChangeNotifier {
   // =========================================================================
   // Sleep
   // =========================================================================
-  int get debtMin => math.max(0, needMin * nights.length - nights.fold<int>(0, (int a, SleepNight n) => a + n.asleep));
-  int get avgSleep => nights.fold<int>(0, (int a, SleepNight n) => a + n.asleep) ~/ nights.length;
+  /// The last seven recorded nights within two weeks, newest first, each with
+  /// the schedule's plan for that weekday. Empty until sleep data exists.
+  List<SleepNight> get nights {
+    final DateTime now = DateTime.now();
+    final DateTime from = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 14));
+    final List<SleepNight> l = _sleep.where((SleepNight n) => !n.nightOf.isBefore(from)).toList()..sort((SleepNight a, SleepNight b) => b.nightOf.compareTo(a.nightOf));
+    return l.take(7).map((SleepNight n) {
+      final ScheduleRow r = schedule[n.nightOf.weekday - 1];
+      return n.withPlan(r.bed, 1440 + r.wake);
+    }).toList();
+  }
+
+  /// Last night's record: the newest night, but only if it is last night or the night before.
+  /// An older record is not "last night", so it is not shown as such.
+  SleepNight? get lastNight {
+    final List<SleepNight> n = nights;
+    if (n.isEmpty) return null;
+    final DateTime now = DateTime.now();
+    final DateTime yesterday = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    return n.first.nightOf.isBefore(yesterday) ? null : n.first;
+  }
+
+  /// A stored night by date (any of the last 45 days, not only the newest seven).
+  SleepNight? sleepFor(DateTime nightOf) {
+    final String k = '${nightOf.year}-${nightOf.month}-${nightOf.day}';
+    return _sleep.where((SleepNight n) => n.key == k).firstOrNull;
+  }
+
+  /// Needs three nights before averages and debt mean anything (handoff 13a).
+  bool get hasSleepStats => nights.length >= 3;
+
+  int get debtMin {
+    final List<SleepNight> n = nights;
+    if (n.length < 3) return 0;
+    return math.max(0, needMin * n.length - n.fold<int>(0, (int a, SleepNight x) => a + x.asleep));
+  }
+
+  int get avgSleep {
+    final List<SleepNight> n = nights;
+    return n.isEmpty ? 0 : n.fold<int>(0, (int a, SleepNight x) => a + x.asleep) ~/ n.length;
+  }
 
   int get bedtimeVariance {
     final List<int> b = nights.map((SleepNight n) => n.bed).toList()..sort();
-    return b.last - b.first;
+    return b.length < 2 ? 0 : b.last - b.first;
+  }
+
+  /// A night the user logged by hand (replaces any other entry for the same night).
+  void logSleep(DateTime nightOf, int bed, int wake) {
+    final DateTime d = DateTime(nightOf.year, nightOf.month, nightOf.day);
+    _sleep.removeWhere((SleepNight n) => n.key == '${d.year}-${d.month}-${d.day}');
+    _sleep.add(SleepNight(nightOf: d, bed: bed, wake: wake, source: 'manual'));
+    _hiddenNights.remove('${d.year}-${d.month}-${d.day}');
+    changed();
+  }
+
+  void removeSleep(DateTime nightOf) {
+    final String k = '${nightOf.year}-${nightOf.month}-${nightOf.day}';
+    if (_sleep.any((SleepNight n) => n.key == k && n.source == 'health')) _hiddenNights.add(k);
+    _sleep.removeWhere((SleepNight n) => n.key == k);
+    changed();
+  }
+
+  /// Replace what came from Health Connect inside the window it read ([since] onward);
+  /// older Health nights are kept. Manual entries win for the same night, and nights
+  /// the user deleted stay hidden.
+  void setHealthSleep(List<SleepNight> fromHealth, {DateTime? since}) {
+    final Set<String> manual = _sleep.where((SleepNight n) => n.source == 'manual').map((SleepNight n) => n.key).toSet();
+    _sleep = <SleepNight>[
+      ..._sleep.where((SleepNight n) => n.source == 'manual'),
+      if (since != null) ..._sleep.where((SleepNight n) => n.source == 'health' && n.nightOf.isBefore(since)),
+      ...fromHealth.where((SleepNight n) => !manual.contains(n.key) && !_hiddenNights.contains(n.key)),
+    ];
+    healthSyncedAt = DateTime.now();
+    changed();
+  }
+
+  // ---- body -------------------------------------------------------------
+  double? get weightKg => weights.isEmpty ? null : (List<WeightPoint>.of(weights)..sort((WeightPoint a, WeightPoint b) => a.at.compareTo(b.at))).last.kg;
+
+  /// Change over the last 30 days, or null with fewer than two readings.
+  double? get weightDelta {
+    final DateTime from = DateTime.now().subtract(const Duration(days: 30));
+    final List<WeightPoint> w = weights.where((WeightPoint p) => p.at.isAfter(from)).toList()..sort((WeightPoint a, WeightPoint b) => a.at.compareTo(b.at));
+    return w.length < 2 ? null : w.last.kg - w.first.kg;
+  }
+
+  /// Up to 12 averaged points over the last 30 days for the sparkline.
+  List<double> get weightSeries {
+    final DateTime from = DateTime.now().subtract(const Duration(days: 30));
+    final List<WeightPoint> w = weights.where((WeightPoint p) => p.at.isAfter(from)).toList()..sort((WeightPoint a, WeightPoint b) => a.at.compareTo(b.at));
+    return SleepAnalyzer.bucket(w.map((WeightPoint p) => p.kg).toList(), 12);
+  }
+
+  void logWeight(double kg) {
+    weights = <WeightPoint>[...weights, WeightPoint(DateTime.now(), double.parse(kg.toStringAsFixed(1)))];
+    changed();
+  }
+
+  /// Replace Health Connect readings inside the window it read ([since] onward); manual
+  /// readings and older Health readings are kept.
+  void setHealthBody(List<WeightPoint> fromHealth, int? rhr, {DateTime? since}) {
+    weights = <WeightPoint>[
+      ...weights.where((WeightPoint w) => w.source == 'manual' || (since != null && w.at.isBefore(since))),
+      ...fromHealth,
+    ];
+    if (rhr != null) restingHr = rhr;
+    healthSyncedAt = DateTime.now();
+    changed();
   }
 
   ScheduleRow get tonightRow => schedule[(DateTime.now().weekday - 1) % 7];
@@ -817,8 +941,12 @@ class VigilStore extends ChangeNotifier {
     final double prot = protocols.isEmpty ? 0 : protocolsDone / protocols.length;
     final double focus = (focusTodayMin / focusTargetMin).clamp(0, 1).toDouble();
     final double water = (waterMl / waterTargetMl).clamp(0, 1).toDouble();
-    final double sleep = (nights.first.asleep / needMin).clamp(0, 1).toDouble();
-    return (100 * (0.25 * obj + 0.25 * prot + 0.15 * focus + 0.15 * water + 0.2 * sleep)).round();
+    // Sleep only counts once there is data; otherwise the other parts carry the full weight.
+    final SleepNight? ln = lastNight;
+    final double sleepW = ln == null ? 0 : 0.2;
+    final double sleep = ln == null ? 0 : (ln.asleep / needMin).clamp(0, 1).toDouble();
+    final double wsum = 0.25 + 0.25 + 0.15 + 0.15 + sleepW;
+    return (100 * (0.25 * obj + 0.25 * prot + 0.15 * focus + 0.15 * water + sleepW * sleep) / wsum).round();
   }
 
   /// Water expected by now, linear 07:00 -> 21:00.
@@ -858,7 +986,7 @@ class VigilStore extends ChangeNotifier {
       'water_ml': waterMl,
       'water_target': waterTargetMl,
       'steps': steps,
-      'sleep': <String, dynamic>{'debt_min': debtMin, 'tonight_bed': Fmt.hm(recommendedBed), 'wake': Fmt.hm(tonightRow.wake)},
+      'sleep': <String, dynamic>{'last_asleep_min': lastNight?.asleep, 'debt_min': hasSleepStats ? debtMin : null, 'tonight_bed': Fmt.hm(recommendedBed), 'wake': Fmt.hm(tonightRow.wake)},
       'screen': <String, dynamic>{'today_min': screenTodayMin, 'line_min': screenLineMin},
       'ledger': <String, dynamic>{'spent_paise': monthSpentPaise, 'budget_paise': monthBudgetPaise},
       'persona': persona.name,

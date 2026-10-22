@@ -101,7 +101,7 @@ svg{display:block;width:100%;min-width:1000px;height:auto}
 
   <div class="main">
     <div class="canvas">
-      <svg id="dia" viewBox="0 0 1200 900" role="img" aria-label="VIGIL architecture: Flutter screens read and write one in-memory store backed by local storage; engines and an assistant sit on the store; env-driven API clients call weather, calendar and optional AI services outside the phone; platform services for steps, notifications and home widgets are built, while health, usage stats, biometrics and voice are not.">
+      <svg id="dia" viewBox="0 0 1200 900" role="img" aria-label="VIGIL architecture: Flutter screens read and write one in-memory store backed by local storage; engines and an assistant sit on the store; env-driven API clients call weather, calendar and optional AI services outside the phone; platform services for steps, notifications and home widgets are built, and Health Connect sleep and body data are built, while usage stats, biometrics and voice are not.">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>
         </defs>
@@ -161,7 +161,7 @@ var N=[
   d:'Two widgets: VIGIL Objectives (next op, three objectives, steps, water) and VIGIL Readiness. Tapping an objective checks it off and +250 ML logs water through a background callback, without opening the app. Data is pushed after every change.'},
  {id:'alarm',x:390,y:686,l:'Exact alarms',s:'reminder timing',g:'AL',c:'plat',st:'partial',p:'NotificationService.requestExactAlarms',
   d:'The Alarms & reminders permission flow works and reminders use exact timing when it is granted, otherwise they may arrive a few minutes late. There is no wake alarm yet.'},
- {id:'hc',x:490,y:686,l:'Health',s:'Connect · not built',g:'HC',c:'plat',st:'planned',p:'MethodChannel',d:'Would feed sleep sessions and weight. Sleep nights and body numbers are sample data today.'},
+ {id:'hc',x:490,y:686,l:'Health',s:'Connect · sleep, body',g:'HC',c:'plat',st:'built',p:'lib/services/health.dart · lib/data/sleep_analyzer.dart',d:'Reads sleep sessions (minus awake stages), weight and resting heart rate from Health Connect, read-only, and merges them with nights and weights you log by hand. Health Connect only holds what a watch, band or sleep app writes, so without one the tracker uses manual logging. Averages and debt need 3 nights.'},
  {id:'usage',x:590,y:686,l:'Usage stats',s:'screen time',g:'US',c:'plat',st:'planned',p:'MethodChannel',d:'UsageStatsManager for the Screen tab and Night Shield. The Screen tab shows sample data.'},
  {id:'bio',x:690,y:686,l:'Biometric',s:'Vault gate',g:'BL',c:'plat',st:'planned',p:'local_auth',d:'The Vault locks when you leave the tab and after 60 s in the background, but unlocking is a tap, not a fingerprint check.'},
  {id:'voice',x:790,y:686,l:'Voice',s:'STT · TTS',g:'VO',c:'plat',st:'planned',p:'speech_to_text · flutter_tts',d:'Mic in Uplink and spoken Dawn Briefing. Buttons are present; audio is not wired.'},

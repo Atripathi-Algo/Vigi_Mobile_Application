@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../data/store.dart';
+import 'health.dart';
 import 'home_widgets.dart';
 import 'notifications.dart';
 
@@ -35,7 +36,10 @@ class OutputSync with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Back in the foreground: pick up anything a widget tap changed meanwhile.
     if (state == AppLifecycleState.resumed) {
-      store.reloadFromDisk().then((_) => run());
+      store.reloadFromDisk().then((_) async {
+        await HealthService.sync(store); // throttled to every 10 minutes
+        await run();
+      });
     }
   }
 }

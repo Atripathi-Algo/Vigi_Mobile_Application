@@ -9,6 +9,7 @@ import '../app/env.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/store.dart';
+import '../services/health.dart';
 import '../services/notifications.dart';
 import '../services/push.dart';
 import '../services/steps.dart';
@@ -163,7 +164,18 @@ class LoadoutScreen extends ConsumerWidget {
             if (!ok && context.mounted) showVigilSnack(context, 'Allow Physical activity for VIGIL in system settings');
           }),
           linkRow('Google Calendar', 'API key + calendar id from .env', Env.hasCalendar ? 'LINKED' : 'ASK', onTap: () => showVigilSnack(context, Env.hasCalendar ? 'Calendar key found in .env' : 'Add GOOGLE_CALENDAR_API_KEY and GOOGLE_CALENDAR_ID to .env')),
-          linkRow('Health Connect', 'Bridge not built', 'ASK', onTap: () => showVigilSnack(context, 'Health Connect bridge is not built')),
+          ValueListenableBuilder<String>(
+            valueListenable: HealthService.status,
+            builder: (BuildContext ctx, String st, Widget? _) => linkRow(
+              'Health Connect',
+              s.healthSyncedAt == null ? 'Sleep, weight, resting heart rate' : 'Synced ${Fmt.time(s.healthSyncedAt!)} · tap to sync',
+              s.linkStatus['Health Connect'] == 'OK' ? (st == 'OFF' ? 'OK' : st) : (s.linkStatus['Health Connect'] ?? 'ASK'),
+              onTap: () async {
+                final bool ok = s.linkStatus['Health Connect'] == 'OK' ? await HealthService.sync(s, force: true) : await HealthService.connect(s);
+                if (context.mounted) showVigilSnack(context, 'Health Connect · ${HealthService.status.value}${ok ? '' : '. Install or allow it, or log by hand'}');
+              },
+            ),
+          ),
           linkRow('Usage access', 'Bridge not built', 'ASK', onTap: () => showVigilSnack(context, 'Usage-stats bridge is not built')),
           linkRow('Bank SMS parser', 'Sideload build only', 'OFF'),
         ]),

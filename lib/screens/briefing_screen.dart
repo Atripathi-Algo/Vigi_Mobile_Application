@@ -66,7 +66,7 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
     final int crit = s.critCount;
     final String script = '${s.open.length} objectives open, $crit critical. '
         '${primary.isEmpty ? '' : 'Start with ${primary.first.title}. '}'
-        'Sleep ${Fmt.dur(s.nights.first.asleep)}, debt ${Fmt.dur(s.debtMin)}.';
+        '${s.lastNight == null ? 'No data for sleep.' : 'Sleep ${Fmt.dur(s.lastNight!.asleep)}${s.hasSleepStats ? ', debt ${Fmt.dur(s.debtMin)}' : ''}.'}';
     return VigilScaffold(
       title: 'Dawn briefing',
       subtitle: '${Fmt.time(now)} · ${Fmt.dayStamp(now)}',
@@ -122,7 +122,7 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Expanded(
             child: (_wx == null)
-                ? StatTile(label: _wxDone ? 'Sleep' : 'Conditions', value: _wxDone ? Fmt.dur(s.nights.first.asleep) : '…', caption: _wxDone ? (s.debtMin == 0 ? 'NO DEBT' : 'DEBT −${Fmt.dur(s.debtMin)}') : 'LOADING')
+                ? StatTile(label: _wxDone ? 'Sleep' : 'Conditions', value: _wxDone ? (s.lastNight == null ? 'No data' : Fmt.dur(s.lastNight!.asleep)) : '…', caption: _wxDone ? (s.lastNight == null ? 'LOG OR CONNECT' : (!s.hasSleepStats ? 'BUILDING' : (s.debtMin == 0 ? 'NO DEBT' : 'DEBT −${Fmt.dur(s.debtMin)}'))) : 'LOADING')
                 : StatTile(label: 'Conditions', value: '${_wx!.tempC.round()}°C', caption: _wx!.summary),
           ),
           const SizedBox(width: 8),

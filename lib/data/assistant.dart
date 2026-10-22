@@ -66,7 +66,8 @@ class Assistant {
       return msg(s == null ? 'No data for steps. Grant Activity access in Boot or Vitals.' : 'Steps $s of ${store.stepTarget}. ${store.stepTarget - s > 0 ? '${store.stepTarget - s} to target.' : 'Target met.'}');
     }
     if (_has(q, r'\b(sleep|bed|bedtime|wake)\b')) {
-      return msg('Sleep debt ${Fmt.dur(store.debtMin)}. Lights out ${Fmt.hm(store.recommendedBed)}, wake ${Fmt.hm(store.tonightRow.wake)}. Wind-down ${Fmt.hm(store.windDownAt)}.');
+      final String sl = store.lastNight == null ? 'No data for sleep. Connect Health Connect or log a night.' : (store.hasSleepStats ? 'Last night ${Fmt.dur(store.lastNight!.asleep)}, debt ${Fmt.dur(store.debtMin)}.' : 'Last night ${Fmt.dur(store.lastNight!.asleep)}. Debt builds after 3 nights.');
+      return msg('$sl Lights out ${Fmt.hm(store.recommendedBed)}, wake ${Fmt.hm(store.tonightRow.wake)}. Wind-down ${Fmt.hm(store.windDownAt)}.');
     }
     if (_has(q, r'\b(week|report|spend|spending|money|ledger|budget)\b')) {
       final int pct = (store.monthSpentPaise * 100 / store.monthBudgetPaise).round();

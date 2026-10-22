@@ -8,7 +8,9 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/health.dart';
 import '../vigil/vigil.dart';
+import 'log_sheets.dart';
 
 /// 13a · Sleep tracker and 13b · Weekly schedule (pushed, no tab bar).
 class SleepScreen extends ConsumerStatefulWidget {
@@ -28,7 +30,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
     final VigilStore s = ref.watch(storeProvider);
     return VigilScaffold(
       title: 'Sleep',
-      subtitle: widget.schedule ? 'WEEKLY SCHEDULE · ALARMS ON-DEVICE' : 'NEED ${Fmt.dur(s.needMin)} · SYNCED 07:02',
+      subtitle: widget.schedule ? 'WEEKLY SCHEDULE · ALARMS ON-DEVICE' : 'NEED ${Fmt.dur(s.needMin)} · ${s.healthSyncedAt == null ? 'MANUAL LOG' : 'SYNCED ${Fmt.time(s.healthSyncedAt!)}'}',
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<bool>(
@@ -55,6 +57,15 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
     final int plan = s.tonightRow.bed;
     final int wake = s.tonightRow.wake;
     final int inBed = 1440 + wake - rec;
+    // The chart axis grows to fit the logged nights (default 21:00 to 09:00, never beyond 18:00 to 12:00).
+    final List<SleepNight> ns = s.nights;
+    int axisStart = 1260, axisEnd = 1980;
+    for (final SleepNight n in ns) {
+      if (n.bed < axisStart) axisStart = (n.bed ~/ 60) * 60;
+      if (n.wake > axisEnd) axisEnd = ((n.wake + 59) ~/ 60) * 60;
+    }
+    axisStart = axisStart.clamp(1080, 1260);
+    axisEnd = axisEnd.clamp(1980, 2160);
     return <Widget>[
       VigilCard(
         brackets: true,
@@ -75,7 +86,9 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
           Text('${Fmt.dur(inBed)} IN BED', style: t.meta.copyWith(color: c.textMuted)),
           const SizedBox(height: 10),
           Text(
-            'Lights out ${Fmt.hm(rec)} pays back ${Fmt.dur(s.debtMin)} debt. Wind-down ${Fmt.hm(s.windDownAt)}: mute and Night Shield.',
+            s.hasSleepStats && s.debtMin > 0
+                ? 'Lights out ${Fmt.hm(rec)} pays back ${Fmt.dur(s.debtMin)} debt. Wind-down ${Fmt.hm(s.windDownAt)}: mute and Night Shield.'
+                : 'Lights out ${Fmt.hm(rec)} gives ${Fmt.dur(s.needMin)} before the ${Fmt.hm(wake)} wake. Wind-down ${Fmt.hm(s.windDownAt)}: mute and Night Shield.',
             style: t.body,
           ),
           const SizedBox(height: 14),
@@ -105,22 +118,41 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
       ),
       const SizedBox(height: 12),
       Row(children: <Widget>[
-        Expanded(child: StatTile(label: 'AVG · 7N', value: Fmt.dur(s.avgSleep))),
+        Expanded(child: StatTile(label: 'AVG · ${s.nights.isEmpty ? 7 : s.nights.length}N', value: s.nights.isEmpty ? '—' : Fmt.dur(s.avgSleep))),
         const SizedBox(width: 8),
-        Expanded(child: StatTile(label: 'Debt', value: s.debtMin == 0 ? '0h 00m' : '\u2212${Fmt.dur(s.debtMin)}', valueColor: s.debtMin == 0 ? null : c.critical)),
+        Expanded(child: StatTile(label: 'Debt', value: !s.hasSleepStats ? '—' : (s.debtMin == 0 ? '0h 00m' : '−${Fmt.dur(s.debtMin)}'), valueColor: s.hasSleepStats && s.debtMin > 0 ? c.critical : null)),
         const SizedBox(width: 8),
-        Expanded(child: StatTile(label: 'Bedtime', value: '±${s.bedtimeVariance ~/ 2} min')),
+        Expanded(child: StatTile(label: 'Bedtime', value: s.nights.length < 2 ? '—' : '\u00b1${s.bedtimeVariance ~/ 2} min')),
       ]),
       const SizedBox(height: 12),
       VigilCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
           Row(children: <Widget>[
-            Expanded(child: Text('LAST 7 NIGHTS', style: t.label.copyWith(color: c.textFaint))),
-            SizedBox(width: 8, height: 8, child: ColoredBox(color: c.steel)),
-            Text(' ASLEEP  ', style: t.micro.copyWith(color: c.textFaint)),
-            Text('PLAN', style: t.micro.copyWith(color: c.signal)),
+            Expanded(child: Text(s.nights.length == 1 ? 'LAST NIGHT' : 'LAST ${s.nights.isEmpty ? 7 : s.nights.length} NIGHTS', style: t.label.copyWith(color: c.textFaint))),
+            if (s.nights.isNotEmpty) ...<Widget>[
+              SizedBox(width: 8, height: 8, child: ColoredBox(color: c.steel)),
+              Text(' ASLEEP  ', style: t.micro.copyWith(color: c.textFaint)),
+              Text('PLAN', style: t.micro.copyWith(color: c.signal)),
+              const SizedBox(width: 10),
+            ],
+            VigilButton(label: 'Log night', variant: VigilButtonVariant.secondary, onPressed: () => showLogSleepSheet(context)),
           ]),
           const SizedBox(height: 10),
+          if (s.nights.isEmpty) ...<Widget>[
+            Text('Sleep data builds after 3 nights. Connect Health Connect (a watch or band app writes it), or log a night yourself.', style: t.caption.copyWith(color: c.textMuted)),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: VigilButton(
+                label: 'Connect Health Connect',
+                variant: VigilButtonVariant.accent,
+                onPressed: () async {
+                  final bool ok = await HealthService.connect(s);
+                  if (context.mounted) showVigilSnack(context, 'Health Connect · ${HealthService.status.value}${ok ? '' : '. Install or allow it, or log by hand'}');
+                },
+              ),
+            ),
+          ],
           for (int i = 0; i < s.nights.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -128,8 +160,8 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                 SizedBox(width: 34, child: Text(s.nights[i].label, style: t.micro.copyWith(color: i == 0 ? c.signal : c.textFaint))),
                 Expanded(
                   child: WindowBar(
-                    axisStart: 1260,
-                    axisEnd: 1980,
+                    axisStart: axisStart.toDouble(),
+                    axisEnd: axisEnd.toDouble(),
                     planStart: s.nights[i].planBed.toDouble(),
                     planEnd: s.nights[i].planWake.toDouble(),
                     actualStart: s.nights[i].bed.toDouble(),
@@ -140,22 +172,23 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                 ),
                 SizedBox(
                   width: 58,
-                  child: Text('${s.nights[i].inferred ? '≈' : ''}${Fmt.durCompact(s.nights[i].asleep)}', textAlign: TextAlign.right, style: t.meta.copyWith(color: s.nights[i].asleep < s.needMin ? c.critical : c.text)),
+                  child: Text(Fmt.durCompact(s.nights[i].asleep), textAlign: TextAlign.right, style: t.meta.copyWith(color: s.nights[i].asleep < s.needMin ? c.critical : c.text)),
                 ),
               ]),
             ),
-          Padding(
-            padding: const EdgeInsets.only(left: 34, right: 58),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[for (final String h in <String>['21', '00', '03', '06', '09']) Text(h, style: t.micro.copyWith(color: c.textFaint))]),
-          ),
+          if (s.nights.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 34, right: 58),
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[for (int i = 0; i < 5; i++) Text(Fmt.hm(axisStart + ((axisEnd - axisStart) * i / 4).round()).substring(0, 2), style: t.micro.copyWith(color: c.textFaint))]),
+            ),
         ]),
       ),
       const SizedBox(height: 12),
-      IntelCard(
+      if (s.hasSleepStats && s.bedtimeVariance > 60) IntelCard(
         tag: 'INTEL · BEDTIME DRIFT',
         message: s.insightApplied
             ? 'Applied. Weekday bedtimes set to 23:00 and weekend drift capped at 60 min.'
-            : 'Bedtime drift is ${s.bedtimeVariance} min across 7 nights. Recommend fixing weekend lights-out to 00:00.',
+            : 'Bedtime drift is ${s.bedtimeVariance} min across ${s.nights.length} nights. Recommend fixing weekend lights-out to 00:00.',
         actions: s.insightApplied
             ? const <Widget>[]
             : <Widget>[
@@ -172,7 +205,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
               ],
       ),
       const SizedBox(height: 8),
-      Text('Sleep nights are sample data until the Health Connect bridge is built.', style: t.meta.copyWith(color: c.textFaint, fontSize: 11)),
+      Text('SOURCE: ${s.nights.any((SleepNight n) => n.source == 'health') ? 'HEALTH CONNECT + MANUAL' : 'MANUAL LOG'}${s.healthSyncedAt == null ? '' : ' · CHECKED ${Fmt.time(s.healthSyncedAt!)}'}', style: t.micro.copyWith(color: c.textFaint)),
     ];
   }
 

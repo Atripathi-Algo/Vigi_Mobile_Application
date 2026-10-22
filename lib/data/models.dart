@@ -268,25 +268,63 @@ class Note {
 }
 
 /// One night of sleep. Times are minutes after midnight of the evening the
-/// night started, so bed after midnight is >= 1440 and wake is >= 1440.
+/// night started ([nightOf]), so bed after midnight is >= 1440 and wake is >= 1440.
 class SleepNight {
   const SleepNight({
-    required this.label,
+    required this.nightOf,
     required this.bed,
     required this.wake,
-    required this.planBed,
-    required this.planWake,
-    this.inferred = false,
+    this.asleepMin,
+    this.source = 'manual',
+    this.planBed = 23 * 60,
+    this.planWake = 1440 + 6 * 60 + 30,
   });
 
-  final String label;
+  /// Local date of the evening the night started.
+  final DateTime nightOf;
   final int bed;
   final int wake;
+
+  /// Minutes actually asleep, when the source reports it; otherwise the whole span.
+  final int? asleepMin;
+
+  /// `health` (Health Connect) or `manual`.
+  final String source;
+
+  /// The schedule's plan for that night, filled in by the store for display.
   final int planBed;
   final int planWake;
-  final bool inferred;
 
-  int get asleep => wake - bed;
+  String get label => const <String>['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][nightOf.weekday - 1];
+  int get asleep => asleepMin ?? (wake - bed);
+  String get key => '${nightOf.year}-${nightOf.month}-${nightOf.day}';
+
+  SleepNight withPlan(int bed, int wake) => SleepNight(nightOf: nightOf, bed: this.bed, wake: this.wake, asleepMin: asleepMin, source: source, planBed: bed, planWake: wake);
+
+  Map<String, dynamic> toJson() => <String, dynamic>{'n': key, 'bed': bed, 'wake': wake, 'asleep': asleepMin, 'src': source};
+
+  factory SleepNight.fromJson(Map<String, dynamic> j) {
+    final List<String> p = (j['n'] as String).split('-');
+    return SleepNight(
+      nightOf: DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2])),
+      bed: j['bed'] as int,
+      wake: j['wake'] as int,
+      asleepMin: j['asleep'] as int?,
+      source: (j['src'] as String?) ?? 'manual',
+    );
+  }
+}
+
+class WeightPoint {
+  const WeightPoint(this.at, this.kg, {this.source = 'manual'});
+
+  final DateTime at;
+  final double kg;
+  final String source;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{'at': at.millisecondsSinceEpoch, 'kg': kg, 'src': source};
+
+  factory WeightPoint.fromJson(Map<String, dynamic> j) => WeightPoint(DateTime.fromMillisecondsSinceEpoch(j['at'] as int), (j['kg'] as num).toDouble(), source: (j['src'] as String?) ?? 'manual');
 }
 
 class ScheduleRow {
