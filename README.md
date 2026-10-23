@@ -94,6 +94,12 @@ It uses Google's own Android authorization, so **no secret or redirect is stored
 
 While the consent screen is in Testing, Google asks you to approve again every 7 days (the screen then shows APPROVE AGAIN). Set the publishing status to **In production** to stop that; Google shows an "unverified app" screen once, which is fine for your own use (limit 100 users). Needs Google Play services on the phone. Not verified against a live Google account yet.
 
+### Assistant and voice (Uplink)
+
+With Cloud AI on (Loadout) and a key set, a language model handles requests in plain language, remembers the last 10 messages, and can add objectives and events, log water and spend, add notes, clear an objective or check a protocol. Every change shows a diff card with Undo, and the model has no way to delete or send anything. If the chosen Gemini model is refused (402, 404, 429, 503) the app retries on free Gemini models only and says which answered. Without a key, or if the call fails, the on-device router answers.
+
+Tap the orb or the mic to speak; replies are read aloud (always for spoken requests, and for typed ones when Spoken replies is on). Hands-free listens again after each spoken reply. Speech uses the phone's own recogniser (free; it may use the network unless an offline language pack is installed) and the phone's text-to-speech voice. There is no always-on "Hey Vigil" wake word. Voice is not yet verified with a real microphone.
+
 ### Real data only
 
 The app starts empty and shows only what you log, what your calendars return, or what a sensor reports. Add protocols (+ on Protocols), bills (+ in the Ledger) and a monthly budget (Ledger, Set budget); log spend and objectives with Capture. Long-press a protocol or bill to delete it. Sample data from builds up to v1.3 is removed once on first launch of a newer build; your own entries stay.

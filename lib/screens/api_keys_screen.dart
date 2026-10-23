@@ -283,7 +283,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
           } else {
             final CloudReply a = await askCloudDetailed('Reply with the single word: ready.', s.sitrep(DateTime.now()));
             final String? text = a.text;
-            out = text == null ? 'Failed. ${a.error}' : 'OK. Reply: ${text.length > 80 ? '${text.substring(0, 80)}…' : text}';
+            out = text == null ? 'Failed. ${a.error}' : 'OK. Reply: ${text.length > 80 ? '${text.substring(0, 80)}…' : text}${a.note == null ? '' : ' Note: ${a.note}'}';
           }
         case 'cal':
           out = !Env.hasCalendar ? 'Needs an API key and a calendar id.' : (await pullCalendar(s) ? 'OK. Events merged into the Timeline.' : 'Failed. The calendar must be public and the id exact.');

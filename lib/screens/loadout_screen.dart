@@ -204,7 +204,7 @@ class LoadoutScreen extends ConsumerWidget {
         ]),
         head('Briefings'),
         RowList(children: <Widget>[
-          toggleRow('spoken', 'Spoken replies', 'Wake phrase'),
+          toggleRow('spoken', 'Spoken replies', 'Reads typed replies aloud'),
           toggleRow('dawn', 'Dawn briefing', Fmt.hm(s.wakeMin)),
           toggleRow('debrief', 'Night debrief', Fmt.hm(s.bedMin - 30)),
           linkRow('Open dawn briefing', 'Preview now', 'OPEN', onTap: () => context.push('/briefing')),

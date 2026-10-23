@@ -1,3 +1,5 @@
+import 'dart:ui' show VoidCallback;
+
 import '../vigil/vigil.dart';
 
 class Objective {
@@ -418,12 +420,20 @@ class ChatMsg {
     this.chart,
     this.undoable = false,
     this.undone = false,
+    this.note,
+    this.onUndo,
   });
 
   final bool fromUser;
   final String text;
   final DateTime at;
   final bool alert;
+
+  /// A small line under the reply, for example that another model answered or that the cloud call failed.
+  final String? note;
+
+  /// Reverses what this reply wrote.
+  final VoidCallback? onUndo;
 
   /// Diff card rows: label -> text.
   final List<(String, String)>? diff;
