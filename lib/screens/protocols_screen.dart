@@ -11,6 +11,7 @@ import '../data/store.dart';
 import '../services/health.dart';
 import '../services/sfx.dart';
 import '../services/steps.dart';
+import 'data_sheets.dart';
 import 'log_sheets.dart';
 import '../vigil/vigil.dart';
 
@@ -37,9 +38,9 @@ class ProtocolsScreen extends ConsumerWidget {
       subtitle: head.$2,
       actions: <Widget>[
         switch (view) {
-          ProtocolsView.habits => VigilIconButton(icon: VigilIcons.plus, semanticLabel: 'Add protocol', onPressed: () => showVigilSnack(context, 'Protocol editor is not designed yet')),
+          ProtocolsView.habits => VigilIconButton(icon: VigilIcons.plus, semanticLabel: 'Add protocol', onPressed: () => showAddProtocolSheet(context, s)),
           ProtocolsView.vitals => VigilIconButton(icon: VigilIcons.sync, semanticLabel: 'Sync vitals', onPressed: () => _syncVitals(context, s)),
-          ProtocolsView.screen => VigilIconButton(icon: VigilIcons.shield, semanticLabel: 'App limits', onPressed: () => showVigilSnack(context, 'App-limit editor is not designed yet')),
+          ProtocolsView.screen => const SizedBox.shrink(),
         },
       ],
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
@@ -63,8 +64,6 @@ class ProtocolsScreen extends ConsumerWidget {
     );
   }
 
-  static String _month(DateTime d) => const <String>['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][d.month - 1];
-
   static String _grouped(int n) => n.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (Match m) => '${m[1]},');
 
   /// Step sensor first, then Health Connect (ask on first use, otherwise a forced sync).
@@ -77,69 +76,51 @@ class ProtocolsScreen extends ConsumerWidget {
   // ------------------------------------------------------------------ habits
   List<Widget> _habits(BuildContext context, VigilStore s, VigilColors c) {
     final t = context.vtype;
-    final List<List<int>> heat = s.heatmap;
-    final int done = heat.expand((List<int> w) => w).where((int v) => v > 0).length;
-    final int total = heat.expand((List<int> w) => w).where((int v) => v >= 0).length;
-    Color lvl(int v) => v < 0 ? Colors.transparent : (v == 0 ? c.line : c.signal.withValues(alpha: <double>[0, 0.28, 0.5, 0.75, 1][v.clamp(0, 4)]));
+    final List<int> levels = s.weekLevels;
+    Color lvl(int v) => v == 0 ? c.line : c.signal.withValues(alpha: <double>[0, 0.28, 0.5, 0.75, 1][v.clamp(0, 4)]);
+    final int doneCells = s.protocols.fold(0, (int a, Protocol p) => a + p.week.where((bool d) => d).length);
+    final int pct = s.protocols.isEmpty ? 0 : (doneCells * 100 / (s.protocols.length * 7)).round();
     return <Widget>[
-      VigilCard(
-        brackets: true,
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-          const SectionLabel('Consistency · 12 weeks'),
-          const SizedBox(height: 12),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
-            Expanded(
-              child: Semantics(
-                label: 'Consistency heatmap, ${(done * 100 / total).round()} percent over 12 weeks',
-                child: Row(children: <Widget>[
-                  for (int w = 0; w < 12; w++) ...<Widget>[
-                    if (w > 0) const SizedBox(width: 3),
-                    Expanded(
-                      child: Column(children: <Widget>[
-                        for (int d = 0; d < 7; d++) ...<Widget>[
-                          if (d > 0) const SizedBox(height: 3),
-                          AspectRatio(
-                            aspectRatio: 1,
-                            child: heat[w][d] < 0
-                                ? DecoratedBox(decoration: BoxDecoration(border: Border.all(color: c.lineStrong)))
-                                : ColoredBox(color: lvl(heat[w][d])),
-                          ),
-                        ],
-                      ]),
-                    ),
-                  ],
-                ]),
+      if (s.protocols.isNotEmpty) ...<Widget>[
+        VigilCard(
+          brackets: true,
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+            const SectionLabel('Consistency · last 7 days'),
+            const SizedBox(height: 12),
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
+              Expanded(
+                child: Semantics(
+                  label: 'Consistency, $pct percent over 7 days',
+                  child: Row(children: <Widget>[
+                    for (int d = 0; d < 7; d++) ...<Widget>[
+                      if (d > 0) const SizedBox(width: 4),
+                      Expanded(child: AspectRatio(aspectRatio: 1, child: ColoredBox(color: lvl(levels[d])))),
+                    ],
+                  ]),
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Text('${(done * 100 / total).round()}%', style: t.metric.copyWith(color: c.signal, fontSize: 26)),
+              const SizedBox(width: 14),
+              Text('$pct%', style: t.metric.copyWith(color: c.signal, fontSize: 26)),
+            ]),
           ]),
-          const SizedBox(height: 10),
-          Row(children: <Widget>[
-            Text(_month(DateTime.now().subtract(const Duration(days: 77))), style: t.micro.copyWith(color: c.textFaint)),
-            const Spacer(),
-            Text('LESS ', style: t.micro.copyWith(color: c.textFaint)),
-            for (int i = 0; i < 5; i++) Padding(padding: const EdgeInsets.only(right: 3), child: SizedBox(width: 9, height: 9, child: ColoredBox(color: lvl(i)))),
-            Text(' MORE', style: t.micro.copyWith(color: c.textFaint)),
-            const Spacer(),
-            Text(_month(DateTime.now()), style: t.micro.copyWith(color: c.textFaint)),
-          ]),
-        ]),
-      ),
-      const SizedBox(height: 14),
+        ),
+        const SizedBox(height: 14),
+      ],
       Row(children: <Widget>[
         Expanded(child: Text('DAILY', style: t.label.copyWith(color: c.textFaint))),
         Text('LAST 7 DAYS', style: t.label.copyWith(color: c.textFaint)),
       ]),
       const SizedBox(height: 8),
       if (s.protocols.isEmpty)
-        const EmptyState(message: 'No protocols armed.')
+        const EmptyState(message: 'No protocols yet. Tap + to add one.')
       else
         RowList(children: <Widget>[
           for (final Protocol p in s.protocols)
             InkWell(
-              onLongPress: () => showVigilSnack(context, 'Edit and pause are not designed yet'),
+              onLongPress: () async {
+                if (await confirmDelete(context, title: 'DELETE PROTOCOL?', message: '${p.name} and its streak are removed.')) s.removeProtocol(p.id);
+              },
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 58),
                 child: Row(children: <Widget>[
@@ -187,7 +168,7 @@ class ProtocolsScreen extends ConsumerWidget {
     final t = context.vtype;
     final int tanks = 12;
     final int filled = (s.waterMl / 250).floor().clamp(0, tanks);
-    final Protocol workout = s.protocols.firstWhere((Protocol p) => p.name.startsWith('Workout'));
+    final Protocol? workout = s.protocols.where((Protocol p) => p.name.startsWith('Workout')).firstOrNull;
     final SleepNight? last = s.lastNight;
     return <Widget>[
       VigilCard(
@@ -286,6 +267,7 @@ class ProtocolsScreen extends ConsumerWidget {
           ),
         ),
       ]),
+      if (workout != null) ...<Widget>[
       const SizedBox(height: 12),
       VigilCard(
         borderColor: workout.atRisk ? c.critical : null,
@@ -301,6 +283,7 @@ class ProtocolsScreen extends ConsumerWidget {
           if (workout.atRisk) VigilButton(label: 'Start 20 min', onPressed: () => context.push('/deep-ops?mode=workout')),
         ]),
       ),
+      ],
       const SizedBox(height: 12),
       VigilCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
@@ -338,75 +321,16 @@ class ProtocolsScreen extends ConsumerWidget {
   // ------------------------------------------------------------------ screen
   List<Widget> _screen(BuildContext context, VigilStore s, VigilColors c) {
     final t = context.vtype;
-    final int hourNow = DateTime.now().hour;
-    final bool over = s.screenTodayMin > s.screenLineMin;
     return <Widget>[
       VigilCard(
-        brackets: true,
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-          const SectionLabel('Today'),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          const SectionLabel('Screen time'),
           const SizedBox(height: 8),
-          Text.rich(TextSpan(children: <InlineSpan>[
-            TextSpan(text: Fmt.dur(s.screenTodayMin), style: t.hero.copyWith(fontSize: 34, color: over ? c.critical : c.text)),
-            TextSpan(text: ' / ${Fmt.dur(s.screenLineMin)} LINE', style: t.meta.copyWith(color: c.textMuted, fontSize: 12)),
-          ])),
-          const SizedBox(height: 10),
-          SegmentBar(fraction: s.screenTodayMin / s.screenLineMin, thickness: 6, color: over ? c.critical : c.signal),
-          const SizedBox(height: 8),
-          Text('7-DAY AVG ${Fmt.dur(s.screenAvgMin)}', style: t.meta.copyWith(color: c.textMuted)),
-          const SizedBox(height: 12),
-          Row(children: <Widget>[
-            for (final (String, String) x in const <(String, String)>[('UNLOCKS', '64'), ('ALERTS', '143'), ('FIRST PICKUP', '06:41')])
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(x.$1, style: t.micro.copyWith(color: c.textFaint)), Text(x.$2, style: t.metric.copyWith(fontSize: 18))])),
-          ]),
-        ]),
-      ),
-      const SizedBox(height: 12),
-      VigilCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-          const SectionLabel('By hour'),
-          const SizedBox(height: 10),
-          MiniBars(
-            values: s.hourly,
-            colors: <Color>[for (int h = 0; h < 24; h++) h == hourNow ? c.text : (h > hourNow ? c.line : c.steel)],
-            height: 64,
-            gap: 2,
-            semanticLabel: 'Screen time by hour of day',
-          ),
+          Text('No data', style: t.metric.copyWith(color: c.textMuted)),
           const SizedBox(height: 6),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[for (final String h in <String>['00', '06', '12', '18', '24']) Text(h, style: t.micro.copyWith(color: c.textFaint))]),
+          Text('Reading screen time needs Android\'s usage access, and that bridge is not built yet. Nothing is shown here until it is real.', style: t.caption.copyWith(color: c.textMuted)),
         ]),
       ),
-      const SizedBox(height: 14),
-      Text('TOP CATEGORIES', style: t.label.copyWith(color: c.textFaint)),
-      const SizedBox(height: 8),
-      RowList(children: <Widget>[
-        for (final AppCategory a in s.categories)
-          SizedBox(
-            height: 44,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(children: <Widget>[
-                SizedBox(width: 92, child: Text(a.name, style: t.rowTitle.copyWith(color: a.over ? c.critical : c.text, fontSize: 14))),
-                Expanded(child: SegmentBar(fraction: a.minutes / 90, thickness: 8, marker: a.limit == null ? null : a.limit! / 90, color: a.over ? c.critical : c.steel)),
-                SizedBox(width: 64, child: Text('${a.minutes}m${a.over ? ' +${a.minutes - a.limit!}' : ''}', textAlign: TextAlign.right, style: t.meta.copyWith(color: a.over ? c.critical : c.text))),
-              ]),
-            ),
-          ),
-      ]),
-      const SizedBox(height: 12),
-      if (s.nightShieldArmed)
-        IntelCard(tag: 'NIGHT SHIELD · ARMED', message: 'Social and video are blocked ${Fmt.hm(s.bedMin - 30)} to ${Fmt.hm(s.wakeMin)}.', actions: <Widget>[VigilButton(label: 'Disarm', variant: VigilButtonVariant.secondary, onPressed: () { s.nightShieldArmed = false; s.changed(); })])
-      else
-        IntelCard(
-          tag: 'INTEL · SOCIAL OVER LINE',
-          tone: IntelTone.alert,
-          message: 'Social is 13 min over its line. Recommend arming Night Shield from ${Fmt.hm(s.bedMin - 30)}.',
-          actions: <Widget>[VigilButton(label: 'Arm', onPressed: () { s.nightShieldArmed = true; s.changed(); })],
-        ),
-      const SizedBox(height: 8),
-      Text('Sample data. The usage-stats bridge is not built yet.', style: t.meta.copyWith(color: c.textFaint, fontSize: 11)),
     ];
   }
 }

@@ -70,17 +70,14 @@ class Assistant {
       return msg('$sl Lights out ${Fmt.hm(store.recommendedBed)}, wake ${Fmt.hm(store.tonightRow.wake)}. Wind-down ${Fmt.hm(store.windDownAt)}.');
     }
     if (_has(q, r'\b(week|report|spend|spending|money|ledger|budget)\b')) {
-      final int pct = (store.monthSpentPaise * 100 / store.monthBudgetPaise).round();
-      final (String, int)? op = store.overPaceCategory;
-      return msg(
-        'Month spend ${Fmt.money(store.monthSpentPaise)} of ${Fmt.money(store.monthBudgetPaise)} ($pct%). '
-        '${op == null ? 'All categories on pace.' : '${op.$1[0]}${op.$1.substring(1).toLowerCase()} is ${op.$2}% over pace.'} '
-        'Recommend a cap of ${Fmt.money(store.safeToSpendPaise)} today.',
-        chart: <double>[3, 5, 4, 7, 6, 2, 4],
-      );
+      if (store.monthTxns.isEmpty) return msg('No data for spend. Log an expense first, for example: spent 250 on lunch.');
+      final int? pct = store.monthSpentPercent;
+      return msg(pct == null
+          ? 'Month spend ${Fmt.money(store.monthSpentPaise)}. No budget set: add one in the Ledger.'
+          : 'Month spend ${Fmt.money(store.monthSpentPaise)} of ${Fmt.money(store.monthBudgetPaise)} ($pct%). Recommend a cap of ${Fmt.money(store.safeToSpendPaise)} today.');
     }
     if (_has(q, r'\b(screen|phone|usage)\b')) {
-      return msg('Screen ${Fmt.durCompact(store.screenTodayMin)} of ${Fmt.durCompact(store.screenLineMin)} line. Social is 13 min over. Recommend arming Night Shield.');
+      return msg('No data for screen time. The usage-access bridge is not built yet.');
     }
 
     if (store.toggles['cloudAi'] == true) {

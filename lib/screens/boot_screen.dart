@@ -17,6 +17,7 @@ import '../services/sfx.dart';
 import '../services/notifications.dart';
 import '../services/steps.dart';
 import '../vigil/vigil.dart';
+import 'drive_sheet.dart';
 
 /// 00 · Boot · Onboarding
 class BootScreen extends ConsumerStatefulWidget {
@@ -209,7 +210,15 @@ class _BootScreenState extends ConsumerState<BootScreen> {
                 child: VigilButton(
                   label: 'Restore from Drive',
                   variant: VigilButtonVariant.ghost,
-                  onPressed: () => showVigilSnack(context, 'Drive restore needs Google sign-in. Not built yet'),
+                  onPressed: () async {
+                    if (!GoogleAccounts.instance.hasAny) {
+                      showVigilSnack(context, 'Link your Google account first, then restore');
+                      context.push('/loadout/accounts');
+                      return;
+                    }
+                    await showDriveSheet(context, s);
+                    if (s.booted && context.mounted) context.go('/');
+                  },
                 ),
               ),
             ],

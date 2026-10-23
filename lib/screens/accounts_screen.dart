@@ -195,7 +195,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         Text('Google only lets an app use calendars once its owner registers it. This takes about five minutes and costs nothing.', style: t.caption.copyWith(color: c.textMuted)),
         const SizedBox(height: 12),
         step('1', 'Open console.cloud.google.com and create a project.'),
-        step('2', 'APIs & Services, Library: enable Google Calendar API.'),
+        step('2', 'APIs & Services, Library: enable Google Calendar API, and Google Drive API if you want backup.'),
         step('3', 'OAuth consent screen: user type External. Add both Gmail addresses under Test users.'),
         step('4', 'Credentials, Create credentials, OAuth client ID, type Android. Use the package name and SHA-1 below.'),
         step('5', 'Come back here and link each account.'),

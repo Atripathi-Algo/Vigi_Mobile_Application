@@ -101,36 +101,24 @@ class VigilStore extends ChangeNotifier {
   Set<String> _hiddenNights = <String>{};
 
   // ---- screen -----------------------------------------------------------
-  final int screenTodayMin = 192;
-  final int screenLineMin = 210;
-  final int screenAvgMin = 228;
-  final List<AppCategory> categories = const <AppCategory>[
-    AppCategory('Social', 78, 65),
-    AppCategory('Video', 42, 60),
-    AppCategory('Messaging', 36, 60),
-    AppCategory('Work', 22, null),
-    AppCategory('Browser', 14, null),
-  ];
-  final List<double> hourly = const <double>[0, 0, 0, 0, 0, 0, 6, 11, 9, 4, 5, 6, 12, 8, 5, 7, 6, 14, 19, 22, 24, 18, 6, 0];
   bool nightShieldArmed = false;
 
   // ---- ledger -----------------------------------------------------------
-  final int monthBudgetPaise = 4000000;
-  static const Map<String, int> categoryBase = <String, int>{'FOOD': 842000, 'BILLS': 720000, 'SHOPPING': 390000, 'TRANSPORT': 364000, 'OTHER': 170000};
-  static const Map<String, int> categoryBudget = <String, int>{'FOOD': 700000, 'BILLS': 900000, 'SHOPPING': 600000, 'TRANSPORT': 500000, 'OTHER': 1300000};
+  /// Set by the user; 0 means no budget yet.
+  int monthBudgetPaise = 0;
   late List<Bill> bills;
   late List<Txn> txns;
 
   // ---- field log --------------------------------------------------------
   late List<Note> notes;
-  int logStreak = 15;
+  int logStreak = 0;
   String? sealedAt;
   int sealedMood = 2;
   String logDraft = '';
   int logMood = 2;
 
   // ---- deep ops ---------------------------------------------------------
-  int focusTodayMin = 130;
+  int focusTodayMin = 0;
   final int focusTargetMin = 240;
   int deepSessionsDone = 0;
   bool shieldSilence = true;
@@ -162,29 +150,11 @@ class VigilStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Every list starts empty: the app shows only what the user logs, the calendar returns, or a sensor reports.
   void _seed() {
-    final DateTime now = DateTime.now();
-    final int t = now.millisecondsSinceEpoch;
-    objectives = <Objective>[
-      Objective(id: 'o1', title: 'Submit client deck v2', threat: Threat.crit, dueMin: 20 * 60, sub: '3/5', estimate: 90),
-      Objective(id: 'o2', title: 'Reply to legal on NDA', threat: Threat.high, dueMin: 17 * 60),
-      Objective(id: 'o3', title: 'Book dentist appointment', threat: Threat.high, dueMin: 21 * 60, tag: 'HOME'),
-      Objective(id: 'o4', title: 'Prep Monday standup', threat: Threat.high, dueLabel: 'FRI', estimate: 30),
-      Objective(id: 'o5', title: 'Renew car insurance', tag: 'HOME'),
-      Objective(id: 'o6', title: 'Read 20 pages', tag: 'HOME', recurring: true),
-      Objective(id: 'c1', title: 'Pay electricity bill', tag: 'HOME', done: true, doneAt: t),
-      Objective(id: 'c2', title: 'Send weekly report', threat: Threat.high, done: true, doneAt: t),
-      Objective(id: 'c3', title: 'Review pull requests', done: true, doneAt: t),
-    ];
-    blocks = _sampleBlocks();
-    protocols = <Protocol>[
-      Protocol(id: 'p1', name: 'Read 20 pages', streak: 12, week: <bool>[true, true, true, true, true, true, false], unit: 'pages', target: 20),
-      Protocol(id: 'p2', name: 'Workout 30 min', streak: 0, missedDays: 2, week: <bool>[true, true, true, true, false, false, false], unit: 'min', target: 30),
-      Protocol(id: 'p3', name: 'Hydrate 3 L', streak: 4, week: <bool>[false, true, true, true, true, true, true], doneToday: true),
-      Protocol(id: 'p4', name: 'Lights out by 23:00', streak: 3, week: <bool>[false, false, false, false, true, true, false]),
-      Protocol(id: 'p5', name: 'Meditate 10 min', streak: 20, week: List<bool>.filled(7, true), doneToday: true, unit: 'min', target: 10),
-      Protocol(id: 'p6', name: 'No added sugar', streak: 6, week: List<bool>.filled(7, true), doneToday: true),
-    ];
+    objectives = <Objective>[];
+    blocks = <Block>[];
+    protocols = <Protocol>[];
     schedule = <ScheduleRow>[
       ScheduleRow(night: 'MON → TUE', bed: 23 * 60, wake: 6 * 60 + 30),
       ScheduleRow(night: 'TUE → WED', bed: 23 * 60, wake: 6 * 60 + 30),
@@ -198,35 +168,10 @@ class VigilStore extends ChangeNotifier {
     weights = <WeightPoint>[];
     restingHr = null;
     healthSyncedAt = null;
-    bills = <Bill>[
-      Bill(id: 'bl1', name: 'Electricity', due: 'TODAY', paise: 184000, dueToday: true),
-      Bill(id: 'bl2', name: 'Broadband', due: '25 OCT', paise: 99900),
-      Bill(id: 'bl3', name: 'Mobile postpaid', due: '28 OCT', paise: 59900),
-    ];
-    final DateTime yday = DateTime(now.year, now.month, now.day).subtract(const Duration(hours: 4));
-    txns = <Txn>[
-      Txn(id: 't1', title: 'Swiggy', category: 'FOOD', paise: 18000, at: now.subtract(const Duration(hours: 1, minutes: 20))),
-      Txn(id: 't2', title: 'Uber', category: 'TRANSPORT', paise: 24500, at: now.subtract(const Duration(hours: 5))),
-      Txn(id: 't3', title: 'Metro recharge', category: 'TRANSPORT', paise: 50000, at: yday),
-      Txn(id: 't4', title: 'Groceries', category: 'FOOD', paise: 112000, at: yday.subtract(const Duration(hours: 3))),
-    ];
-    notes = <Note>[
-      Note(id: 'n1', title: 'Q4 priorities', body: 'Ship deck, close vendor contract, hire intern.', kind: NoteKind.pinned, at: now.subtract(const Duration(days: 3))),
-      Note(id: 'n2', title: 'Voice memo · taxi idea', body: 'Transcript: build a quick split-fare view.', kind: NoteKind.voice, at: now.subtract(const Duration(hours: 2))),
-      Note(id: 'n3', title: 'Gift ideas for Mom', body: 'Scarf, book, tea set.', at: now.subtract(const Duration(days: 1))),
-    ];
+    bills = <Bill>[];
+    txns = <Txn>[];
+    notes = <Note>[];
   }
-
-  List<Block> _sampleBlocks() => <Block>[
-        Block(id: 'b1', kind: BlockKind.event, title: 'Daily standup', startMin: 9 * 60, endMin: 9 * 60 + 30, attendees: 6),
-        Block(id: 'b2', kind: BlockKind.focus, title: 'Deep ops · client deck', startMin: 10 * 60, endMin: 12 * 60),
-        Block(id: 'b3', kind: BlockKind.personal, title: 'Lunch', startMin: 13 * 60, endMin: 14 * 60),
-        Block(id: 'b4', kind: BlockKind.event, title: 'Vendor sync', startMin: 15 * 60, endMin: 16 * 60 + 30, attendees: 4),
-        Block(id: 'b5', kind: BlockKind.focus, title: 'Deep ops · review', startMin: 17 * 60, endMin: 18 * 60 + 30),
-        Block(id: 'b6', kind: BlockKind.event, title: 'Intern review sync', startMin: 19 * 60, endMin: 19 * 60 + 45, attendees: 3),
-        Block(id: 'b7', kind: BlockKind.event, title: 'Budget call', startMin: 19 * 60 + 30, endMin: 20 * 60 + 15, attendees: 2),
-        Block(id: 'b8', kind: BlockKind.task, title: 'Submit client deck v2', startMin: 20 * 60, endMin: 20 * 60 + 30),
-      ];
 
   static String dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
 
@@ -254,12 +199,9 @@ class VigilStore extends ChangeNotifier {
       (jsonDecode(ls) as Map<String, dynamic>).forEach((String k, dynamic v) => linkStatus[k] = v as String);
     }
     logStreak = _prefs.getInt('logStreak') ?? logStreak;
-    final List<String>? paid = _prefs.getStringList('billsPaid');
-    if (paid != null) {
-      for (final Bill b in bills) {
-        b.paid = paid.contains(b.id);
-      }
-    }
+    monthBudgetPaise = _prefs.getInt('budget') ?? 0;
+    final String? bj = _prefs.getString('bills');
+    if (bj != null) bills = (jsonDecode(bj) as List<dynamic>).map((dynamic e) => Bill.fromJson(e as Map<String, dynamic>)).toList();
     final String? ob = _prefs.getString('objectives');
     if (ob != null) {
       objectives = (jsonDecode(ob) as List<dynamic>).map((dynamic e) => Objective.fromJson(e as Map<String, dynamic>)).toList();
@@ -296,11 +238,11 @@ class VigilStore extends ChangeNotifier {
     final bool sameDay = lastDay == today;
     final String? pr = _prefs.getString('protocols');
     if (pr != null) {
-      final Map<String, dynamic> byId = <String, dynamic>{for (final dynamic e in jsonDecode(pr) as List<dynamic>) (e as Map<String, dynamic>)['id'] as String: e};
-      for (final Protocol p in protocols) {
-        final dynamic j = byId[p.id];
-        if (j != null) p.applyJson(j as Map<String, dynamic>);
-      }
+      // Older builds saved only the state of built-in protocols (no name); those were sample data.
+      protocols = <Protocol>[
+        for (final dynamic e in jsonDecode(pr) as List<dynamic>)
+          if ((e as Map<String, dynamic>).containsKey('name')) Protocol.fromJson(e),
+      ];
     }
     final String? bl = _prefs.getString('blocks');
     if (bl != null) {
@@ -334,11 +276,23 @@ class VigilStore extends ChangeNotifier {
           o.doneAt = null;
         }
       }
-      // Fresh sample day; keep anything the user or the calendar added.
-      blocks = <Block>[..._sampleBlocks(), ...blocks.where((Block b) => !b.isSample && (b.dayKey == null ? false : _keyAtOrAfter(b.dayKey!, now)))];
+      // A new day: keep only blocks that are still ahead.
+      blocks = blocks.where((Block b) => b.dayKey != null && _keyAtOrAfter(b.dayKey!, now)).toList();
       steps = null;
     }
     nightShieldArmed = _prefs.getBool('nightShield') ?? false;
+
+    // Builds up to v1.3 seeded sample objectives, notes, spend, blocks and streaks. Drop what is left of them once.
+    if (!(_prefs.getBool('realData1') ?? false)) {
+      objectives.removeWhere((Objective o) => RegExp(r'^[oc]\d$').hasMatch(o.id));
+      notes.removeWhere((Note n) => RegExp(r'^n\d$').hasMatch(n.id));
+      txns.removeWhere((Txn t) => RegExp(r'^t\d$').hasMatch(t.id));
+      blocks.removeWhere((Block b) => RegExp(r'^(b\d+|x\d+-\d+)$').hasMatch(b.id));
+      logStreak = 0;
+      focusTodayMin = 0;
+      _prefs.setBool('realData1', true);
+      _save();
+    }
   }
 
   static DateTime? _parseDayKey(String k) {
@@ -369,7 +323,8 @@ class VigilStore extends ChangeNotifier {
       ..setString('toggles', jsonEncode(toggles))
       ..setString('links', jsonEncode(linkStatus))
       ..setInt('logStreak', logStreak)
-      ..setStringList('billsPaid', bills.where((Bill b) => b.paid).map((Bill b) => b.id).toList())
+      ..setString('bills', jsonEncode(bills.map((Bill b) => b.toJson()).toList()))
+      ..setInt('budget', monthBudgetPaise)
       ..setString('objectives', jsonEncode(objectives.map((Objective o) => o.toJson()).toList()))
       ..setString('notes', jsonEncode(notes.map((Note n) => n.toJson()).toList()))
       ..setString('txns', jsonEncode(txns.map((Txn t) => t.toJson()).toList()))
@@ -485,9 +440,10 @@ class VigilStore extends ChangeNotifier {
     insightApplied = false;
     nightShieldArmed = false;
     justResolved = false;
-    focusTodayMin = 130;
+    focusTodayMin = 0;
     deepSessionsDone = 0;
-    logStreak = 15;
+    logStreak = 0;
+    monthBudgetPaise = 0;
     sealedAt = null;
     sealedMood = 2;
     logDraft = '';
@@ -558,14 +514,7 @@ class VigilStore extends ChangeNotifier {
   List<Block> blocksFor(DateTime day) {
     final DateTime t = DateTime.now();
     if (day.year == t.year && day.month == t.month && day.day == t.day) return todayBlocks;
-    final int seed = day.weekday;
-    return <Block>[
-      Block(id: 'x$seed-1', kind: BlockKind.event, title: 'Team sync', startMin: 9 * 60 + 30, endMin: 10 * 60, attendees: 5),
-      if (seed.isEven) Block(id: 'x$seed-2', kind: BlockKind.focus, title: 'Deep ops block', startMin: 11 * 60, endMin: 13 * 60),
-      if (seed % 3 != 0) Block(id: 'x$seed-3', kind: BlockKind.event, title: 'Client call', startMin: 15 * 60, endMin: 16 * 60, attendees: 2),
-      if (seed == 6 || seed == 7) Block(id: 'x$seed-4', kind: BlockKind.personal, title: 'Family time', startMin: 18 * 60, endMin: 20 * 60),
-      ...blocks.where((Block b) => b.dayKey == dayKey(day)),
-    ];
+    return blocks.where((Block b) => b.dayKey == dayKey(day)).toList();
   }
 
   /// First overlapping pair of events today, or null.
@@ -643,17 +592,25 @@ class VigilStore extends ChangeNotifier {
 
   int get protocolsDone => protocols.where((Protocol p) => p.doneToday).length;
 
-  /// 12 weeks x 7 days of levels 0-4 (oldest first); -1 is a future day. Deterministic.
-  List<List<int>> get heatmap {
-    final math.Random r = math.Random(22);
-    final int todayIdx = DateTime.now().weekday - 1;
-    return List<List<int>>.generate(12, (int w) => List<int>.generate(7, (int d) {
-          final double base = 0.35 + w * 0.045;
-          final double v = r.nextDouble();
-          if (w == 11 && d > todayIdx) return -1;
-          if (v > base + 0.35) return 0;
-          return (v * 5 * (base + 0.5)).clamp(0, 4).floor();
-        }));
+  /// The last 7 days (oldest first) as levels 0-4: the share of protocols done that day. Empty with no protocols.
+  List<int> get weekLevels {
+    if (protocols.isEmpty) return const <int>[];
+    return List<int>.generate(7, (int d) {
+      final int done = protocols.where((Protocol p) => p.week[d]).length;
+      return done == 0 ? 0 : (done * 4 / protocols.length).ceil().clamp(1, 4);
+    });
+  }
+
+  void addProtocol(String name) {
+    final String n = name.trim();
+    if (n.isEmpty) return;
+    protocols.add(Protocol(id: nextId(), name: n, streak: 0, week: List<bool>.filled(7, false)));
+    changed();
+  }
+
+  void removeProtocol(String id) {
+    protocols.removeWhere((Protocol p) => p.id == id);
+    changed();
   }
 
   // =========================================================================
@@ -901,36 +858,45 @@ class VigilStore extends ChangeNotifier {
   }
 
   // ---- ledger -----------------------------------------------------------
-  int get monthSpentPaise => categoryBase.values.fold(0, (int a, int b) => a + b) + userSpend.fold(0, (int a, Txn t) => a + t.paise).toInt();
+  /// This month's spend only.
+  List<Txn> get monthTxns {
+    final DateTime n = DateTime.now();
+    return txns.where((Txn t) => t.at.year == n.year && t.at.month == n.month).toList();
+  }
 
-  List<Txn> get userSpend => txns.where((Txn t) => t.isUser).toList();
+  int get monthSpentPaise => monthTxns.fold(0, (int a, Txn t) => a + t.paise);
 
   Map<String, int> get categorySpend {
-    final Map<String, int> m = Map<String, int>.of(categoryBase);
-    for (final Txn t in userSpend) {
+    final Map<String, int> m = <String, int>{};
+    for (final Txn t in monthTxns) {
       m[t.category] = (m[t.category] ?? 0) + t.paise;
     }
     return m;
   }
 
-  /// Worst category versus its budget at today's pace, as a whole percent over, or null.
-  (String, int)? get overPaceCategory {
-    final DateTime now = DateTime.now();
-    final double pace = now.day / DateUtils2.daysInMonth(now);
-    (String, int)? worst;
-    categorySpend.forEach((String k, int v) {
-      final int budget = categoryBudget[k] ?? 0;
-      if (budget == 0) return;
-      final int over = ((v / (budget * pace) - 1) * 100).round();
-      if (over > 0 && (worst == null || over > worst!.$2)) worst = (k, over);
-    });
-    return worst;
+  /// Whole percent of the month's budget spent, or null while no budget is set.
+  int? get monthSpentPercent => monthBudgetPaise <= 0 ? null : (monthSpentPaise * 100 / monthBudgetPaise).round();
+
+  void setBudget(int paise) {
+    monthBudgetPaise = math.max(0, paise);
+    changed();
+  }
+
+  void addBill(String name, int paise, DateTime due) {
+    bills.add(Bill(id: nextId(), name: name.trim(), dueAt: due, paise: paise));
+    bills.sort((Bill a, Bill b) => a.dueAt.compareTo(b.dueAt));
+    changed();
+  }
+
+  void removeBill(String id) {
+    bills.removeWhere((Bill b) => b.id == id);
+    changed();
   }
 
   int get safeToSpendPaise {
     final DateTime now = DateTime.now();
     final int daysLeft = DateUtils2.daysInMonth(now) - now.day + 1;
-    return math.max(0, (monthBudgetPaise - monthSpentPaise) ~/ daysLeft);
+    return monthBudgetPaise <= 0 ? 0 : math.max(0, (monthBudgetPaise - monthSpentPaise) ~/ daysLeft);
   }
 
   int yesterdaySpendPaise(DateTime now) {
@@ -1010,8 +976,7 @@ class VigilStore extends ChangeNotifier {
       'water_target': waterTargetMl,
       'steps': steps,
       'sleep': <String, dynamic>{'last_asleep_min': lastNight?.asleep, 'debt_min': hasSleepStats ? debtMin : null, 'tonight_bed': Fmt.hm(recommendedBed), 'wake': Fmt.hm(tonightRow.wake)},
-      'screen': <String, dynamic>{'today_min': screenTodayMin, 'line_min': screenLineMin},
-      'ledger': <String, dynamic>{'spent_paise': monthSpentPaise, 'budget_paise': monthBudgetPaise},
+      'ledger': <String, dynamic>{'spent_paise': monthSpentPaise, 'budget_paise': monthBudgetPaise == 0 ? null : monthBudgetPaise},
       'persona': persona.name,
       'verbosity': verbosity.name,
     });

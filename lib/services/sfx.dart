@@ -44,10 +44,15 @@ abstract final class SfxService {
         respectSilence: true,
         stayAwake: false,
       ).build());
+      // One sound failing to load must not silence the rest.
       for (final Sfx s in Sfx.values) {
-        _pools[s] = await AudioPool.createFromAsset(path: 'audio/sfx_${s.name}.wav', maxPlayers: 2, playerMode: PlayerMode.lowLatency);
+        try {
+          _pools[s] = await AudioPool.createFromAsset(path: 'audio/sfx_${s.name}.wav', maxPlayers: 2, playerMode: PlayerMode.lowLatency);
+        } catch (e) {
+          debugPrint('Sound ${s.name} did not load: $e');
+        }
       }
-      _ready = true;
+      _ready = _pools.isNotEmpty;
     } catch (e) {
       debugPrint('Sound effects unavailable: $e');
     }
@@ -61,6 +66,40 @@ abstract final class SfxService {
 
   static void play(Sfx s) {
     if (!enabled || !_ready) return;
-    _pools[s]?.start(volume: volume).then((_) {}, onError: (Object e) => debugPrint('Sfx ${s.name} failed: $e'));
+    final AudioPool? pool = _pools[s];
+    if (pool == null) {
+      preview('sfx_${s.name}', volume: volume);
+      return;
+    }
+    // If the low-latency pool cannot start, fall back to a normal player.
+    pool.start(volume: volume).then((_) {}, onError: (Object e) {
+      debugPrint('Sfx ${s.name} failed: $e');
+      preview('sfx_${s.name}', volume: volume);
+    });
+  }
+
+  static AudioPlayer? _previewPlayer;
+
+  /// Plays `assets/audio/[asset].wav` once on the media stream, whatever the effects switch says. This is what
+  /// the Loadout previews use, so they are audible at media volume even when the effect pools or notification
+  /// channels are not. Returns a message when playback fails, null when it started.
+  static Future<String?> preview(String asset, {double volume = 1}) async {
+    try {
+      final AudioPlayer? old = _previewPlayer;
+      _previewPlayer = null;
+      if (old != null) {
+        await old.stop();
+        await old.dispose();
+      }
+      final AudioPlayer p = AudioPlayer();
+      _previewPlayer = p;
+      await p.setAudioContext(AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers, respectSilence: false).build());
+      await p.setReleaseMode(ReleaseMode.stop);
+      await p.play(AssetSource('audio/$asset.wav'), volume: volume);
+      return null;
+    } catch (e) {
+      debugPrint('Preview $asset failed: $e');
+      return 'Could not play the sound: ${e.toString().split('\n').first}';
+    }
   }
 }

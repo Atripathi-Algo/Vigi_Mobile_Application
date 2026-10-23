@@ -11,37 +11,7 @@ import 'package:vigil/data/store.dart';
 import 'package:vigil/services/calendar_sync.dart';
 import 'package:vigil/services/google_accounts.dart';
 
-class FakeGoogle implements GoogleAuthPlatform {
-  FakeGoogle({List<String?>? picks, Map<String, AuthResult>? auth})
-      : picks = picks ?? <String?>[],
-        auth = auth ?? <String, AuthResult>{};
-
-  final List<String?> picks;
-  final Map<String, AuthResult> auth;
-  final List<String> revoked = <String>[];
-  final List<bool> interactiveCalls = <bool>[];
-  bool playServices = true;
-
-  @override
-  Future<bool> available() async => playServices;
-
-  @override
-  Future<String?> signingSha1() async => 'AA:BB';
-
-  @override
-  Future<String?> pickAccount() async => picks.isEmpty ? null : picks.removeAt(0);
-
-  @override
-  Future<AuthResult> authorize(String email, {required bool interactive}) async {
-    interactiveCalls.add(interactive);
-    return auth[email] ?? const AuthResult(AuthStatus.error, message: 'no such account');
-  }
-
-  @override
-  Future<void> revoke(String email) async => revoked.add(email);
-}
-
-AuthResult tokenFor(String t) => AuthResult(AuthStatus.ok, token: t);
+import 'support/fake_google.dart';
 
 http.Response json(int code, Object body) => http.Response(jsonEncode(body), code, headers: <String, String>{'content-type': 'application/json'});
 

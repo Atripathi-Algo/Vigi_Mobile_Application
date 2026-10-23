@@ -16,6 +16,13 @@ import '../services/push.dart';
 import '../services/sfx.dart';
 import '../services/steps.dart';
 import '../vigil/vigil.dart';
+import 'drive_sheet.dart';
+
+/// Plays a sound for the previews, and says so when it cannot.
+Future<void> _preview(BuildContext context, String asset, {double volume = 1}) async {
+  final String? err = await SfxService.preview(asset, volume: volume);
+  if (err != null && context.mounted) showVigilSnack(context, err);
+}
 
 /// 20 · Loadout · Settings
 class LoadoutScreen extends ConsumerWidget {
@@ -169,7 +176,7 @@ class LoadoutScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 4),
-              Text('ALERT SOUNDS FOLLOW THE PHONE\'S NOTIFICATION VOLUME', style: t.micro.copyWith(color: c.textFaint, fontSize: 9)),
+              Text('PREVIEWS PLAY AT MEDIA VOLUME. REAL ALERTS FOLLOW THE NOTIFICATION VOLUME', style: t.micro.copyWith(color: c.textFaint, fontSize: 9)),
             ]),
           ),
           Padding(
@@ -178,7 +185,8 @@ class LoadoutScreen extends ConsumerWidget {
               Text('PREVIEW EFFECTS', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-                for (final Sfx e in Sfx.values) VigilButton(label: e.name, variant: VigilButtonVariant.secondary, onPressed: () => SfxService.play(e)),
+                for (final Sfx e in Sfx.values)
+                  VigilButton(label: e.name, variant: VigilButtonVariant.secondary, onPressed: () => _preview(context, 'sfx_${e.name}', volume: SfxService.volume)),
               ]),
             ]),
           ),
@@ -188,12 +196,8 @@ class LoadoutScreen extends ConsumerWidget {
               Text('PREVIEW ALERT SOUNDS', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-                for (final (String, String) a in const <(String, String)>[('critical', 'critical'), ('ops', 'ops'), ('sleep', 'sleep'), ('briefings', 'briefing'), ('protocols', 'soft')])
-                  VigilButton(
-                    label: a.$2,
-                    variant: VigilButtonVariant.accent,
-                    onPressed: () => NotificationService.show('VIGIL // ${a.$2.toUpperCase()}', 'Alert sound preview', channel: a.$1, payload: '/loadout'),
-                  ),
+                for (final (String, String) a in const <(String, String)>[('bat_critical', 'critical'), ('bat_ops', 'ops'), ('bat_sleep', 'sleep'), ('bat_brief', 'briefing'), ('bat_soft', 'soft')])
+                  VigilButton(label: a.$2, variant: VigilButtonVariant.accent, onPressed: () => _preview(context, a.$1)),
               ]),
             ]),
           ),
@@ -264,7 +268,12 @@ class LoadoutScreen extends ConsumerWidget {
               ]),
             ),
           ),
-          linkRow('Google Drive backup', 'Needs Google sign-in', 'OFF'),
+          linkRow(
+            'Google Drive backup',
+            accounts.hasAny ? 'Private app folder · back up or restore' : 'Link a Google account first',
+            accounts.hasAny ? 'OPEN' : 'ASK',
+            onTap: () => accounts.hasAny ? showDriveSheet(context, s) : context.push('/loadout/accounts'),
+          ),
           linkRow('Export data', 'Copy JSON snapshot', 'OPEN', onTap: () async {
             await Clipboard.setData(ClipboardData(text: s.sitrep(DateTime.now())));
             if (context.mounted) showVigilSnack(context, 'Snapshot copied');

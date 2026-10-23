@@ -74,7 +74,7 @@ android/       manifest, widget providers and layouts, Google sign-in bridge (Ko
 
 Built: all screens and routes, design system, local persistence (SharedPreferences) with day rollover, capture parser, readiness and sleep recommender, rules-based assistant, env-driven weather, calendar and cloud AI calls, local notifications, optional Firebase push, step counter, home-screen widgets, API keys screen, **model picker with cost badges, two linked Google accounts (calendar read and add)**, **Health Connect sleep, weight and resting heart rate (read-only) with manual logging as a fallback**.
 
-Not built: usage stats, wake alarm, biometric lock, voice (STT/TTS), Drive backup, encrypted SQLite, per-app limits. The Screen tab and the Ledger categories still show sample data and say so.
+Not built: usage stats (so the Screen tab says "No data"), wake alarm, biometric lock, voice (STT/TTS), encrypted SQLite, per-app limits.
 
 ### Choosing a model (Loadout, API keys & services, Cloud AI)
 
@@ -93,6 +93,14 @@ It uses Google's own Android authorization, so **no secret or redirect is stored
 5. Open Loadout, Google accounts, Link account.
 
 While the consent screen is in Testing, Google asks you to approve again every 7 days (the screen then shows APPROVE AGAIN). Set the publishing status to **In production** to stop that; Google shows an "unverified app" screen once, which is fine for your own use (limit 100 users). Needs Google Play services on the phone. Not verified against a live Google account yet.
+
+### Real data only
+
+The app starts empty and shows only what you log, what your calendars return, or what a sensor reports. Add protocols (+ on Protocols), bills (+ in the Ledger) and a monthly budget (Ledger, Set budget); log spend and objectives with Capture. Long-press a protocol or bill to delete it. Sample data from builds up to v1.3 is removed once on first launch of a newer build; your own entries stay.
+
+### Google Drive backup (Loadout, Google Drive backup)
+
+Needs a linked Google account (above) and the **Google Drive API** enabled in the same Cloud project. Back up and restore use a private app folder on that account's Drive: one file, invisible in your Drive and to other apps (scope `drive.appdata`). It holds objectives, protocols, ledger, notes, sleep and settings, never API keys or linked accounts. Restore asks first, checks the file before erasing anything, and is also on the first-run screen. Google asks you to approve Drive once. Not verified against a live Google account yet.
 
 ### Sleep and body data
 

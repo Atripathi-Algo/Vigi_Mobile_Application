@@ -110,13 +110,11 @@ class Block {
   int endMin;
   int attendees;
 
-  /// `yyyy-m-d`. Null means "today" (sample day).
+  /// `yyyy-m-d`. Null means today.
   String? dayKey;
 
   /// Which calendar a pulled event came from (a linked account's label, or PUBLIC); `A+B` when it is in both.
   final String? src;
-
-  bool get isSample => RegExp(r'^b\d+$').hasMatch(id);
 
   bool overlaps(Block o) => startMin < o.endMin && o.startMin < endMin;
 
@@ -180,7 +178,21 @@ class Protocol {
         'done': doneToday,
         'missed': missedDays,
         'week': week,
+        'name': name,
+        if (unit != null) 'unit': unit,
+        if (target != null) 'target': target,
       };
+
+  factory Protocol.fromJson(Map<String, dynamic> j) => Protocol(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        streak: j['streak'] as int,
+        week: (j['week'] as List<dynamic>).map((dynamic e) => e as bool).toList(),
+        doneToday: j['done'] as bool,
+        missedDays: j['missed'] as int,
+        unit: j['unit'] as String?,
+        target: j['target'] as int?,
+      );
 
   void applyJson(Map<String, dynamic> j) {
     streak = j['streak'] as int;
@@ -218,8 +230,6 @@ class Txn {
   final int paise;
   final DateTime at;
 
-  bool get isUser => id.contains('-');
-
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
         'title': title,
@@ -238,14 +248,33 @@ class Txn {
 }
 
 class Bill {
-  Bill({required this.id, required this.name, required this.due, required this.paise, this.dueToday = false, this.paid = false});
+  Bill({required this.id, required this.name, required this.dueAt, required this.paise, this.paid = false});
 
   final String id;
   final String name;
-  final String due;
+  final DateTime dueAt;
   final int paise;
-  final bool dueToday;
   bool paid;
+
+  static const List<String> _months = <String>['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+  bool get dueToday {
+    final DateTime n = DateTime.now();
+    return dueAt.year == n.year && dueAt.month == n.month && dueAt.day == n.day;
+  }
+
+  /// "TODAY" or "25 OCT".
+  String get due => dueToday ? 'TODAY' : '${dueAt.day} ${_months[dueAt.month - 1]}';
+
+  Map<String, dynamic> toJson() => <String, dynamic>{'id': id, 'name': name, 'due': dueAt.millisecondsSinceEpoch, 'paise': paise, 'paid': paid};
+
+  factory Bill.fromJson(Map<String, dynamic> j) => Bill(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        dueAt: DateTime.fromMillisecondsSinceEpoch(j['due'] as int),
+        paise: j['paise'] as int,
+        paid: (j['paid'] as bool?) ?? false,
+      );
 }
 
 enum NoteKind { pinned, voice, note }
@@ -349,16 +378,6 @@ class ScheduleRow {
   int wake;
 
   int get inBed => 1440 + wake - bed;
-}
-
-class AppCategory {
-  const AppCategory(this.name, this.minutes, this.limit);
-
-  final String name;
-  final int minutes;
-  final int? limit;
-
-  bool get over => limit != null && minutes > limit!;
 }
 
 enum CaptureType { obj, event, note, spend, habit }

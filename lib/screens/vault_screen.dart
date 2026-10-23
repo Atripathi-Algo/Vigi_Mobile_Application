@@ -12,6 +12,7 @@ import '../data/store.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
+import 'data_sheets.dart';
 
 /// True while the Vault is unlocked. Locks again after 60 s in the background.
 final StateProvider<bool> vaultUnlocked = StateProvider<bool>((Ref ref) => false);
@@ -113,9 +114,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final int daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
     final double pace = now.day / daysInMonth;
     final int spent = s.monthSpentPaise;
-    final bool overPace = spent / s.monthBudgetPaise > pace;
+    final bool hasBudget = s.monthBudgetPaise > 0;
+    final bool overPace = hasBudget && spent / s.monthBudgetPaise > pace;
     final Map<String, int> cats = s.categorySpend;
-    final (String, int)? overCat = s.overPaceCategory;
     final List<Color> palette = <Color>[c.signal, c.steel, c.text, c.textMuted, c.neutral];
     final int totalCats = cats.values.fold(0, (int a, int b) => a + b);
     final List<Txn> recent = s.txns.take(6).toList();
@@ -126,53 +127,72 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
           Row(children: <Widget>[
             Expanded(child: Text('${DateFormatMonth.name(now)} · DAY ${now.day} / $daysInMonth', style: t.label.copyWith(color: c.textFaint))),
-            Text(overPace ? 'OVER PACE' : 'UNDER PACE', style: t.label.copyWith(color: overPace ? c.critical : c.signal)),
+            Text(hasBudget ? (overPace ? 'OVER PACE' : 'UNDER PACE') : 'NO BUDGET', style: t.label.copyWith(color: hasBudget ? (overPace ? c.critical : c.signal) : c.textFaint)),
           ]),
           const SizedBox(height: 10),
           Text.rich(TextSpan(children: <InlineSpan>[
             TextSpan(text: Fmt.money(spent), style: t.hero.copyWith(fontSize: 34)),
-            TextSpan(text: ' / ${Fmt.money(s.monthBudgetPaise)}', style: t.metric.copyWith(color: c.textMuted, fontSize: 16)),
+            if (hasBudget) TextSpan(text: ' / ${Fmt.money(s.monthBudgetPaise)}', style: t.metric.copyWith(color: c.textMuted, fontSize: 16)),
           ])),
           const SizedBox(height: 10),
-          SegmentBar(fraction: spent / s.monthBudgetPaise, thickness: 8, marker: pace, color: overPace ? c.critical : c.signal),
-          const SizedBox(height: 10),
-          Row(children: <Widget>[
-            Expanded(child: Text('SAFE TO SPEND TODAY ${Fmt.money(s.safeToSpendPaise)}', style: t.meta.copyWith(color: c.text))),
-            Text('PACE ${(pace * 100).round()}%', style: t.meta.copyWith(color: c.textMuted)),
-          ]),
+          if (hasBudget) ...<Widget>[
+            SegmentBar(fraction: (spent / s.monthBudgetPaise).clamp(0, 1).toDouble(), thickness: 8, marker: pace, color: overPace ? c.critical : c.signal),
+            const SizedBox(height: 10),
+            Row(children: <Widget>[
+              Expanded(child: Text('SAFE TO SPEND TODAY ${Fmt.money(s.safeToSpendPaise)}', style: t.meta.copyWith(color: c.text))),
+              Text('PACE ${(pace * 100).round()}%', style: t.meta.copyWith(color: c.textMuted)),
+            ]),
+          ] else
+            Text('Set a monthly budget to see pace and a safe daily spend.', style: t.caption.copyWith(color: c.textMuted)),
+          const SizedBox(height: 12),
+          Align(alignment: Alignment.centerLeft, child: VigilButton(label: hasBudget ? 'Change budget' : 'Set budget', variant: VigilButtonVariant.secondary, onPressed: () => showBudgetSheet(context, s))),
         ]),
       ),
-      const SizedBox(height: 12),
-      VigilCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-          SectionLabel('By category', trailing: overCat == null ? 'ON PACE' : '${overCat.$1} +${overCat.$2}% OVER PACE', trailingColor: overCat == null ? null : c.critical),
-          const SizedBox(height: 10),
-          Row(children: <Widget>[
-            for (int i = 0; i < cats.length; i++)
-              Expanded(flex: cats.values.elementAt(i), child: Container(height: 10, margin: EdgeInsets.only(right: i == cats.length - 1 ? 0 : 2), color: palette[i])),
+      if (cats.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 12),
+        VigilCard(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+            const SectionLabel('By category'),
+            const SizedBox(height: 10),
+            Row(children: <Widget>[
+              for (int i = 0; i < cats.length; i++)
+                Expanded(flex: cats.values.elementAt(i), child: Container(height: 10, margin: EdgeInsets.only(right: i == cats.length - 1 ? 0 : 2), color: palette[i])),
+            ]),
+            const SizedBox(height: 10),
+            Wrap(runSpacing: 6, children: <Widget>[
+              for (int i = 0; i < cats.length; i++)
+                FractionallySizedBox(
+                  widthFactor: 0.5,
+                  child: Row(children: <Widget>[
+                    SizedBox(width: 8, height: 8, child: ColoredBox(color: palette[i])),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text('${cats.keys.elementAt(i)} ${Fmt.money(cats.values.elementAt(i))}', style: t.meta.copyWith(color: c.text, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  ]),
+                ),
+            ]),
+            const SizedBox(height: 2),
+            Text('TOTAL ${Fmt.money(totalCats)}', style: t.micro.copyWith(color: c.textFaint)),
           ]),
-          const SizedBox(height: 10),
-          Wrap(runSpacing: 6, children: <Widget>[
-            for (int i = 0; i < cats.length; i++)
-              FractionallySizedBox(
-                widthFactor: 0.5,
-                child: Row(children: <Widget>[
-                  SizedBox(width: 8, height: 8, child: ColoredBox(color: palette[i])),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('${cats.keys.elementAt(i)} ${Fmt.money(cats.values.elementAt(i))}', style: t.meta.copyWith(color: cats.keys.elementAt(i) == overCat?.$1 ? c.critical : c.text, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                ]),
-              ),
-          ]),
-          const SizedBox(height: 2),
-          Text('TOTAL ${Fmt.money(totalCats)}', style: t.micro.copyWith(color: c.textFaint)),
-        ]),
-      ),
+        ),
+      ],
       const SizedBox(height: 14),
-      Text('BILLS DUE', style: t.label.copyWith(color: c.textFaint)),
-      const SizedBox(height: 8),
-      RowList(children: <Widget>[
-        for (final Bill b in s.bills) _bill(context, s, b),
+      Row(children: <Widget>[
+        Expanded(child: Text('BILLS DUE', style: t.label.copyWith(color: c.textFaint))),
+        VigilIconButton(icon: VigilIcons.plus, semanticLabel: 'Add bill', onPressed: () => showAddBillSheet(context, s)),
       ]),
+      const SizedBox(height: 8),
+      if (s.bills.isEmpty)
+        const EmptyState(message: 'No bills added. Tap + to track one.')
+      else
+        RowList(children: <Widget>[
+          for (final Bill b in s.bills)
+            InkWell(
+              onLongPress: () async {
+                if (await confirmDelete(context, title: 'DELETE BILL?', message: '${b.name} is removed from the list.')) s.removeBill(b.id);
+              },
+              child: _bill(context, s, b),
+            ),
+        ]),
       const SizedBox(height: 14),
       if (recent.isEmpty)
         const EmptyState(message: 'Ledger clean. Log the first spend.')

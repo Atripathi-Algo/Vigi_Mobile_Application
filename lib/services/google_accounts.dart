@@ -7,6 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Read and add calendar events. Narrower than full calendar access.
 const String kCalendarScope = 'https://www.googleapis.com/auth/calendar.events';
 
+/// Drive's private app folder: VIGIL's own backup file, invisible in the user's Drive and to other apps.
+const String kDriveScope = 'https://www.googleapis.com/auth/drive.appdata';
+
 /// The Android package name the Google Cloud OAuth client must list.
 const String kAppPackage = 'com.algoanalytics.vigil';
 
@@ -42,8 +45,8 @@ abstract interface class GoogleAuthPlatform {
   /// Account chooser; the email chosen, or null if the user backed out.
   Future<String?> pickAccount();
 
-  /// Access token for [email] and the calendar scope. Without [interactive] it never opens a screen.
-  Future<AuthResult> authorize(String email, {required bool interactive});
+  /// Access token for [email] and [scopes]. Without [interactive] it never opens a screen.
+  Future<AuthResult> authorize(String email, {required bool interactive, List<String> scopes = const <String>[kCalendarScope]});
 
   Future<void> revoke(String email);
 }
@@ -89,11 +92,11 @@ class MethodChannelGoogleAuth implements GoogleAuthPlatform {
   }
 
   @override
-  Future<AuthResult> authorize(String email, {required bool interactive}) async {
+  Future<AuthResult> authorize(String email, {required bool interactive, List<String> scopes = const <String>[kCalendarScope]}) async {
     try {
       final Map<Object?, Object?>? r = await _call<Map<Object?, Object?>>('authorize', <String, Object?>{
         'email': email,
-        'scopes': <String>[kCalendarScope],
+        'scopes': scopes,
         'interactive': interactive,
       });
       return switch (r?['status']) {
@@ -110,7 +113,7 @@ class MethodChannelGoogleAuth implements GoogleAuthPlatform {
   @override
   Future<void> revoke(String email) async {
     try {
-      await _call<bool>('revoke', <String, Object?>{'email': email, 'scopes': <String>[kCalendarScope]});
+      await _call<bool>('revoke', <String, Object?>{'email': email, 'scopes': <String>[kCalendarScope, kDriveScope]});
     } on PlatformException {
       // The link is removed here either way; the user can also remove access in their Google account.
     }
@@ -233,6 +236,11 @@ class GoogleAccounts extends ChangeNotifier {
     markProblem(a, r.status == AuthStatus.consentNeeded ? 'Approve again: open Google accounts and link it once more.' : explainAuthError(r));
     return null;
   }
+
+  /// Token for another scope (Drive backup). [interactive] may open Google's approval screen, so only pass it
+  /// from a button press. Unlike [token], a failure here does not flag the account's calendar.
+  Future<AuthResult> authorizeScopes(GoogleAccount a, List<String> scopes, {bool interactive = false}) =>
+      _platform.authorize(a.email, interactive: interactive, scopes: scopes);
 
   void markOk(GoogleAccount a) {
     if (_notes.remove(a.email) != null) notifyListeners();

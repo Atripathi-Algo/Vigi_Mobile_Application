@@ -126,7 +126,7 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
                 : StatTile(label: 'Conditions', value: '${_wx!.tempC.round()}°C', caption: _wx!.summary),
           ),
           const SizedBox(width: 8),
-          Expanded(child: StatTile(label: 'Ledger', value: Fmt.money(s.yesterdaySpendPaise(now)), caption: 'YESTERDAY · MONTH ${(s.monthSpentPaise * 100 / s.monthBudgetPaise).round()}%')),
+          Expanded(child: StatTile(label: 'Ledger', value: Fmt.money(s.yesterdaySpendPaise(now)), caption: s.monthSpentPercent == null ? 'YESTERDAY · NO BUDGET' : 'YESTERDAY · MONTH ${s.monthSpentPercent}%')),
         ]),
         const SizedBox(height: 20),
         VigilButton(label: 'Acknowledge · Deploy', size: VigilButtonSize.large, expand: true, onPressed: () => context.go('/')),
