@@ -14,7 +14,6 @@ import '../services/google_accounts.dart';
 import '../services/health.dart';
 import '../services/local_brain.dart';
 import '../services/notifications.dart';
-import '../services/push.dart';
 import '../services/sfx.dart';
 import '../services/steps.dart';
 import '../vigil/vigil.dart';
@@ -82,32 +81,9 @@ class LoadoutScreen extends ConsumerWidget {
           child: Row(children: <Widget>[
             Container(width: 48, height: 48, decoration: BoxDecoration(border: Border.all(color: c.lineStrong), color: c.surfaceHigh), child: const Center(child: VigilEmblem(size: 28, semanticLabel: ''))),
             const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(s.fullName, style: t.title), Text('CALLSIGN ${s.callsign.toUpperCase()} · 24H CLOCK · ₹ INR', style: t.micro.copyWith(color: c.textFaint))])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(s.fullName.isEmpty ? s.nickname : s.fullName, style: t.title), Text('${s.nickname.isEmpty ? 'NO NICKNAME' : s.nickname.toUpperCase()} · 24H CLOCK · ₹ INR', style: t.micro.copyWith(color: c.textFaint))])),
           ]),
         ),
-        head('Signal'),
-        Row(children: <Widget>[
-          for (int i = 0; i < VigilPalette.signalOptions.length; i++) ...<Widget>[
-            if (i > 0) const SizedBox(width: 10),
-            Expanded(
-              child: Semantics(
-                button: true,
-                selected: s.accentIndex == i,
-                label: <String>['Signal yellow', 'Cyan', 'Orange', 'White', 'Thor'][i],
-                excludeSemantics: true,
-                child: InkWell(
-                  onTap: () => s.setAccent(i),
-                  child: Container(
-                    height: 48,
-                    decoration: BoxDecoration(border: Border.all(color: s.accentIndex == i ? c.text : c.lineStrong, width: s.accentIndex == i ? 2 : 1)),
-                    padding: const EdgeInsets.all(6),
-                    child: ColoredBox(color: VigilPalette.signalOptions[i], child: i == VigilPalette.thorIndex ? const Center(child: Icon(Icons.bolt, size: 24, color: Color(0xFF03101C))) : null),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ]),
         head('$kAssistantName · Brain'),
         RowList(children: <Widget>[
           linkRow(
@@ -139,42 +115,25 @@ class LoadoutScreen extends ConsumerWidget {
         ),
         head('API keys'),
         RowList(children: <Widget>[
-          linkRow('API keys & services', 'Cloud AI · Calendar · Weather · Firebase · Backend', 'EDIT', onTap: () => context.push('/loadout/keys')),
+          linkRow('API keys & services', 'Cloud AI · Calendar · Weather · Backend', 'EDIT', onTap: () => context.push('/loadout/keys')),
         ]),
         head('Notifications'),
         RowList(children: <Widget>[
           linkRow('Notifications', 'Reminders, wind-down, briefings', s.linkStatus['Notifications'] ?? 'ASK', onTap: () async {
             final bool ok = await NotificationService.requestPermission();
             s.setLink('Notifications', ok ? 'OK' : 'DENIED');
-            if (!ok && context.mounted) showVigilSnack(context, 'Allow notifications for VIGIL in system settings');
+            if (!ok && context.mounted) showVigilSnack(context, 'Allow notifications for K in system settings');
           }),
           toggleRow('notifyOps', 'Ops reminders', 'Due in 30 min · next op in 15 min'),
           toggleRow('notifyProtocols', 'Protocol nudges', 'Streak at risk · 20:00'),
           linkRow('Send a test notification', 'Checks the critical channel', 'TEST', onTap: () async {
-            await NotificationService.show('VIGIL // TEST', 'Systems nominal, ${s.callsign}.', channel: 'critical', payload: '/');
+            await NotificationService.show('K // TEST', s.nickname.isEmpty ? 'Systems nominal.' : 'Systems nominal, ${s.nickname}.', channel: 'critical', payload: '/');
           }),
           linkRow('Exact reminder times', 'Alarms & reminders access', s.linkStatus['Exact alarms'] ?? 'ASK', onTap: () async {
             await NotificationService.requestExactAlarms();
             s.setLink('Exact alarms', await NotificationService.canScheduleExact() ? 'OK' : 'DENIED');
           }),
           linkRow('Background & battery', 'ColorOS: allow auto-start, no restrictions', 'OPEN', onTap: () => openAppSettings()),
-          ValueListenableBuilder<String>(
-            valueListenable: PushService.status,
-            builder: (BuildContext ctx, String st, Widget? _) => ValueListenableBuilder<String?>(
-              valueListenable: PushService.token,
-              builder: (BuildContext ctx2, String? tok, Widget? _) => linkRow(
-                'Firebase push',
-                Env.hasFirebase ? (tok == null ? 'Waiting for token' : 'Tap to copy device token') : 'Add FIREBASE_* keys to .env',
-                st,
-                onTap: tok == null
-                    ? null
-                    : () async {
-                        await Clipboard.setData(ClipboardData(text: tok));
-                        if (context.mounted) showVigilSnack(context, 'Device token copied');
-                      },
-              ),
-            ),
-          ),
         ]),
         head('Sounds'),
         RowList(children: <Widget>[
@@ -233,7 +192,7 @@ class LoadoutScreen extends ConsumerWidget {
           linkRow('Step sensor', 'Phone step counter', s.linkStatus['Step sensor'] ?? 'ASK', onTap: () async {
             final bool ok = await StepService.start(s, request: true);
             s.setLink('Step sensor', ok ? 'OK' : 'DENIED');
-            if (!ok && context.mounted) showVigilSnack(context, 'Allow Physical activity for VIGIL in system settings');
+            if (!ok && context.mounted) showVigilSnack(context, 'Allow Physical activity for K in system settings');
           }),
           linkRow(
             'Google accounts',
@@ -258,7 +217,7 @@ class LoadoutScreen extends ConsumerWidget {
         ]),
         head('Home screen'),
         VigilCard(
-          child: Text('Long-press the home screen, open Widgets, and add VIGIL Objectives (4×2) or VIGIL Readiness (2×2). Tap an objective to check it off, or +250 ML to log water, without opening the app.', style: t.caption.copyWith(color: c.textMuted)),
+          child: Text('Long-press the home screen, open Widgets, and add K · Objectives (4×2) or K · Readiness (2×2). Tap an objective to check it off, or +250 ML to log water, without opening the app.', style: t.caption.copyWith(color: c.textMuted)),
         ),
         head('Data & privacy'),
         RowList(children: <Widget>[
@@ -303,7 +262,11 @@ class LoadoutScreen extends ConsumerWidget {
           ),
         ]),
         const SizedBox(height: 22),
-        Center(child: Text('VIGIL v1.0 · BUILD 0002', style: t.micro.copyWith(color: c.textFaint))),
+        head('Setup'),
+        RowList(children: <Widget>[
+          linkRow('Run $kAssistantName setup again', 'Name, Google, $kAssistantName\'s brain, permissions, voice', 'OPEN', onTap: () => context.push('/boot')),
+        ]),
+        Center(child: Text('K v1.0 · BUILD 0002', style: t.micro.copyWith(color: c.textFaint))),
       ]),
     );
   }
@@ -313,7 +276,7 @@ class LoadoutScreen extends ConsumerWidget {
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
         title: const Text('ERASE ALL'),
-        content: const Text('Erase all VIGIL data on this phone? This can\'t be undone.'),
+        content: const Text('Erase all K data on this phone? This can\'t be undone.'),
         actions: <Widget>[
           VigilButton(label: 'Cancel', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx)),
           VigilButton(

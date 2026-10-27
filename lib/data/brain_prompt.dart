@@ -47,7 +47,7 @@ BrainFacts factsFromStore(VigilStore s, DateTime now) {
   final SleepNight? last = s.lastNight;
   return BrainFacts(
     now: now,
-    callsign: s.callsign,
+    callsign: s.nickname,
     objectives: <String>[
       for (final Objective o in s.open.take(10))
         '${o.title}${o.dueMin != null ? ' · due ${Fmt.hm(o.dueMin!)}' : (o.dueLabel != null ? ' · due ${o.dueLabel}' : '')}${o.threat == Threat.routine ? '' : ' · ${o.threat.name}'}',
@@ -80,7 +80,7 @@ String brainContext(BrainFacts f, String question) {
   final bool plan = _mentions(q, r'\b(plan|day|schedule|today|tomorrow|tonight|meeting|meetings|event|events|next|free|busy|calendar|when)\b') || !(sleep || steps || water || money);
   final List<String> lines = <String>[
     'NOW: ${days[f.now.weekday - 1]} ${f.now.day}/${f.now.month}/${f.now.year} ${Fmt.hm(f.now.hour * 60 + f.now.minute)}',
-    'USER: ${f.callsign}',
+    if (f.callsign.isNotEmpty) 'USER: ${f.callsign}',
     'OPEN OBJECTIVES: ${f.objectives.isEmpty ? 'none' : f.objectives.asMap().entries.map((MapEntry<int, String> e) => '${e.key + 1}) ${e.value}').join('; ')}',
     'PROTOCOLS: ${f.protocols.isEmpty ? 'none' : f.protocols.join('; ')}',
     if (plan) 'EVENTS TODAY: ${f.events.isEmpty ? 'none' : f.events.join('; ')}',
@@ -94,7 +94,7 @@ String brainContext(BrainFacts f, String question) {
 
 /// The fixed instructions. Identical on every call, so the model's cache of it can be reused. Short on purpose:
 /// every token here is read again on a cold start, and a 1B model follows a few clear rules better than many.
-const String kBrainSystem = 'You are $kAssistantName, the assistant inside the VIGIL personal-ops app. Reply with ONLY one JSON object: {"actions":[],"say":"..."}\n'
+const String kBrainSystem = 'You are $kAssistantName, the assistant inside the K personal-ops app. Reply with ONLY one JSON object: {"actions":[],"say":"..."}\n'
     'Most requests need no change: use "actions":[] and just answer. Add at most ONE action, and only if the user clearly asks for that change.\n'
     'Actions: add_objective(title, due HH:MM, day today|tomorrow, threat crit|high|routine) | add_event(title, start HH:MM, end, day) | complete_objective(title from OPEN OBJECTIVES) | '
     'log_water(ml) | log_expense(title, amount in rupees, category FOOD|BILLS|SHOPPING|TRANSPORT|OTHER) | add_note(text) | check_protocol(name from PROTOCOLS)\n'

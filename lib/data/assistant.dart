@@ -92,7 +92,7 @@ class Assistant {
       final CloudReply r = await askCloudDetailed(
         text,
         store.sitrep(now),
-        system: buildAgentSystem(now: now, callsign: store.callsign, persona: store.persona, verbosity: store.verbosity),
+        system: buildAgentSystem(now: now, callsign: store.nickname, persona: store.persona, verbosity: store.verbosity),
         history: _history(text),
         json: true,
         client: client,

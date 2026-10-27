@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vigil/data/agent.dart';
 import 'package:vigil/data/brain_eval.dart';
 import 'package:vigil/data/brain_pipeline.dart';
-import 'package:vigil/data/brain_prompt.dart';
 
 AgentAction only(Decision? d) {
   expect(d, isNotNull);

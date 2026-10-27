@@ -2,13 +2,20 @@ import 'package:intl/intl.dart';
 
 /// Formatting rules from the handoff (section 2.8).
 abstract final class Fmt {
+  /// 24-hour clock (default) or 12-hour with AM / PM. Set from the profile.
+  static bool use24h = true;
+
   /// Minutes after midnight -> `HH:mm` (wraps past 24 h).
   static String hm(int minutes) {
     final int m = ((minutes % 1440) + 1440) % 1440;
+    if (!use24h) {
+      final int h = (m ~/ 60) % 12 == 0 ? 12 : (m ~/ 60) % 12;
+      return '$h:${(m % 60).toString().padLeft(2, '0')} ${m ~/ 60 < 12 ? 'AM' : 'PM'}';
+    }
     return '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
   }
 
-  static String time(DateTime d) => DateFormat('HH:mm').format(d);
+  static String time(DateTime d) => DateFormat(use24h ? 'HH:mm' : 'h:mm a').format(d);
 
   static String dayStamp(DateTime d) => DateFormat('EEE dd MMM').format(d).toUpperCase();
 

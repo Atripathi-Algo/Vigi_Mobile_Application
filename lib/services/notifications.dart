@@ -21,13 +21,13 @@ abstract final class NotificationService {
   /// channel's sound when it is created, so the ids carry a version suffix; the
   /// sound can still be changed per channel in the system settings.
   static const List<_Chan> _channels = <_Chan>[
-    _Chan('critical', 'Critical', Importance.high, 'Deadlines and critical conflicts', 'bat_critical'),
-    _Chan('ops', 'Ops', Importance.defaultImportance, 'Next op and focus reminders', 'bat_ops'),
-    _Chan('protocols', 'Protocols', Importance.low, 'Streaks at risk', 'bat_soft'),
-    _Chan('sleep', 'Sleep', Importance.high, 'Wind-down and lights-out', 'bat_sleep'),
-    _Chan('screen', 'Screen', Importance.low, 'Screen-time limits', 'bat_soft'),
-    _Chan('ledger', 'Ledger', Importance.defaultImportance, 'Bills due', 'bat_soft'),
-    _Chan('briefings', 'Briefings', Importance.low, 'Dawn briefing and night debrief', 'bat_brief'),
+    _Chan('critical', 'K · Alerts', Importance.high, 'Deadlines and critical conflicts', 'bat_critical'),
+    _Chan('ops', 'K · Ops', Importance.defaultImportance, 'Next op and focus reminders', 'bat_ops'),
+    _Chan('protocols', 'K · Protocols', Importance.low, 'Streaks at risk', 'bat_soft'),
+    _Chan('sleep', 'K · Sleep', Importance.high, 'Wind-down and lights-out', 'bat_sleep'),
+    _Chan('screen', 'K · Screen', Importance.low, 'Screen-time limits', 'bat_soft'),
+    _Chan('ledger', 'K · Ledger', Importance.defaultImportance, 'Bills due', 'bat_soft'),
+    _Chan('briefings', 'K · Briefings', Importance.low, 'Dawn briefing and night debrief', 'bat_brief'),
   ];
 
   /// Channel ids from before the sounds were added; removed on start so they do not clutter the settings.

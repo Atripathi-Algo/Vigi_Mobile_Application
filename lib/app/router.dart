@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../data/store.dart';
 import '../screens/accounts_screen.dart';
 import '../screens/api_keys_screen.dart';
-import '../screens/boot_screen.dart';
+import '../screens/setup_screen.dart';
 import '../screens/brain_screen.dart';
 import '../screens/briefing_screen.dart';
 import '../screens/command_screen.dart';
@@ -27,7 +27,7 @@ GoRouter buildRouter(VigilStore store) {
     navigatorKey: rootNavKey,
     initialLocation: store.booted ? '/' : '/boot',
     routes: <RouteBase>[
-      GoRoute(path: '/boot', builder: (BuildContext c, GoRouterState s) => const BootScreen()),
+      GoRoute(path: '/boot', builder: (BuildContext c, GoRouterState s) => const SetupScreen()),
       GoRoute(path: '/briefing', builder: (BuildContext c, GoRouterState s) => const BriefingScreen()),
       GoRoute(path: '/debrief', builder: (BuildContext c, GoRouterState s) => const DebriefScreen()),
       GoRoute(

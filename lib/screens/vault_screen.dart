@@ -231,7 +231,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         child: confirming
             ? Row(children: <Widget>[
-                Expanded(child: Text('Mark paid? VIGIL doesn\'t move money.', style: t.caption.copyWith(fontSize: 12))),
+                Expanded(child: Text('Mark paid? K doesn\'t move money.', style: t.caption.copyWith(fontSize: 12))),
                 VigilButton(label: 'Confirm', onPressed: () { b.paid = true; setState(() => _confirmBill = null); s.changed(); }),
                 const SizedBox(width: 6),
                 VigilButton(label: 'Cancel', variant: VigilButtonVariant.secondary, onPressed: () => setState(() => _confirmBill = null)),

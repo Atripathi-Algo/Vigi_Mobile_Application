@@ -1,38 +1,30 @@
 import 'package:flutter/material.dart';
 
-/// Raw VIGIL palette (dark only). Widgets should read colours through
-/// [VigilColors] (`context.vigil`) so the signal accent can be re-themed.
+/// Raw palette (Thor, dark only). Widgets should read colours through [VigilColors] (`context.vigil`).
 abstract final class VigilPalette {
-  static const Color ground = Color(0xFF0A0B0D);
-  static const Color stealth = Color(0xFF050607);
-  static const Color surface = Color(0xFF121418);
-  static const Color surfaceHigh = Color(0xFF1A1D22);
-  static const Color navBar = Color(0xFF0E0F12);
-  static const Color line = Color(0xFF262A31);
-  static const Color lineStrong = Color(0xFF363B44);
-  static const Color rule = Color(0xFF1E2126);
-  /// Canvas uses #5A606A; raised to #646A74 so unchecked controls meet 3:1.
-  static const Color neutral = Color(0xFF646A74);
-  static const Color text = Color(0xFFECEAE4);
-  static const Color textMuted = Color(0xFFA3A8B0);
-  static const Color textFaint = Color(0xFF8A9099);
-  static const Color signal = Color(0xFFF2C230);
-  static const Color onSignal = Color(0xFF0A0B0D);
-  static const Color critical = Color(0xFFFF5A47);
-  static const Color steel = Color(0xFF7FA7C9);
-  static const Color sleepBand = Color(0xFF1F2630);
+  static const Color ground = Color(0xFF060B16);
+  static const Color stealth = Color(0xFF03060C);
+  static const Color surface = Color(0xFF0C1424);
+  static const Color surfaceHigh = Color(0xFF121C30);
+  static const Color navBar = Color(0xFF080E1B);
+  static const Color line = Color(0xFF1B2A45);
+  static const Color lineStrong = Color(0xFF2A3F66);
+  static const Color rule = Color(0xFF16223A);
+  static const Color neutral = Color(0xFF6A8CC4);
+  static const Color text = Color(0xFFE6F0FF);
+  static const Color textMuted = Color(0xFFA3B5D0);
+  static const Color textFaint = Color(0xFF7A8FB0);
 
-  /// Alternative accents offered in Loadout (all keep ≥ 4.5:1 with onSignal).
-  static const List<Color> signalOptions = <Color>[
-    Color(0xFFF2C230), // signal yellow (default)
-    Color(0xFF5CC8FF), // cyan
-    Color(0xFFFF7A3D), // orange
-    Color(0xFFECEAE4), // white
-    Color(0xFF3FB6FF), // Thor: lightning blue
-  ];
+  /// Lightning blue: the one signal colour.
+  static const Color signal = Color(0xFF3FB6FF);
+  static const Color onSignal = Color(0xFF03101C);
+  static const Color critical = Color(0xFFFF4D4D);
+  static const Color steel = Color(0xFFCFE8FF);
+  static const Color sleepBand = Color(0xFF182238);
 
-  /// Index in [signalOptions] of the Thor theme, which also recolours the surfaces.
-  static const int thorIndex = 4;
+  /// HIGH threat, system notes; synced, applied.
+  static const Color warning = Color(0xFFFFB547);
+  static const Color success = Color(0xFF3DE0C2);
 }
 
 /// Semantic colour tokens exposed as a [ThemeExtension].
@@ -96,26 +88,8 @@ class VigilColors extends ThemeExtension<VigilColors> {
     sleepBand: VigilPalette.sleepBand,
   );
 
-  /// Thor: storm-navy surfaces, silver steel, lightning-blue signal and Asgardian red for alerts.
-  static const VigilColors thor = VigilColors(
-    ground: Color(0xFF060A12),
-    stealth: Color(0xFF03060C),
-    surface: Color(0xFF0D1422),
-    surfaceHigh: Color(0xFF141E33),
-    navBar: Color(0xFF0A101C),
-    line: Color(0xFF1D2A44),
-    lineStrong: Color(0xFF2D4166),
-    rule: Color(0xFF16203A),
-    neutral: Color(0xFF6A7B9C),
-    text: Color(0xFFE8EEF8),
-    textMuted: Color(0xFFA6B3CC),
-    textFaint: Color(0xFF8D9BB6),
-    signal: Color(0xFF3FB6FF),
-    onSignal: Color(0xFF03101C),
-    critical: Color(0xFFFF4D4D),
-    steel: Color(0xFFC3D0E6),
-    sleepBand: Color(0xFF182238),
-  );
+  /// Kept as an alias: Thor is the only theme.
+  static const VigilColors thor = dark;
 
   /// Signal tint used behind focus blocks (14 %) and in switch tracks (15 %).
   Color signalTint(double alpha) => signal.withValues(alpha: alpha);

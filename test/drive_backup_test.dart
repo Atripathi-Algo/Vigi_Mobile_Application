@@ -45,7 +45,7 @@ void main() {
 
     test('a file that is not a VIGIL backup is refused', () {
       for (final String bad in <String>['{not json', '[]', '{"app":"other","prefs":{}}', '{"app":"vigil"}']) {
-        expect(() => parseSnapshot(bad), throwsA(isA<DriveException>().having((DriveException e) => e.message, 'message', 'That file is not a VIGIL backup.')), reason: bad);
+        expect(() => parseSnapshot(bad), throwsA(isA<DriveException>().having((DriveException e) => e.message, 'message', 'That file is not a K backup.')), reason: bad);
       }
     });
   });

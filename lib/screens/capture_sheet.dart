@@ -112,7 +112,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
                 Text('CAPTURE', style: t.section.copyWith(fontSize: 22)),
-                Text('SAY IT ONCE. VIGIL SORTS IT.', style: t.micro.copyWith(color: c.textFaint)),
+                Text('SAY IT ONCE. K SORTS IT.', style: t.micro.copyWith(color: c.textFaint)),
               ]),
             ),
             VigilIconButton(icon: VigilIcons.close, semanticLabel: 'Close capture', onPressed: () => Navigator.of(context).pop()),
@@ -142,7 +142,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             onChanged: _onChanged,
           ),
           const SizedBox(height: 14),
-          Text('VIGIL PARSED', style: t.label.copyWith(color: c.textFaint)),
+          Text('K PARSED', style: t.label.copyWith(color: c.textFaint)),
           const SizedBox(height: 6),
           if (empty)
             Text('Try: lunch 180 · call home 9pm · read 20 pages daily', style: t.meta.copyWith(color: c.textFaint, fontSize: 12))

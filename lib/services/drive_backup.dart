@@ -44,7 +44,7 @@ String buildSnapshot(SharedPreferences prefs, DateTime now) {
 Map<String, Object> parseSnapshot(String body) {
   try {
     final Map<String, dynamic> j = jsonDecode(body) as Map<String, dynamic>;
-    if (j['app'] != 'vigil' || j['prefs'] is! Map) throw const FormatException('not a VIGIL backup');
+    if (j['app'] != 'vigil' || j['prefs'] is! Map) throw const FormatException('not a K backup');
     final Map<String, Object> out = <String, Object>{};
     (j['prefs'] as Map<String, dynamic>).forEach((String k, dynamic v) {
       if (_deviceOnlyKeys.contains(k)) return;
@@ -58,7 +58,7 @@ Map<String, Object> parseSnapshot(String body) {
   } on DriveException {
     rethrow;
   } catch (_) {
-    throw const DriveException('That file is not a VIGIL backup.');
+    throw const DriveException('That file is not a K backup.');
   }
 }
 

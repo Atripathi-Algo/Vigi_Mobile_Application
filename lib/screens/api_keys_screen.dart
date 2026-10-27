@@ -88,7 +88,7 @@ const List<_Group> _groups = <_Group>[
   ),
   _Group(
     'be',
-    'VIGIL backend',
+    'K backend',
     'Reserved for your own server. Nothing calls it yet; the values are stored for when you add endpoints.',
     <_KeyField>[
       _KeyField('VIGIL_API_BASE_URL', 'Base URL', hint: 'https://api.example.com'),

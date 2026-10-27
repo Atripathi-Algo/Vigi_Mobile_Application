@@ -122,7 +122,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
         level: _voice.level,
         color: c.signal,
         size: empty ? 190 : 104,
-        crackle: s.accentIndex == VigilPalette.thorIndex,
+        crackle: true,
         onTap: () => _voice.state == VoiceState.idle ? _listen() : _voice.stopAll(),
       ),
       const SizedBox(height: 4),

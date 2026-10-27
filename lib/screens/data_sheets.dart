@@ -128,7 +128,7 @@ class _AddBillState extends State<_AddBill> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
       Text('NEW BILL', style: t.h2),
       const SizedBox(height: 6),
-      Text('VIGIL only tracks it. It never moves money.', style: t.caption.copyWith(color: c.textMuted)),
+      Text('K only tracks it. It never moves money.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),
       VigilField(controller: _name, label: 'Name', hint: 'Electricity', autofocus: true, onChanged: (_) => setState(() {})),
       const SizedBox(height: 10),

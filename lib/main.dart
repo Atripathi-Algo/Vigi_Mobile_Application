@@ -134,10 +134,9 @@ class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    final VigilStore s = ref.watch(storeProvider);
-    final ThemeData theme = buildVigilTheme(signal: s.accent, thor: s.accentIndex == VigilPalette.thorIndex);
+    final ThemeData theme = buildVigilTheme();
     return MaterialApp.router(
-      title: 'VIGIL',
+      title: 'K',
       debugShowCheckedModeBanner: false,
       theme: theme,
       darkTheme: theme,

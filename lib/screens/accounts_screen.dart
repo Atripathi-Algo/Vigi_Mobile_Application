@@ -57,7 +57,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
         title: const Text('UNLINK ACCOUNT?'),
-        content: Text('${a.email} is removed from VIGIL and its calendar access is revoked. Events already in Google stay where they are.'),
+        content: Text('${a.email} is removed from K and its calendar access is revoked. Events already in Google stay where they are.'),
         actions: <Widget>[
           VigilButton(label: 'Keep', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx, false)),
           VigilButton(label: 'Unlink', variant: VigilButtonVariant.critical, onPressed: () => Navigator.pop(ctx, true)),
@@ -104,8 +104,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         children: <Widget>[
           VigilCard(
             child: Text(
-              'Both calendars merge into the Timeline, and a meeting that is in both shows once. Events you make in VIGIL can be added to either account. '
-              'VIGIL asks Google only for calendar events. No password and no key are stored: your phone holds the approval.',
+              'Both calendars merge into the Timeline, and a meeting that is in both shows once. Events you make in K can be added to either account. '
+              'K asks Google only for calendar events. No password and no key are stored: your phone holds the approval.',
               style: t.caption.copyWith(color: c.textMuted),
             ),
           ),

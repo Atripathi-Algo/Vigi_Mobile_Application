@@ -130,9 +130,8 @@ class _GridPainter extends CustomPainter {
   bool shouldRepaint(_GridPainter old) => old.color != color || old.spacing != spacing || old.diagonal != diagonal;
 }
 
-/// The VIGIL emblem: shield outline + visor slit + optional centre diamond.
-/// Drawn in code (48 × 48 design box) so it scales crisply; the same geometry
-/// ships as `assets/svg/emblem*.svg` for launcher icons.
+/// The K mark: octagon, a K, and a lightning bolt cut through its diagonal.
+/// Drawn in code (32 x 32 design box) so it scales crisply at any size.
 class VigilEmblem extends StatelessWidget {
   const VigilEmblem({
     super.key,
@@ -141,35 +140,32 @@ class VigilEmblem extends StatelessWidget {
     this.visor,
     this.pupil,
     this.showPupil = true,
-    this.semanticLabel = 'VIGIL',
+    this.semanticLabel = 'K',
   });
 
   final double size;
-  final Color? outline;
-  final Color? visor;
-  final Color? pupil;
 
-  /// The centre diamond is dropped automatically below 24 px.
+  /// Colour of the K and the bolt core. Defaults to the ice highlight.
+  final Color? outline;
+
+  /// Colour of the octagon and the bolt glow. Defaults to the signal blue.
+  final Color? visor;
+
+  /// Unused; kept so existing call sites compile.
+  final Color? pupil;
   final bool showPupil;
   final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final c = context.vigil;
-    final double stroke = size >= 64
-        ? 2.2
-        : size >= 40
-            ? 2.4
-            : size >= 24
-                ? 2.6
-                : 3.4;
     final Widget paint = CustomPaint(
       size: Size.square(size),
       painter: _EmblemPainter(
-        outline: outline ?? c.text,
-        visor: visor ?? c.signal,
-        pupil: (showPupil && size >= 24) ? (pupil ?? c.ground) : null,
-        stroke: stroke,
+        glyph: outline ?? c.steel,
+        signal: visor ?? c.signal,
+        core: outline ?? Colors.white,
+        stroke: size >= 40 ? 1.6 : (size >= 24 ? 2.0 : 3.0),
       ),
     );
     if (semanticLabel == null) return ExcludeSemantics(child: paint);
@@ -178,54 +174,41 @@ class VigilEmblem extends StatelessWidget {
 }
 
 class _EmblemPainter extends CustomPainter {
-  _EmblemPainter({required this.outline, required this.visor, required this.pupil, required this.stroke});
+  _EmblemPainter({required this.glyph, required this.signal, required this.core, required this.stroke});
 
-  final Color outline;
-  final Color visor;
-  final Color? pupil;
+  final Color glyph;
+  final Color signal;
+  final Color core;
   final double stroke;
 
-  static final Path _shield = Path()
-    ..moveTo(24, 3)
-    ..lineTo(42, 9)
-    ..lineTo(40, 29)
-    ..lineTo(24, 45)
-    ..lineTo(8, 29)
-    ..lineTo(6, 9)
-    ..close();
+  static Path _poly(List<double> p) {
+    final Path path = Path()..moveTo(p[0], p[1]);
+    for (int i = 2; i < p.length; i += 2) {
+      path.lineTo(p[i], p[i + 1]);
+    }
+    return path..close();
+  }
 
-  static final Path _visor = Path()
-    ..moveTo(12, 19)
-    ..lineTo(36, 19)
-    ..lineTo(32, 25.5)
-    ..lineTo(16, 25.5)
-    ..close();
-
-  static final Path _pupil = Path()
-    ..moveTo(24, 19.6)
-    ..lineTo(26.6, 22.25)
-    ..lineTo(24, 24.9)
-    ..lineTo(21.4, 22.25)
-    ..close();
+  static final Path _octagon = _poly(<double>[9.4, 1, 22.6, 1, 31, 9.4, 31, 22.6, 22.6, 31, 9.4, 31, 1, 22.6, 1, 9.4]);
+  static final Path _k = _poly(<double>[8, 7, 12.6, 7, 12.6, 15, 19.6, 7, 25, 7, 17.2, 15.4, 25.2, 25, 19.6, 25, 14, 18.2, 12.6, 19.8, 12.6, 25, 8, 25]);
+  static final Path _boltGlow = _poly(<double>[23.6, 5.2, 16.4, 13.2, 18.8, 13.4, 11.2, 22.4, 14.6, 15.8, 12.2, 15.6, 19.8, 5.2]);
+  static final Path _boltCore = _poly(<double>[22.6, 6, 16.9, 12.6, 18.9, 12.8, 12.6, 20.4, 15.2, 15.2, 13.4, 15, 19.6, 6]);
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
-    canvas.scale(size.width / 48, size.height / 48);
-    canvas.drawPath(
-      _shield,
-      Paint()
-        ..color = outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeJoin = StrokeJoin.miter,
-    );
-    canvas.drawPath(_visor, Paint()..color = visor);
-    if (pupil != null) canvas.drawPath(_pupil, Paint()..color = pupil!);
+    canvas.scale(size.width / 32, size.height / 32);
+    canvas.drawPath(_octagon, Paint()
+      ..color = signal
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke * 32 / size.width * 0.8
+      ..strokeJoin = StrokeJoin.miter);
+    canvas.drawPath(_k, Paint()..color = glyph);
+    canvas.drawPath(_boltGlow, Paint()..color = signal);
+    canvas.drawPath(_boltCore, Paint()..color = core);
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_EmblemPainter old) =>
-      old.outline != outline || old.visor != visor || old.pupil != pupil || old.stroke != stroke;
+  bool shouldRepaint(_EmblemPainter old) => old.glyph != glyph || old.signal != signal || old.core != core || old.stroke != stroke;
 }

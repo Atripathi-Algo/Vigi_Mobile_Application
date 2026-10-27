@@ -87,7 +87,7 @@ class ModelStore {
     try {
       final File part = await _part(v);
       int have = await part.exists() ? await part.length() : 0;
-      final http.Request req = http.Request('GET', Uri.parse(v.url))..headers['user-agent'] = 'VIGIL-Android';
+      final http.Request req = http.Request('GET', Uri.parse(v.url))..headers['user-agent'] = 'K-Android';
       if (have > 0) req.headers['range'] = 'bytes=$have-';
       final http.StreamedResponse res = await c.send(req).timeout(const Duration(seconds: 30));
       if (res.statusCode != 200 && res.statusCode != 206) throw ModelDownloadException('The download server answered HTTP ${res.statusCode}.');

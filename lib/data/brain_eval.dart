@@ -25,7 +25,7 @@ class BrainCase {
 /// The facts every case is asked against.
 final BrainFacts kEvalFacts = BrainFacts(
   now: DateTime(2026, 10, 23, 14, 30),
-  callsign: 'Batman',
+  callsign: 'Alex',
   objectives: const <String>['Send weekly report · due 17:00 · high', 'Call the plumber', 'Book dentist appointment'],
   events: const <String>['09:00-09:30 Standup', '16:00-17:00 Vendor sync'],
   protocols: const <String>['Read 20 pages', 'Workout 30 min', 'Meditate 10 min (done)'],

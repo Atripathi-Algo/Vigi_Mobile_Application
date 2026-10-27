@@ -9,8 +9,8 @@ import 'vigil_type.dart';
 /// ```dart
 /// MaterialApp(theme: buildVigilTheme(), darkTheme: buildVigilTheme(), themeMode: ThemeMode.dark)
 /// ```
-ThemeData buildVigilTheme({Color signal = VigilPalette.signal, bool thor = false}) {
-  final VigilColors c = (thor ? VigilColors.thor : VigilColors.dark).copyWith(signal: signal);
+ThemeData buildVigilTheme() {
+  const VigilColors c = VigilColors.dark;
   final VigilType t = VigilType.base(color: c.text);
 
   final ColorScheme scheme = ColorScheme.dark(

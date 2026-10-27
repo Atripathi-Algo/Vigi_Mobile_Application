@@ -31,11 +31,11 @@ class VigilStore extends ChangeNotifier {
 
   // ---- settings ---------------------------------------------------------
   bool booted = false;
-  String fullName = 'Abhishek';
-  String callsign = 'Batman';
+  String fullName = '';
+  String callsign = ''; // the nickname shown in greetings
+  bool clock24 = true;
   int wakeMin = 6 * 60 + 30;
   int bedMin = 23 * 60;
-  int accentIndex = 0;
   Persona persona = Persona.tactical;
 
   /// In-app sound effect volume: 0 low, 1 medium, 2 high.
@@ -61,7 +61,10 @@ class VigilStore extends ChangeNotifier {
   static const List<String> linkKeys = <String>['Calendar link', 'Health Connect', 'Notifications', 'Step sensor', 'Usage access', 'Exact alarms', 'Voice uplink'];
   final Map<String, String> linkStatus = <String, String>{for (final String k in linkKeys) k: 'ASK'};
 
-  Color get accent => VigilPalette.signalOptions[accentIndex];
+  Color get accent => VigilPalette.signal;
+
+  /// Name used in greetings: the nickname, else the first word of the full name, else empty.
+  String get nickname => callsign.trim().isNotEmpty ? callsign.trim() : fullName.trim().split(RegExp(r'\s+')).first;
 
   // ---- objectives & timeline ---------------------------------------------
   late List<Objective> objectives;
@@ -181,9 +184,11 @@ class VigilStore extends ChangeNotifier {
     booted = _prefs.getBool('booted') ?? false;
     fullName = _prefs.getString('fullName') ?? fullName;
     callsign = _prefs.getString('callsign') ?? callsign;
+    if (callsign == 'Batman') callsign = ''; // the old default; the greeting falls back to the first name
+    clock24 = _prefs.getBool('clock24') ?? true;
+    Fmt.use24h = clock24;
     wakeMin = _prefs.getInt('wakeMin') ?? wakeMin;
     bedMin = _prefs.getInt('bedMin') ?? bedMin;
-    accentIndex = _prefs.getInt('accent') ?? 0;
     persona = Persona.values[_prefs.getInt('persona') ?? 0];
     verbosity = Verbosity.values[_prefs.getInt('verbosity') ?? 0];
     needMin = _prefs.getInt('needMin') ?? needMin;
@@ -312,9 +317,9 @@ class VigilStore extends ChangeNotifier {
       ..setBool('booted', booted)
       ..setString('fullName', fullName)
       ..setString('callsign', callsign)
+      ..setBool('clock24', clock24)
       ..setInt('wakeMin', wakeMin)
       ..setInt('bedMin', bedMin)
-      ..setInt('accent', accentIndex)
       ..setInt('persona', persona.index)
       ..setInt('verbosity', verbosity.index)
       ..setInt('needMin', needMin)
@@ -384,6 +389,19 @@ class VigilStore extends ChangeNotifier {
     changed();
   }
 
+  /// Name and nickname, from the setup guide when it is run again.
+  void setProfile({required String fullName, required String nickname}) {
+    this.fullName = fullName.trim();
+    callsign = nickname.trim();
+    changed();
+  }
+
+  void setClock24(bool v) {
+    clock24 = v;
+    Fmt.use24h = v;
+    changed();
+  }
+
   void setLink(String key, String status) {
     linkStatus[key] = status;
     changed();
@@ -391,11 +409,6 @@ class VigilStore extends ChangeNotifier {
 
   void setToggle(String key, bool v) {
     toggles[key] = v;
-    changed();
-  }
-
-  void setAccent(int i) {
-    accentIndex = i;
     changed();
   }
 
@@ -418,8 +431,10 @@ class VigilStore extends ChangeNotifier {
     await _prefs.clear();
     _seed();
     booted = false;
-    fullName = 'Abhishek';
-    callsign = 'Batman';
+    fullName = '';
+    callsign = '';
+    clock24 = true;
+    Fmt.use24h = true;
     wakeMin = 6 * 60 + 30;
     bedMin = 23 * 60;
     modules = <String>{..._allModules};
@@ -431,7 +446,6 @@ class VigilStore extends ChangeNotifier {
       ..addAll(<String, String>{for (final String k in linkKeys) k: 'ASK'});
     waterMl = 0;
     steps = null;
-    accentIndex = 0;
     persona = Persona.tactical;
     verbosity = Verbosity.terse;
     needMin = 435;

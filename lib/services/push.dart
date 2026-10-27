@@ -25,7 +25,7 @@ Future<void> vigilFirebaseBackgroundHandler(RemoteMessage m) async {
   await Firebase.initializeApp(options: _options());
   if (m.notification != null) return;
   await NotificationService.init();
-  await NotificationService.show(m.data['title'] ?? 'VIGIL', m.data['body'] ?? '', channel: m.data['channel'] ?? 'ops', payload: m.data['route']);
+  await NotificationService.show(m.data['title'] ?? 'K', m.data['body'] ?? '', channel: m.data['channel'] ?? 'ops', payload: m.data['route']);
 }
 
 /// Optional Firebase Cloud Messaging. Active only when the FIREBASE_* keys in
@@ -63,7 +63,7 @@ abstract final class PushService {
       m.onTokenRefresh.listen((String t) => token.value = t);
       FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
         NotificationService.show(
-          msg.notification?.title ?? msg.data['title'] ?? 'VIGIL',
+          msg.notification?.title ?? msg.data['title'] ?? 'K',
           msg.notification?.body ?? msg.data['body'] ?? '',
           channel: msg.data['channel'] ?? 'ops',
           payload: msg.data['route'],

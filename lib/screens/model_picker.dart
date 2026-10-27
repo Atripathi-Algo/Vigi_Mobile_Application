@@ -159,7 +159,7 @@ class _ModelSheetState extends State<_ModelSheet> {
       ]),
       const SizedBox(height: 8),
       Text(
-        'Green: free, or paid at \$1.50 or less per 1M output tokens. Amber: up to \$10. Red: above \$10. Prices are approximate and change; check the provider. Each service needs its own key, and VIGIL keeps one per service.',
+        'Green: free, or paid at \$1.50 or less per 1M output tokens. Amber: up to \$10. Red: above \$10. Prices are approximate and change; check the provider. Each service needs its own key, and K keeps one per service.',
         style: t.caption.copyWith(color: c.textMuted),
       ),
       const SizedBox(height: 14),

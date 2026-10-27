@@ -55,7 +55,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                      Text('VIGIL', style: t.button.copyWith(fontSize: 13, letterSpacing: 3.4)),
+                      Text('K', style: t.button.copyWith(fontSize: 13, letterSpacing: 3.4)),
                       const SizedBox(height: 2),
                       Text('● SYSTEMS NOMINAL', style: t.micro.copyWith(color: c.signal)),
                     ]),
@@ -73,7 +73,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
               const SizedBox(height: 18),
               Text('${Fmt.dayStamp(now)} · ${Fmt.time(now)} IST', style: t.meta.copyWith(color: c.textFaint, letterSpacing: 1.3, fontSize: 12)),
               const SizedBox(height: 6),
-              Text('${Fmt.greeting(now)}, ${s.callsign}.', style: t.h1),
+              Text(s.nickname.isEmpty ? '${Fmt.greeting(now)}.' : '${Fmt.greeting(now)}, ${s.nickname}.', style: t.h1),
               const SizedBox(height: 6),
               Text.rich(TextSpan(style: t.body.copyWith(color: c.textMuted), children: <InlineSpan>[
                 TextSpan(text: '$open objectives open. '),

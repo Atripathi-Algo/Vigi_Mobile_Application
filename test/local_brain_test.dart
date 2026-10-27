@@ -110,7 +110,7 @@ void main() {
   group('prompt', () {
     final BrainFacts facts = BrainFacts(
       now: DateTime(2026, 10, 23, 14, 30),
-      callsign: 'Batman',
+      callsign: 'Alex',
       objectives: const <String>['Send weekly report · due 17:00 · high'],
       events: const <String>['16:00-17:00 Vendor sync'],
       protocols: const <String>['Read 20 pages'],

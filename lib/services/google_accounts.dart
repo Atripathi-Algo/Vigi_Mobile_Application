@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Read and add calendar events. Narrower than full calendar access.
 const String kCalendarScope = 'https://www.googleapis.com/auth/calendar.events';
 
-/// Drive's private app folder: VIGIL's own backup file, invisible in the user's Drive and to other apps.
+/// Drive's private app folder: K's own backup file, invisible in the user's Drive and to other apps.
 const String kDriveScope = 'https://www.googleapis.com/auth/drive.appdata';
 
 /// The Android package name the Google Cloud OAuth client must list.
