@@ -516,7 +516,42 @@ void main() {
       expect(m.note, isNull);
     });
 
-    test('Cloud AI, if the user turned it on, still takes precedence', () async {
+    test('an on-device answer streams in word by word, then is shown whole with its tag', () async {
+      final FakeEngine e = FakeEngine();
+      final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[],"say":"Tokyo is the capital of Japan."}', e));
+      final List<String> seen = <String>[];
+      final ChatMsg m = await a.reply('what is the capital of Japan?', onPartial: seen.add);
+      expect(seen.length, greaterThan(2));
+      expect(seen.last, 'Tokyo is the capital of Japan.');
+      for (int i = 1; i < seen.length; i++) {
+        expect(seen[i].startsWith(seen[i - 1]), isTrue, reason: 'each update extends the last');
+      }
+      expect((m.text, m.source), ('Tokyo is the capital of Japan.', ReplySource.model));
+    });
+
+    test('the user can stop an answer that is being written', () async {
+      final FakeEngine e = FakeEngine()..hang = true;
+      final LocalBrain b = await brainReplying('{}', e);
+      final Assistant a = Assistant(store, brain: b);
+      final Future<ChatMsg> pending = a.reply('what is the capital of Japan?');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      b.cancelAnswer();
+      final ChatMsg m = await pending.timeout(const Duration(seconds: 5));
+      expect(m.text, 'Stopped.');
+      expect(e.cancels, 1);
+      expect(m.note, isNull);
+    });
+
+    test('while the model loads the status is loading, not busy', () async {
+      final FakeEngine e = FakeEngine();
+      final LocalBrain b = await brainReplying('{"actions":[],"say":"x"}', e);
+      final List<BrainStatus> seen = <BrainStatus>[];
+      b.addListener(() => seen.add(b.status));
+      await b.run(<BrainTurn>[const BrainTurn('user', 'hi')]);
+      expect(seen, contains(BrainStatus.loading));
+    });
+
+    test('Cloud AI, if the user turned it on, answers open chat instead of the model', () async {
       dotenv.testLoad(fileInput: 'CLOUD_AI_PROVIDER=gemini\nCLOUD_AI_API_KEY=k\n');
       store.toggles['cloudAi'] = true;
       final FakeEngine e = FakeEngine();
@@ -525,7 +560,7 @@ void main() {
               'candidates': <Map<String, dynamic>>[
                 <String, dynamic>{
                   'content': <String, dynamic>{
-                    'parts': <Map<String, String>>[<String, String>{'text': '{"actions":[],"say":"From the cloud."}'}],
+                    'parts': <Map<String, String>>[<String, String>{'text': 'From the cloud.'}],
                   },
                 },
               ],

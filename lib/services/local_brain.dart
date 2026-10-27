@@ -12,6 +12,9 @@ enum BrainStatus { notInstalled, downloading, ready, loading, busy }
 
 /// K's on-device brain: downloads MiniCPM5-1B, loads it only when needed, answers, and lets go of it again.
 ///
+/// The failure text of a request the user stopped.
+const String kBrainCancelled = 'cancelled';
+
 /// Battery: nothing runs while K is idle. The model is loaded on the first request (or when the microphone opens,
 /// so loading overlaps with speaking), is unloaded after a short idle time or when the app has been in the
 /// background for a moment, and no service or wake lock is held. Answers are short and schema-constrained.
@@ -65,7 +68,7 @@ class LocalBrain extends ChangeNotifier {
 
   BrainStatus get status => _downloading
       ? BrainStatus.downloading
-      : (_path == null ? BrainStatus.notInstalled : (_busy ? BrainStatus.busy : (_loading ? BrainStatus.loading : BrainStatus.ready)));
+      : (_path == null ? BrainStatus.notInstalled : (_loading ? BrainStatus.loading : (_busy ? BrainStatus.busy : BrainStatus.ready)));
 
   /// True when K can answer on this phone: installed and switched on.
   bool get usable => enabled && _path != null;
@@ -200,13 +203,14 @@ class LocalBrain extends ChangeNotifier {
   }
 
   /// Runs the model on [messages] and returns its reply text, or why there is none.
-  Future<CloudReply> run(List<BrainTurn> messages, {BrainSampling sampling = const BrainSampling(), Duration timeout = const Duration(seconds: 90), bool constrained = true}) {
+  Future<CloudReply> run(List<BrainTurn> messages, {BrainSampling sampling = const BrainSampling(), Duration timeout = const Duration(seconds: 240), bool constrained = true, void Function(String raw)? onPartial}) {
     if (!usable) {
       return Future<CloudReply>.value(CloudReply.fail(_path == null ? 'K\'s brain is not downloaded yet. Get it in Loadout, K brain.' : 'K\'s brain is switched off.'));
     }
     return _serial(() async {
       _idle?.cancel();
       _busy = true;
+      final Completer<void> stop = _stop = Completer<void>();
       notifyListeners();
       try {
         await _ensureLoaded();
@@ -221,13 +225,23 @@ class LocalBrain extends ChangeNotifier {
             firstMs ??= sw.elapsedMilliseconds;
             out.write(piece);
             pieces++;
+            onPartial?.call(out.toString());
           }
         }();
         bool timedOut = false;
         await Future.any(<Future<void>>[
           consume,
           Future<void>.delayed(timeout).then((_) => timedOut = true),
+          stop.future,
         ]);
+        if (stop.isCompleted) {
+          consume.ignore();
+          _engine.cancel();
+          try {
+            await _engine.unload().timeout(const Duration(seconds: 5));
+          } catch (_) {}
+          return const CloudReply.fail(kBrainCancelled);
+        }
         if (timedOut) {
           consume.ignore();
           _engine.cancel();
@@ -260,8 +274,16 @@ class LocalBrain extends ChangeNotifier {
   }
 
   /// One request for the assistant: the facts and question go through the prompt builder, then the model.
-  Future<CloudReply> ask(BrainFacts facts, String question, List<(bool, String)> history, {Duration timeout = const Duration(seconds: 90)}) =>
-      run(buildBrainMessages(facts, question, history), timeout: timeout);
+  Future<CloudReply> ask(BrainFacts facts, String question, List<(bool, String)> history, {Duration timeout = const Duration(seconds: 240), void Function(String raw)? onPartial}) =>
+      run(buildBrainMessages(facts, question, history), timeout: timeout, onPartial: onPartial);
+
+  Completer<void>? _stop;
+
+  /// Stops the answer being written. The reply is the failure [kBrainCancelled]; the model is released.
+  void cancelAnswer() {
+    final Completer<void>? c = _stop;
+    if (c != null && !c.isCompleted) c.complete();
+  }
 
   void _armIdle() {
     _idle?.cancel();

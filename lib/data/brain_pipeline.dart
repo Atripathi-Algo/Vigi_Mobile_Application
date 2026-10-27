@@ -232,6 +232,33 @@ AgentPlan? _task(String q, String lower) {
   ]);
 }
 
+// ----------------------------------------------------------------------------------------------- move an event
+
+AgentPlan? _move(String q, String lower, BrainFacts f) {
+  final RegExpMatch? m = RegExp(r'^(?:please\s+)?(?:move|reschedule|shift)\s+(.+?)\s+(?:to|till|until|at|for)\s+(.+)$', caseSensitive: false).firstMatch(q.trim());
+  if (m == null) return null;
+  final CaptureDraft d = CaptureParser.parse(m.group(2)!);
+  final int? start = d.when;
+  if (start == null) return null;
+  final String? day = _day(m.group(2)!.toLowerCase());
+  if (day == 'weekday') return null;
+  final List<String> words = _tokens(m.group(1)!);
+  if (words.isEmpty) return null;
+  final ({String name, bool protocol, int score})? best = _bestMatch(<String>[for (final String e in f.events) e.replaceFirst(RegExp(r'^\d{2}:\d{2}-\d{2}:\d{2}\s+'), '')], words, false);
+  if (best == null) return null;
+  return _plan('Moved ${best.name.toLowerCase()} to ${_hm(start)}${day == 'tomorrow' ? ' tomorrow' : ''}.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'move_event', 'title': best.name, 'start': _hm(start), if (day != null) 'day': day},
+  ]);
+}
+
+/// Two changes in one sentence ("move gym to 9 and add a note"): K does one at a time.
+AgentPlan? _oneAtATime(String lower) {
+  const String verbs = r'(?:move|reschedule|add|log|remind|schedule|delete|remove|cancel|mark|set|book|put)';
+  if (!RegExp('^(?:please\\s+)?$verbs\\b').hasMatch(lower)) return null;
+  if (!RegExp('\\band\\s+(?:then\\s+)?$verbs\\b').hasMatch(lower)) return null;
+  return _plan('I change one thing at a time. Which one first?', const <Map<String, dynamic>>[]);
+}
+
 // ----------------------------------------------------------------------------------------------- note
 
 AgentPlan? _note(String q) {
@@ -260,7 +287,7 @@ Decision? decideWithoutModel(String utterance, BrainFacts facts) {
   final String lower = q.toLowerCase();
   if (isFactsQuestion(q)) return const Decision(DecisionSource.router, null);
   if (isQuestionOnly(q)) return null;
-  final AgentPlan? plan = _water(q, lower) ?? _note(q) ?? _task(q, lower) ?? _event(q, lower) ?? _spend(q, lower) ?? _completion(q, lower, facts);
+  final AgentPlan? plan = _oneAtATime(lower) ?? _move(q, lower, facts) ?? _water(q, lower) ?? _note(q) ?? _task(q, lower) ?? _event(q, lower) ?? _spend(q, lower) ?? _completion(q, lower, facts);
   return plan == null ? null : Decision(DecisionSource.rules, plan);
 }
 
@@ -284,6 +311,8 @@ Decision? decideWithoutModel(String utterance, BrainFacts facts) {
         return _timeWords.hasMatch(lower) && RegExp(r'\b(meeting|appointment|event|calendar|call|lunch|dinner|schedule|book|put|add)\b').hasMatch(lower);
       case 'add_objective':
         return RegExp(r"\b(remind|task|todo|to-do|need to|have to|must|should|forget|going to|plan to|add|put|create|schedule|buy|book)\b").hasMatch(lower);
+      case 'move_event':
+        return _timeWords.hasMatch(lower) && RegExp(r'\b(move|reschedule|shift|push|change)\b').hasMatch(lower);
       case 'add_note':
         return RegExp(r'\b(note|remember|idea|jot|write down|memo)\b').hasMatch(lower);
       case 'complete_objective':

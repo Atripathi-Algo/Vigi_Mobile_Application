@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../app/brand.dart';
 import '../app/common.dart';
@@ -16,7 +18,7 @@ import '../services/voice.dart';
 import '../vigil/vigil.dart';
 import 'jarvis_orb.dart';
 
-/// 03 · VIGIL Uplink · Assistant (tab 3)
+/// 03 · K · Assistant (tab 3)
 class UplinkScreen extends ConsumerStatefulWidget {
   const UplinkScreen({super.key});
 
@@ -32,6 +34,12 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
   bool _cloud = false;
   bool _local = false;
   String? _model;
+
+  /// The words of an on-device answer as they are written, or null when none is being written.
+  String? _stream;
+
+  /// Shown when the microphone is switched off for K.
+  bool _micNeeded = false;
 
   /// After each spoken reply, listen again without a tap.
   bool _handsFree = false;
@@ -77,10 +85,15 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     });
     _voice.setThinking(true);
     _toEnd();
-    final ChatMsg reply = await a.reply(q);
+    final ChatMsg reply = await a.reply(q, onPartial: (String words) {
+      if (!mounted) return;
+      setState(() => _stream = words);
+      _toEnd();
+    });
     _voice.setThinking(false);
     if (!mounted) return;
     setState(() {
+      _stream = null;
       s.chat.add(reply);
       _cloud = a.lastWasCloud;
       _local = a.lastWasLocal;
@@ -103,7 +116,27 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     if (_voice.state == VoiceState.speaking) await _voice.stopSpeaking();
     LocalBrain.instance.preload(); // load the model while the user speaks, so the answer is not delayed
     final bool ok = await _voice.listen((String text) => _send(text, spoken: true));
-    if (!ok && mounted) showVigilSnack(context, _voice.error ?? 'Voice is not available on this phone');
+    if (ok && _micNeeded && mounted) setState(() => _micNeeded = false);
+    if (!ok && mounted) {
+      final bool granted = (await Permission.microphone.status).isGranted;
+      if (!mounted) return;
+      if (!granted) {
+        setState(() => _micNeeded = true);
+        return;
+      }
+      showVigilSnack(context, _voice.error ?? 'Voice is not available on this phone');
+    }
+  }
+
+  Future<void> _allowMic() async {
+    final PermissionStatus st = await Permission.microphone.request();
+    if (!mounted) return;
+    if (st.isGranted) {
+      setState(() => _micNeeded = false);
+      await _listen();
+    } else if (st.isPermanentlyDenied) {
+      await openAppSettings();
+    }
   }
 
   Widget _orbHeader(BuildContext context, VigilStore s) {
@@ -121,7 +154,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
         state: _voice.state,
         level: _voice.level,
         color: c.signal,
-        size: empty ? 190 : 104,
+        size: empty ? 150 : 104,
         crackle: true,
         onTap: () => _voice.state == VoiceState.idle ? _listen() : _voice.stopAll(),
       ),
@@ -130,7 +163,144 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
       const SizedBox(height: 6),
       SizedBox(width: 170, child: VigilFilterChip(label: 'HANDS-FREE', selected: _handsFree, onTap: () => setState(() => _handsFree = !_handsFree))),
       const SizedBox(height: 6),
+      _brainLine(context),
+      if (_micNeeded) _micCard(context),
     ]);
+  }
+
+  /// One line about K's brain: warm, asleep, off, or not installed (with a way to get it).
+  Widget _brainLine(BuildContext context) {
+    final c = context.vigil;
+    final t = context.vtype;
+    final LocalBrain b = ref.watch(brainProvider);
+    if (b.status == BrainStatus.notInstalled) {
+      return Container(
+        margin: const EdgeInsets.only(top: 4, bottom: 4),
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        decoration: BoxDecoration(border: Border.all(color: c.lineStrong), color: c.surface),
+        child: Row(children: <Widget>[
+          Expanded(child: Text('$kAssistantName\'S BRAIN ISN\'T INSTALLED · COMMANDS AND YOUR DATA STILL WORK', style: t.micro.copyWith(color: c.textMuted, fontSize: 10))),
+          const SizedBox(width: 8),
+          VigilButton(label: 'Download', variant: VigilButtonVariant.secondary, onPressed: () => context.push('/loadout/brain')),
+        ]),
+      );
+    }
+    if (!b.enabled) return Text('BRAIN OFF · INSTANT AND YOUR DATA ONLY', style: t.micro.copyWith(color: c.textFaint, fontSize: 10));
+    final bool warm = b.loaded;
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+      Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: warm ? VigilPalette.success : Colors.transparent, border: Border.all(color: warm ? VigilPalette.success : c.textFaint))),
+      const SizedBox(width: 6),
+      Text(warm ? 'BRAIN WARM · FREES MEMORY IN ${b.idleMinutes} MIN' : 'BRAIN ASLEEP · WAKES WHEN YOU ASK', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
+    ]);
+  }
+
+  Widget _micCard(BuildContext context) {
+    final c = context.vigil;
+    final t = context.vtype;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(border: Border.all(color: c.signal), color: c.surface),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Text('Microphone needed to talk to $kAssistantName', style: t.rowTitle),
+        const SizedBox(height: 4),
+        Text('$kAssistantName listens only while the mic is lit. Speech is turned into text on this phone and never stored.', style: t.caption.copyWith(color: c.textMuted)),
+        const SizedBox(height: 8),
+        Row(children: <Widget>[
+          VigilButton(label: 'Allow', onPressed: _allowMic),
+          const SizedBox(width: 8),
+          VigilButton(label: 'Type instead', variant: VigilButtonVariant.ghost, onPressed: () => setState(() => _micNeeded = false)),
+        ]),
+      ]),
+    );
+  }
+
+  /// The answer being written: streamed words with Cancel, the cold-start card, or plain thinking.
+  Widget _working(BuildContext context) {
+    final c = context.vigil;
+    final t = context.vtype;
+    final LocalBrain b = ref.watch(brainProvider);
+    final Widget cancel = Align(alignment: Alignment.centerRight, child: VigilButton(label: 'Cancel', variant: VigilButtonVariant.secondary, onPressed: b.cancelAnswer));
+    if (_stream != null && _stream!.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          Text('$kAssistantName · ANSWERING', style: t.label.copyWith(color: c.signal)),
+          const SizedBox(height: 4),
+          Semantics(liveRegion: true, child: Text('$_stream▍', style: t.body.copyWith(color: VigilPalette.textMuted))),
+          const SizedBox(height: 6),
+          Row(children: <Widget>[const _SourceTag(ReplySource.model), const Spacer(), cancel]),
+        ]),
+      );
+    }
+    if (b.status == BrainStatus.loading) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: VigilCard(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Row(children: <Widget>[
+              const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+              const SizedBox(width: 12),
+              Expanded(child: Text('Waking $kAssistantName\'s brain…', style: t.title)),
+            ]),
+            const SizedBox(height: 6),
+            Text('The first answer after idle can take about a minute. Instant commands work now.', style: t.caption.copyWith(color: c.textMuted)),
+            const SizedBox(height: 8),
+            cancel,
+          ]),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(children: <Widget>[
+        Expanded(child: Text('$kAssistantName · THINKING…', style: t.label.copyWith(color: c.signal))),
+        if (b.status == BrainStatus.busy) cancel,
+      ]),
+    );
+  }
+
+  /// "Remind me to…" puts the start of a sentence in the box and leaves the cursor at the end.
+  void _startReminder() => setState(() {
+        _ctl.text = 'Remind me to ';
+        _ctl.selection = TextSelection.collapsed(offset: _ctl.text.length);
+      });
+
+  /// First run: who K is, what it can do without the model, and things to try.
+  Widget _firstRun(BuildContext context) {
+    final c = context.vigil;
+    final t = context.vtype;
+    Widget row(String tag, String text) => Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            SizedBox(width: 96, child: Text(tag, style: t.micro.copyWith(color: c.signal, fontSize: 10))),
+            Expanded(child: Text(text, style: t.caption.copyWith(color: c.textMuted))),
+          ]),
+        );
+    return SingleChildScrollView(
+      child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        const SizedBox(height: 10),
+        Text('STANDING BY', style: t.micro.copyWith(color: c.signal)),
+        const SizedBox(height: 4),
+        Text('I\'m $kAssistantName.', style: t.h2),
+        const SizedBox(height: 6),
+        Text('I run on this phone: private, offline, free. Tell me what to log, or ask about your day.', style: t.body.copyWith(color: c.textMuted), textAlign: TextAlign.center),
+        const SizedBox(height: 14),
+        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: <Widget>[
+          for (final MapEntry<String, VoidCallback> chip in <String, VoidCallback>{
+            'Log a glass of water': () => _send('Log a glass of water'),
+            'Remind me to…': _startReminder,
+            'How much water today?': () => _send('How much water today?'),
+            "What's on my calendar?": () => _send("What's on my calendar today?"),
+          }.entries)
+            SizedBox(width: (MediaQuery.sizeOf(context).width - 48 - 8) / 2, child: VigilFilterChip(label: chip.key, selected: false, onTap: chip.value)),
+        ]),
+        const SizedBox(height: 14),
+        row('INSTANT', 'Clear commands, under 50 ms'),
+        row('YOUR DATA', 'Water, sleep, spend, calendar'),
+        row('ON-DEVICE', 'Open chat, 10–20 s'),
+      ]),
+    );
   }
 
   void _toEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -140,7 +310,6 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
   @override
   Widget build(BuildContext context) {
     final c = context.vigil;
-    final t = context.vtype;
     final VigilStore s = ref.watch(storeProvider);
     final bool cloudOn = s.toggles['cloudAi'] == true && Env.hasCloudAi;
     final List<String> chips = <String>[
@@ -158,19 +327,13 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
         _orbHeader(context, s),
         Expanded(
           child: s.chat.isEmpty
-              ? Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                    Text('Command $kAssistantName.', style: t.body.copyWith(color: c.textMuted)),
-                    const SizedBox(height: 14),
-                    Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: <Widget>[for (final String x in chips) VigilFilterChip(label: x, selected: false, onTap: () => _send(x))]),
-                  ]),
-                )
+              ? Center(child: _firstRun(context))
               : ListView.builder(
                   controller: _scroll,
                   padding: const EdgeInsets.only(bottom: 12, top: 8),
                   itemCount: s.chat.length + (_busy ? 1 : 0),
                   itemBuilder: (BuildContext ctx, int i) {
-                    if (i == s.chat.length) return Padding(padding: const EdgeInsets.only(bottom: 12), child: Text('$kAssistantName · THINKING…', style: t.label.copyWith(color: c.signal)));
+                    if (i == s.chat.length) return _working(context);
                     return _bubble(context, s, s.chat[i]);
                   },
                 ),
@@ -224,6 +387,14 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
           constraints: BoxConstraints(maxWidth: w * 0.92),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             Text('$kAssistantName · ${Fmt.time(m.at)}', style: t.label.copyWith(color: m.alert ? c.critical : c.signal)),
+            if (m.source != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(children: <Widget>[
+                  _SourceTag(m.source!),
+                  if (m.ms != null && (m.source == ReplySource.instant || m.source == ReplySource.data)) Padding(padding: const EdgeInsets.only(left: 8), child: Text('${m.ms} ms', style: t.micro.copyWith(color: c.textFaint, fontSize: 10))),
+                ]),
+              ),
             const SizedBox(height: 4),
             Text(m.text, style: t.body),
             if (m.diff != null) ...<Widget>[
@@ -263,6 +434,14 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     );
   }
 
+  String _why(ChatMsg m) => switch (m.source) {
+        ReplySource.instant => 'Decided by exact rules on this phone: no model was used, so it is the same every time.',
+        ReplySource.data => 'Answered from the real data in this app, on this phone. The numbers come from the store.',
+        ReplySource.model => 'Written by the on-device model, MiniCPM5-1B. Anything it wanted to change was checked against your words first.',
+        ReplySource.cloud => 'Answered by your own cloud AI key. Only your question and earlier open-chat turns were sent, never your app data.',
+        null => 'A note from $kAssistantName about how this request was handled.',
+      };
+
   void _undo(ChatMsg m) {
     m.onUndo?.call();
     setState(() => m.undone = true);
@@ -283,10 +462,41 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
           ),
           ListTile(
             title: const Text('WHY?'),
-            subtitle: Text('Answered from the on-device router${m.diff != null ? ' with one write' : ''}. Numbers come from the store.', style: ctx.vtype.caption),
+            subtitle: Text(_why(m), style: ctx.vtype.caption),
             onTap: () => Navigator.pop(ctx),
           ),
           ListTile(title: const Text('REPORT'), onTap: () => Navigator.pop(ctx)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Tells where a reply came from: an icon, the words, and a colour (never colour alone).
+class _SourceTag extends StatelessWidget {
+  const _SourceTag(this.source);
+
+  final ReplySource source;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.vtype;
+    final (IconData icon, String label, Color color) = switch (source) {
+      ReplySource.instant => (Icons.bolt, 'INSTANT', VigilPalette.signal),
+      ReplySource.data => (Icons.dataset_outlined, 'FROM YOUR DATA', VigilPalette.success),
+      ReplySource.model => (Icons.memory, 'ON-DEVICE AI', VigilPalette.steel),
+      ReplySource.cloud => (Icons.cloud_outlined, 'CLOUD', VigilPalette.warning),
+    };
+    return Semantics(
+      label: 'Answered by: $label',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(border: Border.all(color: color.withValues(alpha: 0.6))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: t.micro.copyWith(color: color, fontSize: 9.5)),
         ]),
       ),
     );

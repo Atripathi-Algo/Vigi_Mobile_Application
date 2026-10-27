@@ -170,48 +170,62 @@ void main() {
   });
 
   group('Assistant with Cloud AI on', () {
-    test('answers, acts, and the action can be undone', () async {
+    test('open chat goes to the cloud with no app data, and nothing is changed', () async {
       store.toggles['cloudAi'] = true;
       late Map<String, dynamic> body;
       final MockClient client = MockClient((http.Request r) async {
         body = jsonDecode(r.body) as Map<String, dynamic>;
-        return gemini('{"say":"Done. Water logged.","actions":[{"type":"log_water","ml":250}]}');
+        return gemini('Paris.');
       });
-      store.chat.add(ChatMsg(fromUser: true, text: 'earlier question', at: DateTime.now()));
-      store.chat.add(ChatMsg(fromUser: false, text: 'earlier answer', at: DateTime.now()));
-      store.chat.add(ChatMsg(fromUser: true, text: 'log a glass of water', at: DateTime.now()));
+      store.logWater(500);
+      store.chat
+        ..add(ChatMsg(fromUser: true, text: 'how much water today?', at: DateTime.now()))
+        ..add(ChatMsg(fromUser: false, text: 'Hydration 0.5 of 3.0 L.', at: DateTime.now(), source: ReplySource.data))
+        ..add(ChatMsg(fromUser: true, text: 'earlier open question', at: DateTime.now()))
+        ..add(ChatMsg(fromUser: false, text: 'earlier open answer', at: DateTime.now(), source: ReplySource.model))
+        ..add(ChatMsg(fromUser: true, text: 'what is the capital of France?', at: DateTime.now()));
       final Assistant a = Assistant(store, client: client);
-      final ChatMsg m = await a.reply('log a glass of water');
-      expect(m.text, 'Done. Water logged.');
-      expect(store.waterMl, 250);
-      expect(m.diff!.single.$2, '+250 ml water');
-      expect(m.undoable, isTrue);
-      m.onUndo!();
-      expect(store.waterMl, 0);
+      final ChatMsg m = await a.reply('what is the capital of France?');
+      expect(m.text, 'Paris.');
+      expect(m.source, ReplySource.cloud);
+      expect(m.diff, isNull);
       expect(a.lastWasCloud, isTrue);
+      expect(store.waterMl, 500);
 
-      // The request carried the instructions, the earlier turns, and JSON mode.
-      expect((body['systemInstruction']['parts'][0]['text'] as String), contains('"actions"'));
+      final String sys = body['systemInstruction']['parts'][0]['text'] as String;
+      expect(sys, allOf(contains('plain sentences'), isNot(contains('"actions"'))));
       final List<dynamic> contents = body['contents'] as List<dynamic>;
       expect(contents.map((dynamic c) => c['role']), <String>['user', 'model', 'user']);
-      expect(contents.last['parts'][0]['text'], allOf(contains('SITREP'), contains('log a glass of water')));
-      expect(body['generationConfig']['responseMimeType'], 'application/json');
+      expect(jsonEncode(body), allOf(isNot(contains('SITREP')), isNot(contains('Hydration')), isNot(contains('0.5'))));
+      expect(contents.last['parts'][0]['text'], 'what is the capital of France?');
+      expect(body['generationConfig']?['responseMimeType'], isNull);
     });
 
-    test('a failed action is said out loud instead of claimed as done', () async {
+    test('a command is done by the rules and never leaves the phone', () async {
       store.toggles['cloudAi'] = true;
-      final MockClient client = MockClient((http.Request r) async => gemini('{"say":"Added.","actions":[{"type":"add_event","title":"Dentist"}]}'));
-      final ChatMsg m = await Assistant(store, client: client).reply('add dentist');
-      expect(m.text, allOf(contains('Added.'), contains('needed a title and a start time')));
-      expect(m.alert, isTrue);
-      expect(store.blocks, isEmpty);
+      int calls = 0;
+      final MockClient client = MockClient((http.Request r) async {
+        calls++;
+        return gemini('should not be called');
+      });
+      final ChatMsg m = await Assistant(store, client: client).reply('log a glass of water');
+      expect(calls, 0);
+      expect(store.waterMl, 250);
+      expect(m.source, ReplySource.instant);
+      expect(m.undoable, isTrue);
     });
 
-    test('a plain-text reply is shown as it is', () async {
+    test('a question about the user\'s data is answered from the store, not the cloud', () async {
       store.toggles['cloudAi'] = true;
-      final ChatMsg m = await Assistant(store, client: MockClient((http.Request r) async => gemini('Paris.'))).reply('capital of France?');
-      expect(m.text, 'Paris.');
-      expect(m.diff, isNull);
+      int calls = 0;
+      final MockClient client = MockClient((http.Request r) async {
+        calls++;
+        return gemini('should not be called');
+      });
+      final ChatMsg m = await Assistant(store, client: client).reply('how much water today');
+      expect(calls, 0);
+      expect(m.text, contains('Hydration'));
+      expect(m.source, ReplySource.data);
     });
 
     test('when the call fails the reason is shown and the on-device answer still works', () async {
@@ -219,8 +233,8 @@ void main() {
       final MockClient client = MockClient((http.Request r) async => json(401, <String, dynamic>{
             'error': <String, dynamic>{'message': 'API key not valid.'},
           }));
-      final ChatMsg m = await Assistant(store, client: client).reply('how much water today');
-      expect(m.text, contains('Hydration'));
+      final ChatMsg m = await Assistant(store, client: client).reply('tell me a joke');
+      expect(m.text, contains('Local mode'));
       expect(m.note, allOf(startsWith('Cloud AI failed'), contains('HTTP 401'), contains('aistudio.google.com')));
     });
   });

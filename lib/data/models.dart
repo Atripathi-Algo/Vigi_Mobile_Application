@@ -410,6 +410,9 @@ class CaptureDraft {
   bool uncertainType;
 }
 
+/// Who produced a reply, shown as a tag on it.
+enum ReplySource { instant, data, model, cloud }
+
 class ChatMsg {
   ChatMsg({
     required this.fromUser,
@@ -422,6 +425,8 @@ class ChatMsg {
     this.undone = false,
     this.note,
     this.onUndo,
+    this.source,
+    this.ms,
   });
 
   final bool fromUser;
@@ -442,4 +447,10 @@ class ChatMsg {
   final List<double>? chart;
   bool undoable;
   bool undone;
+
+  /// Instant (rules), from your data (router), on-device AI (model) or cloud. Null for system notes.
+  ReplySource? source;
+
+  /// How long the reply took to produce.
+  int? ms;
 }

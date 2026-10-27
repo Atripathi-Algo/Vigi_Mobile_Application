@@ -70,7 +70,7 @@ Future<CloudReply> askCloudDetailed(
     final String chosen = Env.cloudAiModel;
     final bool canFallBack = provider == 'gemini' && base == 'https://generativelanguage.googleapis.com';
     final List<String> models = <String>[chosen, if (canFallBack) ...kGeminiFreeFallbacks.where((String m) => m != chosen)];
-    final List<(String, String)> turns = _alternate(history, 'SITREP: $sitrep\n\nQUESTION: $question');
+    final List<(String, String)> turns = _alternate(history, sitrep.isEmpty ? question : 'SITREP: $sitrep\n\nQUESTION: $question');
     final String sys = system ?? _system;
 
     String? firstFailure;
