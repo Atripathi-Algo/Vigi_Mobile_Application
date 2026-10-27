@@ -8,9 +8,11 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/drive_sync.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
+import 'drive_sheet.dart';
 
 /// 02 · Command · Home
 class CommandScreen extends ConsumerStatefulWidget {
@@ -97,7 +99,21 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
               VigilCard(
                 brackets: true,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-                  SectionLabel('Ops readiness', trailing: 'UPD ${Fmt.time(now)}'),
+                  ListenableBuilder(
+                    listenable: DriveSync.instance,
+                    builder: (BuildContext ctx, Widget? _) {
+                      final DriveSync d = DriveSync.instance;
+                      if (!d.configured) return SectionLabel('Ops readiness', trailing: 'UPD ${Fmt.time(now)}');
+                      return InkWell(
+                        onTap: () => openSyncStatus(context, s),
+                        child: Semantics(
+                          button: true,
+                          label: 'Drive backup: ${d.statusText()}',
+                          child: SectionLabel('Ops readiness', trailing: d.statusText(), trailingColor: syncColor(context, d.state)),
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 12),
                   Row(children: <Widget>[
                     ReadinessRing(value: s.readiness),
@@ -106,7 +122,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                       child: Column(children: <Widget>[
                         StatBar(label: 'Objectives', value: '${s.cleared.length} / ${s.objectivesToday}', fraction: s.objectivesToday == 0 ? 0 : s.cleared.length / s.objectivesToday),
                         const SizedBox(height: 10),
-                        StatBar(label: 'Protocols', value: '${s.protocolsDone} / ${s.protocols.length}', fraction: s.protocolsDone / s.protocols.length),
+                        StatBar(label: 'Protocols', value: '${s.protocolsDone} / ${s.protocols.length}', fraction: s.protocols.isEmpty ? 0 : s.protocolsDone / s.protocols.length),
                         const SizedBox(height: 10),
                         StatBar(label: 'Deep ops', value: '${Fmt.durCompact(s.focusTodayMin)} / ${Fmt.durCompact(s.focusTargetMin).replaceAll('h00', 'h')}', fraction: s.focusTodayMin / s.focusTargetMin, color: c.steel),
                       ]),

@@ -32,4 +32,6 @@ The app is renamed **K** in the UI only: package id `com.algoanalytics.vigil`, r
 - Phase 1 (theme, name, K mark) and Phase 2 (setup guide): done and pushed (efd673e).
 - Phase 3 (K screen): done. Source tags with timing, streaming with Cancel, waking and asleep states, first-run block, microphone card, Cloud for open chat only (no app data sent), `move_event` (rules and agent; not offered to the model). `log_fill_up` waits for the Garage (Phase 5). The 50-prompt accuracy check is still the 24-prompt one.
 
+- Phase 4 (Drive): done in code and unit tests (fake Drive, two phones, conflicts, merge, Wi-Fi only, lapsed approval). Auto-sync a few seconds after a change (at most once a minute, only when something really changed), checks Drive when the app opens or resumes, takes newer data from another phone when this phone has no changes, and asks (Merge / Keep this phone / Use Drive) when both changed. The chat log is now saved and part of the backup. **Not verified against a real Google account**: sign-in, Drive consent and the real Drive API need a phone and your account. Sync runs only while the app is open; changes made while it is closed are sent the next time it opens.
+
 Each phase ends with `flutter analyze`, `flutter test`, an emulator check and a commit. Pushes are asked for each time.

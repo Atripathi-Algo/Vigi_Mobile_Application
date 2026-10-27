@@ -10,7 +10,9 @@ import 'app/providers.dart';
 import 'app/router.dart';
 import 'data/store.dart';
 import 'screens/capture_sheet.dart';
+import 'screens/drive_sheet.dart';
 import 'services/calendar_sync.dart';
+import 'services/drive_sync.dart';
 import 'services/google_accounts.dart';
 import 'services/health.dart';
 import 'services/local_brain.dart';
@@ -68,6 +70,7 @@ class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver
     // The on-device model is released shortly after the app leaves the screen, so it costs nothing in the background.
     if (state == AppLifecycleState.resumed) {
       LocalBrain.instance.onForeground();
+      DriveSync.instance.syncNow(); // picks up newer data from another phone
     } else {
       LocalBrain.instance.onBackground();
     }
@@ -77,6 +80,21 @@ class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  bool _conflictShown = false;
+
+  /// When this phone and Drive both changed, ask once per run which to keep (the status chip can ask again).
+  void _askAboutConflict() {
+    final DriveSync d = DriveSync.instance;
+    if (d.state != SyncState.conflict) {
+      _conflictShown = false;
+      return;
+    }
+    if (_conflictShown) return;
+    _conflictShown = true;
+    final BuildContext? ctx = rootNavKey.currentContext;
+    if (ctx != null) showDriveConflict(ctx, d);
   }
 
   /// Opens a route or action from a notification, push message or widget tap.
@@ -127,6 +145,10 @@ class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver
 
     // Calendars (linked Google accounts and the public API-key calendar), then push widgets and reminders.
     await GoogleAccounts.instance.load();
+    DriveSync.instance
+      ..attach(s)
+      ..addListener(_askAboutConflict)
+      ..syncNow();
     await LocalBrain.instance.init();
     await syncCalendars(s);
     await _sync.run();

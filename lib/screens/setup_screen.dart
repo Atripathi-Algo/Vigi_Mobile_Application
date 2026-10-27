@@ -10,6 +10,7 @@ import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/store.dart';
 import '../services/drive_backup.dart';
+import '../services/drive_sync.dart';
 import '../services/google_accounts.dart';
 import '../services/health.dart';
 import '../services/local_brain.dart';
@@ -126,6 +127,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final GoogleAccounts g = GoogleAccounts.instance;
     final String? err = g.hasAny ? null : await g.link(0);
     if (!mounted) return;
+    DriveSync.instance.attach(ref.read(storeProvider));
     if (err != null) {
       setState(() {
         _working = false;
@@ -134,7 +136,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       return;
     }
     try {
+      final DriveSync sync = DriveSync.instance;
+      await sync.choose(g.accounts.first);
       final DriveFile? f = await latestBackup(g, g.accounts.first);
+      if (!mounted) return;
+      if (f == null) await sync.enable(g.accounts.first);
       if (!mounted) return;
       if (f != null) {
         setState(() {
@@ -150,6 +156,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     if (mounted) _go(_Step.brain);
   }
 
+  Future<void> _startFresh() async {
+    final DriveFile? f = _backup;
+    if (f != null) await DriveSync.instance.startFreshOver(f);
+    if (mounted) _go(_Step.brain);
+  }
+
   Future<void> _restore() async {
     final DriveFile? f = _backup;
     final GoogleAccounts g = GoogleAccounts.instance;
@@ -160,7 +172,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     });
     final VigilStore s = ref.read(storeProvider);
     try {
-      await restoreFromDrive(s, g, g.accounts.first, f);
+      await DriveSync.instance.restoreNow();
     } on DriveException catch (e) {
       if (mounted) {
         setState(() {
@@ -458,11 +470,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         ]),
       ),
       const SizedBox(height: 10),
-      Text('Start fresh leaves the backup in Drive untouched until you back up again from this phone.', style: t.micro.copyWith(color: c.textFaint)),
+      Text('Start fresh replaces this backup with the data on this phone at the first sync.', style: t.micro.copyWith(color: c.textFaint)),
       if (_error != null) _errorBox(_error!),
       const SizedBox(height: 24),
       Row(children: <Widget>[
-        Expanded(child: VigilButton(label: 'Start fresh', variant: VigilButtonVariant.secondary, size: VigilButtonSize.large, expand: true, onPressed: _working ? null : () => _go(_Step.brain))),
+        Expanded(child: VigilButton(label: 'Start fresh', variant: VigilButtonVariant.secondary, size: VigilButtonSize.large, expand: true, onPressed: _working ? null : _startFresh)),
         const SizedBox(width: 12),
         Expanded(child: VigilButton(label: _working ? 'Restoring…' : 'Restore', size: VigilButtonSize.large, expand: true, onPressed: _working ? null : _restore)),
       ]),

@@ -453,4 +453,28 @@ class ChatMsg {
 
   /// How long the reply took to produce.
   int? ms;
+
+  /// Saved with the app's data. A reply read back from disk can no longer be undone.
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'id': '${at.microsecondsSinceEpoch}-${fromUser ? 'u' : 'k'}',
+        'fromUser': fromUser,
+        'text': text,
+        'at': at.millisecondsSinceEpoch,
+        if (alert) 'alert': true,
+        if (note != null) 'note': note,
+        if (source != null) 'source': source!.name,
+        if (ms != null) 'ms': ms,
+        if (diff != null) 'diff': <List<String>>[for (final (String, String) r in diff!) <String>[r.$1, r.$2]],
+      };
+
+  static ChatMsg fromJson(Map<String, dynamic> j) => ChatMsg(
+        fromUser: (j['fromUser'] as bool?) ?? false,
+        text: (j['text'] as String?) ?? '',
+        at: DateTime.fromMillisecondsSinceEpoch((j['at'] as int?) ?? 0),
+        alert: (j['alert'] as bool?) ?? false,
+        note: j['note'] as String?,
+        source: ReplySource.values.where((ReplySource e) => e.name == j['source']).firstOrNull,
+        ms: j['ms'] as int?,
+        diff: (j['diff'] as List<dynamic>?)?.map((dynamic r) => ((r as List<dynamic>)[0] as String, r[1] as String)).toList(),
+      );
 }

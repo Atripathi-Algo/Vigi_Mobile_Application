@@ -80,6 +80,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     SfxService.play(Sfx.tick);
     setState(() {
       s.chat.add(ChatMsg(fromUser: true, text: q, at: DateTime.now()));
+      s.chatChanged();
       _ctl.clear();
       _busy = true;
     });
@@ -95,6 +96,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     setState(() {
       _stream = null;
       s.chat.add(reply);
+      s.chatChanged();
       _cloud = a.lastWasCloud;
       _local = a.lastWasLocal;
       _model = a.lastModel;

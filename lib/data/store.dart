@@ -133,6 +133,15 @@ class VigilStore extends ChangeNotifier {
 
   SharedPreferences get prefs => _prefs;
 
+  /// How many chat messages are kept on disk and in the backup.
+  static const int kChatKept = 150;
+
+  /// Saves the chat after a message is added, and tells listeners (the backup notices it).
+  void chatChanged() {
+    _prefs.setString('chat', jsonEncode(chat.skip(chat.length > kChatKept ? chat.length - kChatKept : 0).map((ChatMsg m) => m.toJson()).toList()));
+    notifyListeners();
+  }
+
   String nextId() => '${DateTime.now().microsecondsSinceEpoch}-${_seq++}';
 
   // =========================================================================
@@ -182,6 +191,15 @@ class VigilStore extends ChangeNotifier {
     final DateTime now = DateTime.now();
     final String today = dayKey(now);
     booted = _prefs.getBool('booted') ?? false;
+    chat.clear();
+    try {
+      final String? rawChat = _prefs.getString('chat');
+      if (rawChat != null) {
+        chat.addAll((jsonDecode(rawChat) as List<dynamic>).map((dynamic e) => ChatMsg.fromJson(e as Map<String, dynamic>)));
+      }
+    } catch (_) {
+      // an unreadable log is dropped rather than blocking the app
+    }
     fullName = _prefs.getString('fullName') ?? fullName;
     callsign = _prefs.getString('callsign') ?? callsign;
     if (callsign == 'Batman') callsign = ''; // the old default; the greeting falls back to the first name
@@ -346,6 +364,7 @@ class VigilStore extends ChangeNotifier {
       ..setString('day', today);
     if (tomorrowFirstId != null) _prefs.setString('tomorrowFirst', tomorrowFirstId!);
     _prefs
+      ..setString('chat', jsonEncode(chat.skip(chat.length > kChatKept ? chat.length - kChatKept : 0).map((ChatMsg m) => m.toJson()).toList()))
       ..setString('sleepLog', jsonEncode(_sleep.map((SleepNight n) => n.toJson()).toList()))
       ..setString('weights', jsonEncode(weights.map((WeightPoint w) => w.toJson()).toList()));
     if (restingHr != null) _prefs.setInt('rhr', restingHr!);
@@ -430,6 +449,7 @@ class VigilStore extends ChangeNotifier {
   Future<void> eraseAll() async {
     await _prefs.clear();
     _seed();
+    chat.clear();
     booted = false;
     fullName = '';
     callsign = '';

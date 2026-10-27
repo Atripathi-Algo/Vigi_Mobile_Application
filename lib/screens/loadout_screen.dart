@@ -10,6 +10,7 @@ import '../app/env.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../data/store.dart';
+import '../services/drive_sync.dart';
 import '../services/google_accounts.dart';
 import '../services/health.dart';
 import '../services/local_brain.dart';
@@ -245,17 +246,23 @@ class LoadoutScreen extends ConsumerWidget {
               ]),
             ),
           ),
-          linkRow(
-            'Google Drive backup',
-            accounts.hasAny ? 'Private app folder · back up or restore' : 'Link a Google account first',
-            accounts.hasAny ? 'OPEN' : 'ASK',
-            onTap: () => accounts.hasAny ? showDriveSheet(context, s) : context.push('/loadout/accounts'),
+          ListenableBuilder(
+            listenable: DriveSync.instance,
+            builder: (BuildContext ctx, Widget? _) {
+              final DriveSync d = DriveSync.instance;
+              return linkRow(
+                'Google Drive backup',
+                d.configured ? d.statusText() : (accounts.hasAny ? 'Hidden app folder · tap to set up' : 'Link a Google account first'),
+                d.configured ? (d.state == SyncState.synced ? 'ON' : 'OPEN') : (accounts.hasAny ? 'OPEN' : 'ASK'),
+                onTap: () => accounts.hasAny ? openSyncStatus(context, s) : context.push('/loadout/accounts'),
+              );
+            },
           ),
           linkRow('Export data', 'Copy JSON snapshot', 'OPEN', onTap: () async {
             await Clipboard.setData(ClipboardData(text: s.sitrep(DateTime.now())));
             if (context.mounted) showVigilSnack(context, 'Snapshot copied');
           }),
-          linkRow('Assistant log', '${s.chat.length} messages this session', 'OPEN', onTap: () => context.go('/vigil')),
+          linkRow('Assistant log', '${s.chat.length} messages · on this phone', 'OPEN', onTap: () => context.go('/vigil')),
           InkWell(
             onTap: () => _erase(context, s),
             child: SizedBox(height: 56, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: Align(alignment: Alignment.centerLeft, child: Text('ERASE ALL', style: t.button.copyWith(color: c.critical))))),
