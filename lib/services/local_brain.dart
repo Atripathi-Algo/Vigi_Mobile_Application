@@ -166,6 +166,7 @@ class LocalBrain extends ChangeNotifier {
     try {
       await _engine.load(BrainLoad(path: path, threads: threads == 0 ? 4 : threads));
       lastLoadMs = sw.elapsedMilliseconds;
+      debugPrint('K brain: loaded in $lastLoadMs ms');
     } finally {
       _loading = false;
       notifyListeners();
@@ -199,7 +200,7 @@ class LocalBrain extends ChangeNotifier {
   }
 
   /// Runs the model on [messages] and returns its reply text, or why there is none.
-  Future<CloudReply> run(List<BrainTurn> messages, {BrainSampling sampling = const BrainSampling(), Duration timeout = const Duration(seconds: 90)}) {
+  Future<CloudReply> run(List<BrainTurn> messages, {BrainSampling sampling = const BrainSampling(), Duration timeout = const Duration(seconds: 90), bool constrained = true}) {
     if (!usable) {
       return Future<CloudReply>.value(CloudReply.fail(_path == null ? 'K\'s brain is not downloaded yet. Get it in Loadout, K brain.' : 'K\'s brain is switched off.'));
     }
@@ -216,7 +217,7 @@ class LocalBrain extends ChangeNotifier {
         // Consumed in its own future so a stuck generation can be abandoned: cancelling a stream that is not
         // yielding would otherwise wait for it forever.
         final Future<void> consume = () async {
-          await for (final String piece in _engine.generate(messages, schema: kBrainSchema, sampling: sampling)) {
+          await for (final String piece in _engine.generate(messages, schema: constrained ? kBrainSchema : null, sampling: sampling)) {
             firstMs ??= sw.elapsedMilliseconds;
             out.write(piece);
             pieces++;
@@ -234,10 +235,12 @@ class LocalBrain extends ChangeNotifier {
           try {
             await _engine.unload().timeout(const Duration(seconds: 5));
           } catch (_) {}
-          return const CloudReply.fail('K took too long and was stopped.');
+          debugPrint('K brain: stopped after ${timeout.inSeconds} s with $pieces pieces (first piece at $firstMs ms)');
+          return CloudReply.fail('K took too long and was stopped (${timeout.inSeconds} s, ${out.length} characters written).');
         }
         final int ms = sw.elapsedMilliseconds;
         lastFirstTokenMs = firstMs;
+        debugPrint('K brain: first piece after $firstMs ms, $pieces pieces in $ms ms');
         lastTokensPerSecond = pieces > 1 && ms > (firstMs ?? 0) ? (pieces - 1) * 1000 / (ms - (firstMs ?? 0)) : null;
         final String text = out.toString().trim();
         if (text.isEmpty) return const CloudReply.fail('K produced no answer. Try again.');
@@ -257,8 +260,8 @@ class LocalBrain extends ChangeNotifier {
   }
 
   /// One request for the assistant: the facts and question go through the prompt builder, then the model.
-  Future<CloudReply> ask(BrainFacts facts, String question, List<(bool, String)> history) =>
-      run(buildBrainMessages(facts, question, history));
+  Future<CloudReply> ask(BrainFacts facts, String question, List<(bool, String)> history, {Duration timeout = const Duration(seconds: 90)}) =>
+      run(buildBrainMessages(facts, question, history), timeout: timeout);
 
   void _armIdle() {
     _idle?.cancel();

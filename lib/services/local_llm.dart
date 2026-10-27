@@ -33,8 +33,8 @@ abstract interface class LocalLlmEngine {
 
   Future<void> load(BrainLoad load);
 
-  /// Streams the reply as it is written. The reply is forced to fit [schema].
-  Stream<String> generate(List<BrainTurn> messages, {required Map<String, dynamic> schema, BrainSampling sampling = const BrainSampling()});
+  /// Streams the reply as it is written. The reply is forced to fit [schema], or is free text when it is null.
+  Stream<String> generate(List<BrainTurn> messages, {Map<String, dynamic>? schema, BrainSampling sampling = const BrainSampling()});
 
   /// Stops the generation in progress, if any.
   Future<void> cancel();
@@ -68,7 +68,7 @@ class LlamadartEngine implements LocalLlmEngine {
   }
 
   @override
-  Stream<String> generate(List<BrainTurn> messages, {required Map<String, dynamic> schema, BrainSampling sampling = const BrainSampling()}) async* {
+  Stream<String> generate(List<BrainTurn> messages, {Map<String, dynamic>? schema, BrainSampling sampling = const BrainSampling()}) async* {
     final LlamaEngine? e = _engine;
     if (e == null) throw StateError('The model is not loaded.');
     final List<LlamaChatMessage> chat = <LlamaChatMessage>[
@@ -94,10 +94,12 @@ class LlamadartEngine implements LocalLlmEngine {
         reusePromptPrefix: true, // the fixed instructions are evaluated once, then reused
       ),
       enableThinking: false, // no hidden reasoning tokens: they cost time and battery and this task does not need them
-      responseFormat: <String, dynamic>{
-        'type': 'json_schema',
-        'json_schema': <String, dynamic>{'name': 'k_reply', 'schema': schema},
-      },
+      responseFormat: schema == null
+          ? null
+          : <String, dynamic>{
+              'type': 'json_schema',
+              'json_schema': <String, dynamic>{'name': 'k_reply', 'schema': schema},
+            },
     );
     await for (final LlamaCompletionChunk chunk in stream) {
       if (chunk.text.isNotEmpty) yield chunk.text;

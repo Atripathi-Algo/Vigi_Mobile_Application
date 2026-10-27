@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../services/local_brain.dart';
 import 'agent.dart';
+import 'brain_pipeline.dart';
 import 'brain_prompt.dart';
 
 /// A fixed set of requests with the action each should produce, run on the phone to measure how accurate the
@@ -60,12 +63,15 @@ const List<BrainCase> kEvalCases = <BrainCase>[
 ];
 
 class EvalResult {
-  const EvalResult(this.c, this.ok, this.detail, this.ms);
+  const EvalResult(this.c, this.ok, this.detail, this.ms, [this.source = 'model']);
 
   final BrainCase c;
   final bool ok;
   final String detail;
   final int ms;
+
+  /// Who decided: rules, router (answers from the store) or model.
+  final String source;
 }
 
 class EvalReport {
@@ -78,6 +84,11 @@ class EvalReport {
   double get accuracy => results.isEmpty ? 0 : passed / results.length;
 
   int get averageMs => results.isEmpty ? 0 : (results.fold(0, (int a, EvalResult r) => a + r.ms) / results.length).round();
+
+  int count(String source) => results.where((EvalResult r) => r.source == source).length;
+
+  /// How the requests were decided, for the summary line.
+  String get bySource => 'rules ${count('rules')}, router ${count('router')}, model ${count('model')}';
 }
 
 /// Whether [plan] is the right answer to [c]. Pure, so it is unit-tested without a model.
@@ -100,19 +111,36 @@ class EvalReport {
   return (ok: true, detail: 'ok');
 }
 
-/// Runs every case through the real model. [onProgress] gets (done, total).
+/// The pipeline's plan for [c], or null when the router answers it. The model is asked only when the rules and
+/// the router do not decide, and its plan goes through the same check as in the app.
+Future<({AgentPlan? plan, String source, String? error})> _decide(LocalBrain brain, BrainCase c) async {
+  final Decision? d = decideWithoutModel(c.utterance, kEvalFacts);
+  if (d?.source == DecisionSource.rules) return (plan: d!.plan, source: 'rules', error: null);
+  if (d?.source == DecisionSource.router) return (plan: null, source: 'router', error: null);
+  final reply = await brain.ask(kEvalFacts, c.utterance, const <(bool, String)>[]);
+  if (reply.text == null) return (plan: null, source: 'model', error: reply.error ?? 'no reply');
+  final v = validateModelPlan(parseAgentPlan(reply.text!), c.utterance, kEvalFacts);
+  return (plan: v.plan, source: 'model', error: null);
+}
+
+/// Runs every case through the same pipeline the app uses. [onProgress] gets (done, total). Router-answered
+/// questions are exact by construction (they read the store) and count as right when no change was expected.
 Future<EvalReport> runBrainEval(LocalBrain brain, {void Function(int done, int total)? onProgress, List<BrainCase> cases = kEvalCases}) async {
   final List<EvalResult> out = <EvalResult>[];
   for (int i = 0; i < cases.length; i++) {
     final BrainCase c = cases[i];
     final Stopwatch sw = Stopwatch()..start();
-    final reply = await brain.ask(kEvalFacts, c.utterance, const <(bool, String)>[]);
-    if (reply.text == null) {
-      out.add(EvalResult(c, false, reply.error ?? 'no reply', sw.elapsedMilliseconds));
+    final d = await _decide(brain, c);
+    if (d.error != null) {
+      out.add(EvalResult(c, false, d.error!, sw.elapsedMilliseconds, d.source));
+    } else if (d.plan == null) {
+      out.add(EvalResult(c, c.type == null, c.type == null ? 'ok' : 'answered by the router, expected ${c.type}', sw.elapsedMilliseconds, d.source));
     } else {
-      final r = judge(c, parseAgentPlan(reply.text!));
-      out.add(EvalResult(c, r.ok, r.detail, sw.elapsedMilliseconds));
+      final r = judge(c, d.plan!);
+      out.add(EvalResult(c, r.ok, r.detail, sw.elapsedMilliseconds, d.source));
     }
+    final EvalResult last = out.last;
+    debugPrint('K eval ${i + 1}/${cases.length}: ${last.ok ? 'PASS' : 'FAIL'} ${last.source} ${last.ms} ms "${c.utterance}" ${last.ok ? '' : last.detail}');
     onProgress?.call(i + 1, cases.length);
   }
   return EvalReport(out);

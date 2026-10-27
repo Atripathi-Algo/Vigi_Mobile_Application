@@ -50,7 +50,7 @@ class FakeEngine implements LocalLlmEngine {
   }
 
   @override
-  Stream<String> generate(List<BrainTurn> messages, {required Map<String, dynamic> schema, BrainSampling sampling = const BrainSampling()}) async* {
+  Stream<String> generate(List<BrainTurn> messages, {Map<String, dynamic>? schema, BrainSampling sampling = const BrainSampling()}) async* {
     lastMessages = messages;
     lastSchema = schema;
     lastSampling = sampling;
@@ -156,8 +156,10 @@ void main() {
       expect(item['required'], <String>['type']);
       expect(j['properties']['actions']['maxItems'], lessThanOrEqualTo(3));
       for (final String t in kBrainActionTypes) {
-        expect(kBrainSystem, contains('- $t:'), reason: 'the instructions describe $t');
+        expect(kBrainSystem, contains('$t('), reason: 'the instructions describe $t');
       }
+      expect(kBrainSystem.length, lessThan(1700), reason: 'short instructions mean a short cold start');
+      expect(j['properties']['actions']['maxItems'], 1);
     });
 
     test('facts from the store are plain lines', () async {
@@ -171,6 +173,20 @@ void main() {
       expect(f.waterMl, 500);
       expect(f.sleep, 'no data');
       expect(f.money, 'no data');
+    });
+  });
+
+  group('question guard', () {
+    test('questions that ask for information are recognised', () {
+      for (final String q in <String>['how much water have I had today?', 'what did I spend this month', 'did I call the plumber?', 'when is my next meeting', 'is it late', 'what is the capital of Japan?', 'how did I sleep']) {
+        expect(isQuestionOnly(q), isTrue, reason: q);
+      }
+    });
+
+    test('statements and requests for a change are not', () {
+      for (final String q in <String>['I drank a glass of water', 'log a glass of water', 'remind me to call mom', 'can you add a task to buy milk?', 'could you schedule a meeting at 3?', 'spent 250 on lunch', 'the weekly report is done', 'I did my workout', 'note: ask the landlord', 'hello K', 'thanks']) {
+        expect(isQuestionOnly(q), isFalse, reason: q);
+      }
     });
   });
 
@@ -417,20 +433,41 @@ void main() {
       return b;
     }
 
-    test('understands plain language, acts, and can undo', () async {
+    test('clear commands are done by the rules, without waking the model', () async {
       final FakeEngine e = FakeEngine();
-      final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[{"type":"add_objective","title":"Call mom","due":"18:00","day":"tomorrow"}],"say":"Done. Call mom, tomorrow at 18:00."}', e));
-      store.chat.add(ChatMsg(fromUser: true, text: 'remind me to call mom tomorrow evening', at: DateTime.now()));
-      final ChatMsg m = await a.reply('remind me to call mom tomorrow evening');
+      final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[],"say":"x"}', e));
+      final ChatMsg m = await a.reply('remind me to call mom tomorrow at 6 pm');
       expect(m.text, 'Done. Call mom, tomorrow at 18:00.');
       expect(store.objectives.single.title, 'Call mom');
       expect(m.undoable, isTrue);
-      expect(a.lastWasLocal, isTrue);
-      expect(a.lastWasCloud, isFalse);
-      expect(a.lastModel, 'MiniCPM5-1B Q4_K_M');
+      expect(e.loads, 0);
+      expect(a.lastWasLocal, isFalse, reason: 'rules, not the model');
       m.onUndo!();
       expect(store.objectives, isEmpty);
-      expect(e.lastMessages!.last.text, contains('User: remind me to call mom tomorrow evening'));
+    });
+
+    test('the model handles other language, and its change can be undone', () async {
+      final FakeEngine e = FakeEngine();
+      final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[{"type":"add_objective","title":"Water the plants"}],"say":"Done. Water the plants."}', e));
+      store.chat.add(ChatMsg(fromUser: true, text: 'put a reminder to water the plants on my list', at: DateTime.now()));
+      final ChatMsg m = await a.reply('put a reminder to water the plants on my list');
+      expect(m.text, 'Done. Water the plants.');
+      expect(store.objectives.single.title, 'Water the plants');
+      expect(a.lastWasLocal, isTrue);
+      expect(a.lastModel, 'MiniCPM5-1B Q4_K_M');
+      expect(e.loads, 1);
+      expect(e.lastMessages!.last.text, contains('User: put a reminder to water the plants on my list'));
+      m.onUndo!();
+      expect(store.objectives, isEmpty);
+    });
+
+    test('a general question is answered by the model, with no change', () async {
+      final FakeEngine e = FakeEngine();
+      final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[],"say":"Tokyo."}', e));
+      final ChatMsg m = await a.reply('what is the capital of Japan?');
+      expect(m.text, 'Tokyo.');
+      expect(m.diff, isNull);
+      expect(a.lastWasLocal, isTrue);
     });
 
     test('an exact amount of water needs no model at all', () async {
@@ -438,16 +475,37 @@ void main() {
       final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[],"say":"x"}', e));
       final ChatMsg m = await a.reply('log 500 ml water');
       expect(store.waterMl, 500);
-      expect(m.text, startsWith('Logged.'));
+      expect(m.text, startsWith('Logged 500 ml'));
+      expect(e.loads, 0);
+    });
+
+    test('questions about the user\'s own data are answered from the store, without the model', () async {
+      store.logWater(500);
+      final FakeEngine e = FakeEngine();
+      final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[],"say":"I have no idea."}', e));
+      final ChatMsg m = await a.reply('how much water have I had today?');
+      expect(m.text, contains('Hydration 0.5 of 3.0 L'));
       expect(e.loads, 0);
     });
 
     test('when the model fails, the reason is shown and the on-device router still answers', () async {
       final FakeEngine e = FakeEngine()..failLoad = true;
       final Assistant a = Assistant(store, brain: await brainReplying('{}', e));
-      final ChatMsg m = await a.reply('how much water today');
-      expect(m.text, contains('Hydration'));
+      final ChatMsg m = await a.reply('tell me a joke');
+      expect(m.text, contains('Local mode'));
       expect(m.note, startsWith('K\'s brain failed'));
+      expect(a.lastWasLocal, isFalse);
+    });
+
+    test('a change the user did not ask for is ignored, and the model\'s sentence is not shown', () async {
+      store.logWater(500);
+      final FakeEngine e = FakeEngine();
+      final Assistant a = Assistant(store, brain: await brainReplying('{"actions":[{"type":"log_water","ml":750}],"say":"I logged 750 millilitres of water today."}', e));
+      final ChatMsg m = await a.reply('what is the capital of France?');
+      expect(store.waterMl, 500, reason: 'nothing was logged');
+      expect(m.text, isNot(contains('750')));
+      expect(m.note, 'K proposed a change that did not match what you said, so it was ignored.');
+      expect(m.diff, isNull);
       expect(a.lastWasLocal, isFalse);
     });
 

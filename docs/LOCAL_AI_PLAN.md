@@ -79,16 +79,36 @@ Expected cost per answer (estimate, unmeasured): about 250 new prompt tokens and
 - `lib/services/local_llm.dart`: engine interface and the llamadart implementation (CPU, no thinking, schema-constrained, prefix reuse).
 - `lib/services/local_brain.dart`: lifecycle (lazy load, idle and background unload, serial requests, timeout, failure recovery, settings).
 - `lib/data/brain_prompt.dart`, `brain_eval.dart`: prompt, schema, context builder, accuracy check.
-- `lib/data/assistant.dart`: order is Cloud (only if the user switched it on) then K's brain then the keyword router.
+- `lib/data/brain_pipeline.dart`: the rules, the router test and the check of the model's proposed action.
+- `lib/data/assistant.dart`: order is Cloud (only if the user switched it on), then rules, then the model (validated), then the keyword router.
 - `lib/screens/brain_screen.dart`: download, settings, speed and accuracy checks. Loadout, K brain.
 - Assistant is named **K**; a **Thor** theme (storm navy, lightning blue, with lightning arcs on the orb) is in Loadout, Signal.
 
-## 7. Unverified, and the next steps
+## 7. Measured results (emulator) and what is still unverified
 
-1. **The model has not been run yet.** No GGUF has been downloaded or loaded in this build; everything above the runtime is tested with a fake engine. First real run: Loadout, K brain, Download, Speed test, Accuracy check.
-2. Whether MiniCPM5's embedded chat template honours `enable_thinking=false` through llamadart is undocumented. The Speed test output shows whether a thinking block leaks into the reply (it would show up as an invalid or long answer).
-3. llamadart pins llama.cpp v0.7.0; a bug there is not ours to fix. The fallback is an own FFI wrapper.
-4. Next, depending on the Accuracy check: imatrix quant, embedding at Q8_0, persisted prompt-prefix cache (`stateSaveFile`) to cut cold-start prefill, a "fast commands" option that skips the model for simple patterns.
+Measured on the x86_64 Android emulator (4 GB RAM, host under heavy load). **These are not phone numbers**; the Oppo's Dimensity 1300 should be faster, but that is unmeasured.
+
+| Measure | Result |
+|---|---|
+| Model load | 10.4 s cold, about 2.1 to 2.4 s with the file cached |
+| First request after load | 61 to 88 s (prompt prefill about 8 tokens/s on the emulator) |
+| Later requests (prompt prefix cached) | about 8 to 20 s total, first piece in 2 to 8 s |
+| Thinking text leaking into replies | none: `enable_thinking=false` is honoured |
+| Accuracy, model alone, 24 sample requests | **7 / 24**. It logged water for unrelated questions, added duplicate or wrong actions, and refused general-knowledge questions |
+| Accuracy, full pipeline, 24 sample requests | **23 / 24**: rules 16/16, router 4/4, model 3/4 |
+
+The only miss: "what is the capital of Japan?" is answered with "I don't have the data". The prompt makes the model too cautious about general knowledge.
+
+### Why a rules-first pipeline
+
+A 1B model cannot be trusted to decide what to change. So the order is: **rules** (exact patterns for water, tasks and reminders, events, spending, notes, completions, matched against the user's real objectives and protocols) then the **router** (questions about the user's own data are answered from the store, so numbers are always the real ones) then the **model** (open chat, general knowledge, unusual phrasing). What the model proposes is validated against the user's own words: at most one action, the wording must support it, and a question never changes anything.
+
+### Still unverified
+
+1. Real-phone speed and battery on the Oppo Reno 8 5G.
+2. Q8_0 versus Q4_K_M on the Accuracy check, and an imatrix Q4 if Q4_K_M loses accuracy.
+3. General-knowledge refusals (prompt tweak), a persisted prompt-prefix cache to cut the cold first request, and streaming the answer word by word.
+4. llamadart pins llama.cpp v0.7.0; a bug there is not ours to fix. The fallback is an own FFI wrapper.
 
 ## Sources
 

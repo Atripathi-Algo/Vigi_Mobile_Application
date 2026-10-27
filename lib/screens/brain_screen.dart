@@ -8,6 +8,7 @@ import '../app/providers.dart';
 import '../data/brain_eval.dart';
 import '../data/brain_prompt.dart';
 import '../services/local_brain.dart';
+import '../services/local_llm.dart';
 import '../services/model_store.dart';
 import '../vigil/vigil.dart';
 
@@ -51,15 +52,22 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
       _speed = null;
     });
     await b.unload(); // a cold start, as after a long idle
-    final BrainFacts facts = kEvalFacts;
-    final reply = await b.ask(facts, 'how much water have I had today?', const <(bool, String)>[]);
+    String s(num? ms) => ms == null ? 'n/a' : '${(ms / 1000).toStringAsFixed(1)} s';
+    final StringBuffer out = StringBuffer();
+    // 1. Raw speed: a tiny free-text answer, no grammar, so only the model's own speed is measured.
+    final raw = await b.run(const <BrainTurn>[BrainTurn('user', 'Say hello in five words.')], sampling: const BrainSampling(maxTokens: 24), timeout: const Duration(seconds: 240), constrained: false);
+    out.writeln('Load ${s(b.lastLoadMs)}. First word ${s(b.lastFirstTokenMs)}. ${b.lastTokensPerSecond == null ? 'Writing speed n/a.' : 'Writes ${b.lastTokensPerSecond!.toStringAsFixed(1)} tokens/s.'}');
+    out.writeln(raw.text == null ? 'Raw test: ${raw.error}' : 'Raw reply: ${raw.text!.replaceAll('\n', ' ')}');
+    // 2. A real request: the full prompt, forced to the JSON schema.
+    if (raw.text != null) {
+      final Stopwatch sw = Stopwatch()..start();
+      final reply = await b.ask(kEvalFacts, 'how much water have I had today?', const <(bool, String)>[], timeout: const Duration(seconds: 240));
+      out.write('Real request: ${s(sw.elapsedMilliseconds)}. ${reply.text ?? reply.error}');
+    }
     if (!mounted) return;
     setState(() {
       _testing = false;
-      _speed = reply.text == null
-          ? reply.error
-          : 'Loaded in ${((b.lastLoadMs ?? 0) / 1000).toStringAsFixed(1)} s. First word after ${((b.lastFirstTokenMs ?? 0) / 1000).toStringAsFixed(1)} s. '
-              '${b.lastTokensPerSecond == null ? '' : 'Writes ${b.lastTokensPerSecond!.toStringAsFixed(1)} tokens per second. '}Reply: ${reply.text}';
+      _speed = out.toString();
     });
   }
 
@@ -76,7 +84,7 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
     if (!mounted) return;
     setState(() {
       _testing = false;
-      _evalSummary = '${r.passed} of ${r.results.length} correct (${(r.accuracy * 100).round()}%). Average ${(r.averageMs / 1000).toStringAsFixed(1)} s per answer.';
+      _evalSummary = '${r.passed} of ${r.results.length} correct (${(r.accuracy * 100).round()}%). Decided by: ${r.bySource}. Average ${(r.averageMs / 1000).toStringAsFixed(1)} s per answer.';
       _failed = r.results.where((EvalResult e) => !e.ok).take(8).toList();
     });
   }

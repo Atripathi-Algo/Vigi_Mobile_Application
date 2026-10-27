@@ -8,6 +8,7 @@ import '../app/fmt.dart';
 import '../services/local_brain.dart';
 import '../vigil/vigil.dart';
 import 'agent.dart';
+import 'brain_pipeline.dart';
 import 'brain_prompt.dart';
 import 'capture_parser.dart';
 import 'models.dart';
@@ -49,8 +50,16 @@ class Assistant {
   List<(bool, String)> _pairs(String current) => <(bool, String)>[for (final ChatTurn t in _history(current)) (t.fromUser, t.text)];
 
   /// Applies a model's JSON reply to the store and turns it into a chat message.
-  ChatMsg _fromPlan(String raw, String? note, DateTime now) {
+  ChatMsg? _fromPlan(String raw, String? note, DateTime now, String question) {
     final AgentPlan plan = parseAgentPlan(raw);
+    // A question never changes anything. If the model tries, its whole reply is untrustworthy (its sentence
+    // would claim the change), so it is dropped and the on-device router answers instead.
+    if (plan.actions.isNotEmpty && isQuestionOnly(question)) return null;
+    return _apply(plan, note, now);
+  }
+
+  /// Applies a plan to the store and turns the outcome into a chat message.
+  ChatMsg _apply(AgentPlan plan, String? note, DateTime now) {
     final AgentResult res = applyAgentPlan(store, plan, now: now);
     final String spoken = <String>[if (plan.say.isNotEmpty) plan.say, ...res.failed].join(' ');
     return ChatMsg(
@@ -89,30 +98,48 @@ class Assistant {
         client: client,
       );
       if (r.text != null) {
-        lastWasCloud = true;
-        lastModel = r.model;
-        return _fromPlan(r.text!, r.note, now);
+        final ChatMsg? m = _fromPlan(r.text!, r.note, now, text);
+        if (m != null) {
+          lastWasCloud = true;
+          lastModel = r.model;
+          return m;
+        }
+        cloudNote = 'Cloud AI proposed a change to a question, so its reply was ignored.';
+      } else {
+        cloudNote = 'Cloud AI failed: ${r.error}';
       }
-      cloudNote = 'Cloud AI failed: ${r.error}';
     }
 
-    // An explicit amount of water is exact, so it needs no model.
-    final RegExpMatch? water = RegExp(r'\b(\d{2,4})\s*ml\b').firstMatch(q);
-    if (water != null && _has(q, r'\b(water|drank|drink|log|hydrat)')) {
-      final int ml = int.parse(water.group(1)!);
-      store.logWater(ml);
-      return msg('Logged. Hydration ${Fmt.litres(store.waterMl)} of ${Fmt.litres(store.waterTargetMl)} L.', diff: <(String, String)>[('LOGGED', '+$ml ml water')], undo: () => store.logWater(-ml));
+    // Rules decide clear commands exactly (no model, the same answer every time). Questions about the user's own
+    // data go to the router below, so the numbers are always the real ones.
+    final BrainFacts facts = factsFromStore(store, now);
+    final Decision? decided = cloudNote == null ? decideWithoutModel(text.trim(), facts) : null;
+    if (decided?.source == DecisionSource.rules) return _apply(decided!.plan!, null, now);
+
+    // K's on-device brain handles open language: general questions, chat, and commands the rules did not recognise.
+    // What it proposes is checked against the user's own words before anything changes.
+    Future<ChatMsg?> askModel() async {
+      final CloudReply r = await brain.ask(facts, text.trim(), _pairs(text));
+      if (r.text == null) {
+        cloudNote = r.error;
+        return null;
+      }
+      final AgentPlan proposed = parseAgentPlan(r.text!);
+      final ({AgentPlan plan, bool dropped}) v = validateModelPlan(proposed, text, facts);
+      if (v.dropped) {
+        // Its sentence may describe a change that was not made, so it is not shown.
+        cloudNote = 'K proposed a change that did not match what you said, so it was ignored.';
+        return null;
+      }
+      lastWasLocal = true;
+      lastModel = r.model;
+      return _apply(v.plan, r.note, now);
     }
 
-    // K's on-device brain handles everything else in plain language. If it fails, the router below still answers.
-    if (cloudNote == null && brain.usable) {
-      final CloudReply r = await brain.ask(factsFromStore(store, now), text.trim(), _pairs(text));
-      if (r.text != null) {
-        lastWasLocal = true;
-        lastModel = r.model;
-        return _fromPlan(r.text!, r.note, now);
-      }
-      cloudNote = r.error;
+    final bool routerOnly = decided?.source == DecisionSource.router;
+    if (cloudNote == null && brain.usable && !routerOnly) {
+      final ChatMsg? m = await askModel();
+      if (m != null) return m;
     }
 
     // Commands first, so ordinary words in a task title cannot hijack them.
@@ -165,6 +192,10 @@ class Assistant {
     }
 
     if (cloudNote != null) return msg('Local mode: reduced planning. Ask about plan, overdue, water, steps, sleep, spend or screen.', alert: true);
+    if (routerOnly && cloudNote == null && brain.usable) {
+      final ChatMsg? m = await askModel();
+      if (m != null) return m;
+    }
     return msg('No handler for that on-device. Try: plan my day, what\'s overdue, week report, sleep, steps, or turn on Cloud AI in Loadout.');
   }
 }
