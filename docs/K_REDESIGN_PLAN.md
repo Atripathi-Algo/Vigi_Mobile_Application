@@ -27,4 +27,9 @@ The app is renamed **K** in the UI only: package id `com.algoanalytics.vigil`, r
 7. **Loadout, notifications, briefings**: settings parity, notification inbox, dawn and night screens, widgets, sounds and haptics, thunder effects.
 8. **Usage access bridge** (if kept), real-phone checks, release.
 
+## Status
+
+- Phase 1 (theme, name, K mark) and Phase 2 (setup guide): done and pushed (efd673e).
+- Phase 3 (K screen): done. Source tags with timing, streaming with Cancel, waking and asleep states, first-run block, microphone card, Cloud for open chat only (no app data sent), `move_event` (rules and agent; not offered to the model). `log_fill_up` waits for the Garage (Phase 5). The 50-prompt accuracy check is still the 24-prompt one.
+
 Each phase ends with `flutter analyze`, `flutter test`, an emulator check and a commit. Pushes are asked for each time.

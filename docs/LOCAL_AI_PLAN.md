@@ -99,6 +99,10 @@ Measured on the x86_64 Android emulator (4 GB RAM, host under heavy load). **The
 
 The only miss: "what is the capital of Japan?" is answered with "I don't have the data". The prompt makes the model too cautious about general knowledge.
 
+**Later runs (after the K rename and the new reply flow): 21 / 24, twice.** Rules 16/16 and router 4/4 are exact and unchanged; the model got 2 of its 4 (greeting and thanks right; the capital of Japan and "15 percent of 2400" wrong, where the earlier run got the sum right). A longer action list (adding `move_event` to the model's prompt) was tried and removed: it did not explain the drop. The model's four cases vary run to run (temperature 0.5), so treat its general-knowledge and maths answers as best effort. Anything that must be right (commands, your numbers) never depends on it.
+
+Other measurements from these runs: the model loads in 5 to 10 s (63 s right after the emulator's file cache was dropped), the first word of a cold first answer takes 65 to 117 s, and later answers 18 to 27 s. A run with only about 200 MB of free emulator RAM and swap in use was about 20 times slower, so memory pressure matters: free the model after idle (default 2 minutes) and avoid other heavy apps while it runs.
+
 ### Why a rules-first pipeline
 
 A 1B model cannot be trusted to decide what to change. So the order is: **rules** (exact patterns for water, tasks and reminders, events, spending, notes, completions, matched against the user's real objectives and protocols) then the **router** (questions about the user's own data are answered from the store, so numbers are always the real ones) then the **model** (open chat, general knowledge, unusual phrasing). What the model proposes is validated against the user's own words: at most one action, the wording must support it, and a question never changes anything.
