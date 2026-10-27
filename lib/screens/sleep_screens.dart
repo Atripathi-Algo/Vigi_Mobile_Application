@@ -73,7 +73,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
           Row(children: <Widget>[
-            Expanded(child: Text('VIGIL // TONIGHT · ${Fmt.dayStamp(DateTime.now()).substring(0, 3)} → ${Fmt.dayStamp(DateTime.now().add(const Duration(days: 1))).substring(0, 3)}', style: t.label.copyWith(color: c.signal))),
+            Expanded(child: Text('K // TONIGHT · ${Fmt.dayStamp(DateTime.now()).substring(0, 3)} → ${Fmt.dayStamp(DateTime.now().add(const Duration(days: 1))).substring(0, 3)}', style: t.label.copyWith(color: c.signal))),
             Text('PLAN ${Fmt.hm(plan)}', style: t.meta.copyWith(color: c.textFaint)),
           ]),
           const SizedBox(height: 12),

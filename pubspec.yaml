@@ -30,6 +30,8 @@ dependencies:
   audioplayers: ^6.8.1
   speech_to_text: ^7.5.0
   flutter_tts: ^4.2.5
+  llamadart: ^0.16.4
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +47,12 @@ flutter:
     - assets/svg/icons/
     - assets/audio/
     - google_fonts/
+
+# llamadart runs the on-device model (llama.cpp). Only the llama.cpp runtime is bundled, not LiteRT-LM.
+hooks:
+  user_defines:
+    llamadart:
+      llamadart_native_runtimes: [llama_cpp]
 
 flutter_launcher_icons:
   android: true

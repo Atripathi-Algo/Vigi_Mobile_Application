@@ -28,7 +28,11 @@ abstract final class VigilPalette {
     Color(0xFF5CC8FF), // cyan
     Color(0xFFFF7A3D), // orange
     Color(0xFFECEAE4), // white
+    Color(0xFF3FB6FF), // Thor: lightning blue
   ];
+
+  /// Index in [signalOptions] of the Thor theme, which also recolours the surfaces.
+  static const int thorIndex = 4;
 }
 
 /// Semantic colour tokens exposed as a [ThemeExtension].
@@ -90,6 +94,27 @@ class VigilColors extends ThemeExtension<VigilColors> {
     critical: VigilPalette.critical,
     steel: VigilPalette.steel,
     sleepBand: VigilPalette.sleepBand,
+  );
+
+  /// Thor: storm-navy surfaces, silver steel, lightning-blue signal and Asgardian red for alerts.
+  static const VigilColors thor = VigilColors(
+    ground: Color(0xFF060A12),
+    stealth: Color(0xFF03060C),
+    surface: Color(0xFF0D1422),
+    surfaceHigh: Color(0xFF141E33),
+    navBar: Color(0xFF0A101C),
+    line: Color(0xFF1D2A44),
+    lineStrong: Color(0xFF2D4166),
+    rule: Color(0xFF16203A),
+    neutral: Color(0xFF6A7B9C),
+    text: Color(0xFFE8EEF8),
+    textMuted: Color(0xFFA6B3CC),
+    textFaint: Color(0xFF8D9BB6),
+    signal: Color(0xFF3FB6FF),
+    onSignal: Color(0xFF03101C),
+    critical: Color(0xFFFF4D4D),
+    steel: Color(0xFFC3D0E6),
+    sleepBand: Color(0xFF182238),
   );
 
   /// Signal tint used behind focus blocks (14 %) and in switch tracks (15 %).

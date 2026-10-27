@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../app/brand.dart';
 import '../app/common.dart';
 import '../app/env.dart';
 import '../app/fmt.dart';
@@ -9,6 +10,7 @@ import '../app/providers.dart';
 import '../data/assistant.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/local_brain.dart';
 import '../services/sfx.dart';
 import '../services/voice.dart';
 import '../vigil/vigil.dart';
@@ -28,6 +30,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
   final VoiceService _voice = VoiceService.instance;
   bool _busy = false;
   bool _cloud = false;
+  bool _local = false;
   String? _model;
 
   /// After each spoken reply, listen again without a tap.
@@ -80,6 +83,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     setState(() {
       s.chat.add(reply);
       _cloud = a.lastWasCloud;
+      _local = a.lastWasLocal;
       _model = a.lastModel;
       _busy = false;
     });
@@ -97,6 +101,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
       return;
     }
     if (_voice.state == VoiceState.speaking) await _voice.stopSpeaking();
+    LocalBrain.instance.preload(); // load the model while the user speaks, so the answer is not delayed
     final bool ok = await _voice.listen((String text) => _send(text, spoken: true));
     if (!ok && mounted) showVigilSnack(context, _voice.error ?? 'Voice is not available on this phone');
   }
@@ -117,6 +122,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
         level: _voice.level,
         color: c.signal,
         size: empty ? 190 : 104,
+        crackle: s.accentIndex == VigilPalette.thorIndex,
         onTap: () => _voice.state == VoiceState.idle ? _listen() : _voice.stopAll(),
       ),
       const SizedBox(height: 4),
@@ -144,8 +150,8 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     ];
 
     return VigilScaffold(
-      title: 'Vigil uplink',
-      subtitle: _cloud ? '● CLOUD${_model == null ? '' : ' · ${_model!.toUpperCase()}'}' : (cloudOn ? '● ONLINE · CLOUD READY' : '● ONLINE · ON-DEVICE'),
+      title: kAssistantName,
+      subtitle: _local ? '● LOCAL · ${(_model ?? 'MINICPM5-1B').toUpperCase()}' : (_cloud ? '● CLOUD${_model == null ? '' : ' · ${_model!.toUpperCase()}'}' : (cloudOn ? '● ONLINE · CLOUD READY' : (LocalBrain.instance.usable ? '● LOCAL · READY' : '● ON-DEVICE RULES'))),
       leading: const VigilEmblem(size: 30),
       actions: <Widget>[VigilIconButton(icon: VigilIcons.history, semanticLabel: 'History', onPressed: () => showVigilSnack(context, '${s.chat.length} messages this session'))],
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
@@ -154,7 +160,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
           child: s.chat.isEmpty
               ? Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                    Text('Command VIGIL.', style: t.body.copyWith(color: c.textMuted)),
+                    Text('Command $kAssistantName.', style: t.body.copyWith(color: c.textMuted)),
                     const SizedBox(height: 14),
                     Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: <Widget>[for (final String x in chips) VigilFilterChip(label: x, selected: false, onTap: () => _send(x))]),
                   ]),
@@ -164,7 +170,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
                   padding: const EdgeInsets.only(bottom: 12, top: 8),
                   itemCount: s.chat.length + (_busy ? 1 : 0),
                   itemBuilder: (BuildContext ctx, int i) {
-                    if (i == s.chat.length) return Padding(padding: const EdgeInsets.only(bottom: 12), child: Text('VIGIL · THINKING…', style: t.label.copyWith(color: c.signal)));
+                    if (i == s.chat.length) return Padding(padding: const EdgeInsets.only(bottom: 12), child: Text('$kAssistantName · THINKING…', style: t.label.copyWith(color: c.signal)));
                     return _bubble(context, s, s.chat[i]);
                   },
                 ),
@@ -184,7 +190,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
               child: Semantics(button: true, label: 'Attach', child: InkWell(onTap: () => showVigilSnack(context, 'Attachments are not supported yet'), child: Container(decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.lineStrong)), child: Center(child: VigilIcon(VigilIcons.plus, size: 18, color: c.textMuted))))),
             ),
             const SizedBox(width: 8),
-            Expanded(child: VigilField(controller: _ctl, hint: 'Command VIGIL…', semanticLabel: 'Command VIGIL', height: 52, onSubmitted: _send, onChanged: (_) => setState(() {}))),
+            Expanded(child: VigilField(controller: _ctl, hint: 'Command $kAssistantName…', semanticLabel: 'Command $kAssistantName', height: 52, onSubmitted: _send, onChanged: (_) => setState(() {}))),
             const SizedBox(width: 8),
             OctagonButton(size: 52, semanticLabel: _ctl.text.trim().isEmpty ? (_voice.state == VoiceState.listening ? 'Stop listening' : 'Speak') : 'Send', onPressed: () => _ctl.text.trim().isEmpty ? _listen() : _send(_ctl.text), child: VigilIcon(_ctl.text.trim().isEmpty ? VigilIcons.voice : VigilIcons.arrowRight, color: c.onSignal)),
           ]),
@@ -217,7 +223,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
           margin: const EdgeInsets.only(bottom: 12),
           constraints: BoxConstraints(maxWidth: w * 0.92),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text('VIGIL · ${Fmt.time(m.at)}', style: t.label.copyWith(color: m.alert ? c.critical : c.signal)),
+            Text('$kAssistantName · ${Fmt.time(m.at)}', style: t.label.copyWith(color: m.alert ? c.critical : c.signal)),
             const SizedBox(height: 4),
             Text(m.text, style: t.body),
             if (m.diff != null) ...<Widget>[
@@ -237,7 +243,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
             ],
             if (m.note != null) ...<Widget>[
               const SizedBox(height: 6),
-              Text(m.note!, style: t.micro.copyWith(color: m.note!.startsWith('Cloud AI failed') ? c.critical : c.textFaint, fontSize: 10)),
+              Text(m.note!, style: t.micro.copyWith(color: m.note!.contains('failed') ? c.critical : c.textFaint, fontSize: 10)),
             ],
             if (m.chart != null) ...<Widget>[
               const SizedBox(height: 8),

@@ -3,12 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
+import '../app/brand.dart';
 import '../services/voice.dart';
 
 /// VIGIL's face: a core with rotating rings and a radial waveform. It idles slowly, widens and reacts to
 /// the microphone level while listening, spins faster while thinking, and pulses while speaking.
 class JarvisOrb extends StatefulWidget {
-  const JarvisOrb({super.key, required this.state, required this.level, required this.color, this.size = 180, this.onTap});
+  const JarvisOrb({super.key, required this.state, required this.level, required this.color, this.size = 180, this.onTap, this.crackle = false});
 
   final VoiceState state;
 
@@ -17,6 +18,9 @@ class JarvisOrb extends StatefulWidget {
   final Color color;
   final double size;
   final VoidCallback? onTap;
+
+  /// Lightning arcs from the core (the Thor theme).
+  final bool crackle;
 
   @override
   State<JarvisOrb> createState() => _JarvisOrbState();
@@ -74,10 +78,10 @@ class _JarvisOrbState extends State<JarvisOrb> with SingleTickerProviderStateMix
   }
 
   String get _label => switch (widget.state) {
-        VoiceState.idle => 'VIGIL, ready',
-        VoiceState.listening => 'VIGIL, listening',
-        VoiceState.thinking => 'VIGIL, thinking',
-        VoiceState.speaking => 'VIGIL, speaking',
+        VoiceState.idle => '$kAssistantName, ready',
+        VoiceState.listening => '$kAssistantName, listening',
+        VoiceState.thinking => '$kAssistantName, thinking',
+        VoiceState.speaking => '$kAssistantName, speaking',
       };
 
   @override
@@ -163,6 +167,36 @@ class _OrbPainter extends CustomPainter {
       final double len = r * (0.025 + e * 0.17 * (0.35 + 0.65 * wave));
       final double r0 = r * 0.50;
       canvas.drawLine(c + Offset(math.cos(a), math.sin(a)) * r0, c + Offset(math.cos(a), math.sin(a)) * (r0 + len), bar..color = col.withValues(alpha: 0.45 + 0.5 * wave * (0.3 + e)));
+    }
+
+    // Lightning
+    if (s.widget.crackle) {
+      final int bolts = 2 + (e * 4).round();
+      final int frame = (t * 10).floor();
+      final Paint glowBolt = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = r * 0.03
+        ..color = col.withValues(alpha: 0.28);
+      final Paint coreBolt = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = r * 0.011
+        ..color = Colors.white.withValues(alpha: 0.9);
+      for (int b = 0; b < bolts; b++) {
+        if ((frame + b * 3) % 4 == 0) continue; // flicker
+        final double a = (frame * 0.7 + b * 2 * math.pi / bolts) + math.sin(frame * 1.3 + b) * 0.5;
+        final Path p = Path()..moveTo(c.dx + math.cos(a) * r * 0.2, c.dy + math.sin(a) * r * 0.2);
+        for (int k = 1; k <= 6; k++) {
+          final double jitter = math.sin(frame * 2.1 + b * 5 + k * 1.7) * 0.16;
+          final double rr = r * (0.2 + k * 0.105);
+          p.lineTo(c.dx + math.cos(a + jitter) * rr, c.dy + math.sin(a + jitter) * rr);
+        }
+        canvas.drawPath(p, glowBolt);
+        canvas.drawPath(p, coreBolt);
+      }
     }
 
     // Core

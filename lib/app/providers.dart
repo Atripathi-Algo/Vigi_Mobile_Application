@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/assistant.dart';
 import '../data/store.dart';
 import '../services/google_accounts.dart';
+import '../services/local_brain.dart';
 import '../services/output_sync.dart';
+
+/// K's on-device model.
+final ChangeNotifierProvider<LocalBrain> brainProvider = ChangeNotifierProvider<LocalBrain>((Ref ref) => LocalBrain.instance);
 
 /// The linked Google accounts (up to two).
 final ChangeNotifierProvider<GoogleAccounts> googleAccountsProvider = ChangeNotifierProvider<GoogleAccounts>((Ref ref) => GoogleAccounts.instance);

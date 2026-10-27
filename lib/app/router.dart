@@ -5,6 +5,7 @@ import '../data/store.dart';
 import '../screens/accounts_screen.dart';
 import '../screens/api_keys_screen.dart';
 import '../screens/boot_screen.dart';
+import '../screens/brain_screen.dart';
 import '../screens/briefing_screen.dart';
 import '../screens/command_screen.dart';
 import '../screens/debrief_screen.dart';
@@ -35,6 +36,7 @@ GoRouter buildRouter(VigilStore store) {
         routes: <RouteBase>[
           GoRoute(path: 'keys', builder: (BuildContext c, GoRouterState s) => const ApiKeysScreen()),
           GoRoute(path: 'accounts', builder: (BuildContext c, GoRouterState s) => const AccountsScreen()),
+          GoRoute(path: 'brain', builder: (BuildContext c, GoRouterState s) => const BrainScreen()),
         ],
       ),
       GoRoute(

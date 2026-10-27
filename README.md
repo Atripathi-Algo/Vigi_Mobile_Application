@@ -94,6 +94,12 @@ It uses Google's own Android authorization, so **no secret or redirect is stored
 
 While the consent screen is in Testing, Google asks you to approve again every 7 days (the screen then shows APPROVE AGAIN). Set the publishing status to **In production** to stop that; Google shows an "unverified app" screen once, which is fine for your own use (limit 100 users). Needs Google Play services on the phone. Not verified against a live Google account yet.
 
+### K's on-device brain (Loadout, K brain)
+
+K runs MiniCPM5-1B on the phone (llama.cpp, CPU, no key, no network, no cost). Download the model once from the K brain screen (Q4_K_M 688 MB, or Q8_0 1.15 GB for more accuracy); K then answers in plain language, can add and log things, and falls back to the keyword router if the model is missing or fails. The model is loaded only when asked and released after a short idle time, so it costs nothing in the background. Cloud AI is optional and only used if you switch it on. The research, quantization options, accuracy and battery design, and what is still unverified are in [docs/LOCAL_AI_PLAN.md](docs/LOCAL_AI_PLAN.md). Builds now target arm64 and x86_64 only (`--target-platform android-arm64,android-x64`).
+
+Signal themes include **Thor** (storm navy, lightning blue, lightning on the orb). The assistant is named **K**.
+
 ### Assistant and voice (Uplink)
 
 With Cloud AI on (Loadout) and a key set, a language model handles requests in plain language, remembers the last 10 messages, and can add objectives and events, log water and spend, add notes, clear an objective or check a protocol. Every change shows a diff card with Undo, and the model has no way to delete or send anything. If the chosen Gemini model is refused (402, 404, 429, 503) the app retries on free Gemini models only and says which answered. Without a key, or if the call fails, the on-device router answers.

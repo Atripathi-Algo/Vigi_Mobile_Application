@@ -22,7 +22,7 @@ class VigilNavBar extends StatelessWidget {
   static const List<(VigilTab, VigilIcons?, String)> _items = <(VigilTab, VigilIcons?, String)>[
     (VigilTab.command, VigilIcons.command, 'COMMAND'),
     (VigilTab.ops, VigilIcons.ops, 'OPS'),
-    (VigilTab.vigil, null, 'VIGIL'),
+    (VigilTab.vigil, null, 'K'),
     (VigilTab.protocols, VigilIcons.protocols, 'PROTOCOLS'),
     (VigilTab.vault, VigilIcons.vault, 'VAULT'),
   ];
@@ -75,7 +75,7 @@ class VigilNavBar extends StatelessWidget {
             child: Center(
               child: OctagonButton(
                 size: VigilSize.core,
-                semanticLabel: 'VIGIL assistant',
+                semanticLabel: 'K assistant',
                 onPressed: () => onSelected(VigilTab.vigil),
                 child: const CoreEmblem(),
               ),

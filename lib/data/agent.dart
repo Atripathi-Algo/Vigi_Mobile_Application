@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ui' show VoidCallback;
+import '../app/brand.dart';
 import '../app/fmt.dart';
 import '../vigil/vigil.dart';
 import 'models.dart';
@@ -71,7 +72,7 @@ String buildAgentSystem({required DateTime now, required String callsign, requir
   };
   final String length = verbosity == Verbosity.detailed ? 'Up to six sentences when it helps.' : 'At most three sentences unless asked for detail.';
   const List<String> days = <String>['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  return 'You are VIGIL, a personal operations assistant in the manner of a calm, capable AI butler. You speak to $callsign. $style $length\n'
+  return 'You are $kAssistantName, a personal operations assistant in the manner of a calm, capable AI butler. You speak to $callsign. $style $length\n'
       'Reply with ONLY a JSON object: {"say": "<what to say aloud: plain sentences, no markdown, no lists, no emoji>", "actions": []}\n'
       '"actions" lists changes to make in the user\'s app. Add an action only when the user asked for it, and never say something was added or logged unless you included its action. Allowed actions, exact shapes:\n'
       '{"type":"add_objective","title":"...","due":"HH:MM","day":"today|tomorrow","threat":"crit|high|routine"}  (due, day, threat optional)\n'

@@ -74,12 +74,12 @@ class SectionLabel extends StatelessWidget {
 
 enum IntelTone { normal, alert }
 
-/// "VIGIL // INTEL" card: tag, timestamp, one-sentence message, up to two actions.
+/// "K // INTEL" card: tag, timestamp, one-sentence message, up to two actions.
 class IntelCard extends StatelessWidget {
   const IntelCard({
     super.key,
     required this.message,
-    this.tag = 'VIGIL // INTEL',
+    this.tag = 'K // INTEL',
     this.time,
     this.actions = const <Widget>[],
     this.tone = IntelTone.normal,

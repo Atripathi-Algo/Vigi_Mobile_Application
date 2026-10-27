@@ -38,7 +38,7 @@ void main() {
       expect(seen.headers['x-goog-api-key'], 'test-key');
       expect(seen.url.queryParameters.containsKey('key'), isFalse, reason: 'the key must not appear in the URL');
       final Map<String, dynamic> body = jsonDecode(seen.body) as Map<String, dynamic>;
-      expect(body['systemInstruction']['parts'][0]['text'], contains('VIGIL'));
+      expect(body['systemInstruction']['parts'][0]['text'], contains('You are K'));
       expect(body['contents'][0]['role'], 'user');
       expect(body['contents'][0]['parts'][0]['text'], allOf(contains('SITREP'), contains('water?')));
     });

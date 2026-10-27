@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../app/brand.dart';
 import '../app/common.dart';
 import '../app/env.dart';
 import '../app/fmt.dart';
@@ -11,6 +12,7 @@ import '../app/providers.dart';
 import '../data/store.dart';
 import '../services/google_accounts.dart';
 import '../services/health.dart';
+import '../services/local_brain.dart';
 import '../services/notifications.dart';
 import '../services/push.dart';
 import '../services/sfx.dart';
@@ -34,6 +36,7 @@ class LoadoutScreen extends ConsumerWidget {
     final t = context.vtype;
     final VigilStore s = ref.watch(storeProvider);
     final GoogleAccounts accounts = ref.watch(googleAccountsProvider);
+    final LocalBrain brain = ref.watch(brainProvider);
 
     String sample() {
       final String base = switch (s.persona) {
@@ -90,7 +93,7 @@ class LoadoutScreen extends ConsumerWidget {
               child: Semantics(
                 button: true,
                 selected: s.accentIndex == i,
-                label: <String>['Signal yellow', 'Cyan', 'Orange', 'White'][i],
+                label: <String>['Signal yellow', 'Cyan', 'Orange', 'White', 'Thor'][i],
                 excludeSemantics: true,
                 child: InkWell(
                   onTap: () => s.setAccent(i),
@@ -98,14 +101,29 @@ class LoadoutScreen extends ConsumerWidget {
                     height: 48,
                     decoration: BoxDecoration(border: Border.all(color: s.accentIndex == i ? c.text : c.lineStrong, width: s.accentIndex == i ? 2 : 1)),
                     padding: const EdgeInsets.all(6),
-                    child: ColoredBox(color: VigilPalette.signalOptions[i]),
+                    child: ColoredBox(color: VigilPalette.signalOptions[i], child: i == VigilPalette.thorIndex ? const Center(child: Icon(Icons.bolt, size: 24, color: Color(0xFF03101C))) : null),
                   ),
                 ),
               ),
             ),
           ],
         ]),
-        head('VIGIL · Voice'),
+        head('$kAssistantName · Brain'),
+        RowList(children: <Widget>[
+          linkRow(
+            'On-device model',
+            switch (brain.status) {
+              BrainStatus.notInstalled => 'MiniCPM5-1B · tap to download',
+              BrainStatus.downloading => 'Downloading…',
+              BrainStatus.ready => brain.enabled ? 'MiniCPM5-1B · answers on this phone' : 'Installed · switched off',
+              BrainStatus.loading => 'Loading…',
+              BrainStatus.busy => 'Thinking…',
+            },
+            brain.status == BrainStatus.notInstalled ? 'GET' : (brain.usable ? 'ON' : 'OFF'),
+            onTap: () => context.push('/loadout/brain'),
+          ),
+        ]),
+        head('$kAssistantName · Voice'),
         VigilCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
             Text('PERSONA', style: t.micro.copyWith(color: c.textFaint)),

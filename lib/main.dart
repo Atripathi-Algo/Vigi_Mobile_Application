@@ -13,6 +13,7 @@ import 'screens/capture_sheet.dart';
 import 'services/calendar_sync.dart';
 import 'services/google_accounts.dart';
 import 'services/health.dart';
+import 'services/local_brain.dart';
 import 'services/home_widgets.dart';
 import 'services/notifications.dart';
 import 'services/output_sync.dart';
@@ -51,14 +52,31 @@ class VigilApp extends ConsumerStatefulWidget {
   ConsumerState<VigilApp> createState() => _VigilAppState();
 }
 
-class _VigilAppState extends ConsumerState<VigilApp> {
+class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver {
   late final GoRouter _router = buildRouter(widget.store);
   late final OutputSync _sync = OutputSync(widget.store);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _bootstrap();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The on-device model is released shortly after the app leaves the screen, so it costs nothing in the background.
+    if (state == AppLifecycleState.resumed) {
+      LocalBrain.instance.onForeground();
+    } else {
+      LocalBrain.instance.onBackground();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   /// Opens a route or action from a notification, push message or widget tap.
@@ -109,6 +127,7 @@ class _VigilAppState extends ConsumerState<VigilApp> {
 
     // Calendars (linked Google accounts and the public API-key calendar), then push widgets and reminders.
     await GoogleAccounts.instance.load();
+    await LocalBrain.instance.init();
     await syncCalendars(s);
     await _sync.run();
   }
@@ -116,7 +135,7 @@ class _VigilAppState extends ConsumerState<VigilApp> {
   @override
   Widget build(BuildContext context) {
     final VigilStore s = ref.watch(storeProvider);
-    final ThemeData theme = buildVigilTheme(signal: s.accent);
+    final ThemeData theme = buildVigilTheme(signal: s.accent, thor: s.accentIndex == VigilPalette.thorIndex);
     return MaterialApp.router(
       title: 'VIGIL',
       debugShowCheckedModeBanner: false,
