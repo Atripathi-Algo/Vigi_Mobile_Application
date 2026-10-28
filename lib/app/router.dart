@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../data/store.dart';
 import '../screens/accounts_screen.dart';
 import '../screens/api_keys_screen.dart';
+import '../screens/garage_screen.dart';
 import '../screens/setup_screen.dart';
 import '../screens/brain_screen.dart';
 import '../screens/briefing_screen.dart';
@@ -28,6 +29,7 @@ GoRouter buildRouter(VigilStore store) {
     initialLocation: store.booted ? '/' : '/boot',
     routes: <RouteBase>[
       GoRoute(path: '/boot', builder: (BuildContext c, GoRouterState s) => const SetupScreen()),
+      GoRoute(path: '/garage/:id', builder: (BuildContext c, GoRouterState s) => BikeScreen(bikeId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/briefing', builder: (BuildContext c, GoRouterState s) => const BriefingScreen()),
       GoRoute(path: '/debrief', builder: (BuildContext c, GoRouterState s) => const DebriefScreen()),
       GoRoute(
@@ -59,6 +61,7 @@ GoRouter buildRouter(VigilStore store) {
           StatefulShellBranch(routes: <RouteBase>[
             GoRoute(path: '/ops/objectives', pageBuilder: (BuildContext c, GoRouterState s) => _noAnim(const OpsScreen(timeline: false), s)),
             GoRoute(path: '/ops/timeline', pageBuilder: (BuildContext c, GoRouterState s) => _noAnim(const OpsScreen(timeline: true), s)),
+            GoRoute(path: '/ops/garage', pageBuilder: (BuildContext c, GoRouterState s) => _noAnim(const OpsScreen(timeline: false, garage: true), s)),
           ]),
           StatefulShellBranch(routes: <RouteBase>[
             GoRoute(path: '/vigil', builder: (BuildContext c, GoRouterState s) => const UplinkScreen()),

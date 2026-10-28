@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/calendar_api.dart';
 import '../app/fmt.dart';
 import '../vigil/vigil.dart';
+import 'garage.dart';
 import 'models.dart';
 import 'sleep_analyzer.dart';
 
@@ -111,6 +112,8 @@ class VigilStore extends ChangeNotifier {
   int monthBudgetPaise = 0;
   late List<Bill> bills;
   late List<Txn> txns;
+  late List<Bike> bikes;
+  late List<FillUp> fillups;
 
   // ---- field log --------------------------------------------------------
   late List<Note> notes;
@@ -182,6 +185,8 @@ class VigilStore extends ChangeNotifier {
     healthSyncedAt = null;
     bills = <Bill>[];
     txns = <Txn>[];
+    bikes = <Bike>[];
+    fillups = <FillUp>[];
     notes = <Note>[];
   }
 
@@ -233,6 +238,14 @@ class VigilStore extends ChangeNotifier {
     if (nt != null) notes = (jsonDecode(nt) as List<dynamic>).map((dynamic e) => Note.fromJson(e as Map<String, dynamic>)).toList();
     final String? tx = _prefs.getString('txns');
     if (tx != null) txns = (jsonDecode(tx) as List<dynamic>).map((dynamic e) => Txn.fromJson(e as Map<String, dynamic>)).toList();
+    try {
+      final String? bk = _prefs.getString('bikes');
+      if (bk != null) bikes = (jsonDecode(bk) as List<dynamic>).map((dynamic e) => Bike.fromJson(e as Map<String, dynamic>)).toList();
+      final String? fu = _prefs.getString('fillups');
+      if (fu != null) fillups = (jsonDecode(fu) as List<dynamic>).map((dynamic e) => FillUp.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      // an unreadable garage is dropped rather than blocking the app
+    }
     final String? sc = _prefs.getString('schedule');
     if (sc != null) {
       final List<dynamic> l = jsonDecode(sc) as List<dynamic>;
@@ -316,6 +329,7 @@ class VigilStore extends ChangeNotifier {
       _prefs.setBool('realData1', true);
       _save();
     }
+    syncGarageObjectives(now);
   }
 
   static DateTime? _parseDayKey(String k) {
@@ -351,6 +365,8 @@ class VigilStore extends ChangeNotifier {
       ..setString('objectives', jsonEncode(objectives.map((Objective o) => o.toJson()).toList()))
       ..setString('notes', jsonEncode(notes.map((Note n) => n.toJson()).toList()))
       ..setString('txns', jsonEncode(txns.map((Txn t) => t.toJson()).toList()))
+      ..setString('bikes', jsonEncode(bikes.map((Bike b) => b.toJson()).toList()))
+      ..setString('fillups', jsonEncode(fillups.map((FillUp f) => f.toJson()).toList()))
       ..setString('protocols', jsonEncode(protocols.map((Protocol p) => p.toJson()).toList()))
       ..setString('blocks', jsonEncode(blocks.map((Block b) => b.toJson()).toList()))
       ..setString('schedule', jsonEncode(schedule.map((ScheduleRow r) => <int>[r.bed, r.wake]).toList()))
@@ -513,6 +529,8 @@ class VigilStore extends ChangeNotifier {
     final Objective o = objectives.firstWhere((Objective e) => e.id == id);
     o.done = value ?? !o.done;
     o.doneAt = o.done ? DateTime.now().millisecondsSinceEpoch : null;
+    // Clearing a garage reminder in Ops means the job was done.
+    if (o.done && id.startsWith('g:')) _garageJobDone(id.substring(2));
     changed();
   }
 
@@ -538,6 +556,147 @@ class VigilStore extends ChangeNotifier {
   void removeObjective(String id) {
     objectives.removeWhere((Objective o) => o.id == id);
     changed();
+  }
+
+  /// Puts back an objective that was just deleted (the Undo on the snackbar), where it was.
+  void restoreObjective(Objective o, int index) {
+    if (objectives.any((Objective e) => e.id == o.id)) return;
+    objectives.insert(index.clamp(0, objectives.length), o);
+    changed();
+  }
+
+  // =========================================================================
+  // Garage
+  // =========================================================================
+  static const int kMaxBikes = 2;
+
+  Bike? bikeById(String id) => bikes.where((Bike b) => b.id == id).firstOrNull;
+
+  /// The bike a name refers to ("meteor", "the avenger"), or the only bike when there is just one and no name.
+  Bike? bikeByName(String? name) {
+    final String q = (name ?? '').toLowerCase().trim();
+    if (q.isEmpty) return bikes.length == 1 ? bikes.first : null;
+    // Any word of the name ("the meteor", "royal enfield") that is part of one bike's name or make picks it out.
+    final List<String> words = RegExp(r'[a-z0-9]+').allMatches(q).map((Match m) => m.group(0)!).where((String w) => w.length >= 3 && w != 'the' && w != 'bike' && w != 'motorcycle').toList();
+    final List<Bike> hits = bikes.where((Bike b) => words.any((String w) => b.name.toLowerCase().contains(w) || b.make.toLowerCase().contains(w))).toList();
+    return hits.length == 1 ? hits.first : null;
+  }
+
+  /// Adds a bike with the usual reminders. Null when two bikes are already kept.
+  Bike? addBike({required String make, required String model, required double tankL, int odometer = 0, int serviceEveryKm = 5000, DateTime? insuranceUntil, DateTime? pucUntil}) {
+    if (bikes.length >= kMaxBikes || (make.trim().isEmpty && model.trim().isEmpty) || tankL <= 0) return null;
+    final Bike b = Bike(id: nextId(), make: make.trim(), model: model.trim(), tankL: tankL, odometer: odometer < 0 ? 0 : odometer);
+    b.reminders = Bike.defaultReminders(newId: nextId, odometer: b.odometer, serviceEveryKm: serviceEveryKm, insuranceUntil: insuranceUntil, pucUntil: pucUntil, today: DateTime.now());
+    bikes.add(b);
+    syncGarageObjectives();
+    changed();
+    return b;
+  }
+
+  /// Saves edits made to a bike or its reminders.
+  void bikeEdited() {
+    syncGarageObjectives();
+    changed();
+  }
+
+  void removeBike(String id) {
+    final List<String> fills = fillups.where((FillUp f) => f.bikeId == id).map((FillUp f) => f.id).toList();
+    fillups.removeWhere((FillUp f) => f.bikeId == id);
+    txns.removeWhere((Txn t) => fills.any((String f) => t.id == 'fuel:$f'));
+    bikes.removeWhere((Bike b) => b.id == id);
+    syncGarageObjectives();
+    changed();
+  }
+
+  void setOdometer(String bikeId, int km) {
+    final Bike? b = bikeById(bikeId);
+    if (b == null || km < 0) return;
+    b.odometer = km;
+    syncGarageObjectives();
+    changed();
+  }
+
+  /// Records a fill-up: it is counted in Vault under Transport, the odometer moves forward, and reminders are
+  /// re-checked. Returns how to undo it, or null when the numbers do not make sense.
+  VoidCallback? addFillUp({required String bikeId, required int odometer, required double litres, required int totalPaise, bool full = true, DateTime? day}) {
+    final Bike? b = bikeById(bikeId);
+    if (b == null || odometer < 0 || litres <= 0 || litres > b.tankL * 1.5 || totalPaise <= 0) return null;
+    final DateTime now = DateTime.now();
+    final FillUp f = FillUp(id: nextId(), bikeId: bikeId, day: dateOnly(day ?? now), odometer: odometer, litres: litres, totalPaise: totalPaise, full: full);
+    fillups.add(f);
+    txns.insert(0, Txn(id: 'fuel:${f.id}', title: 'Fuel · ${b.name}', category: 'TRANSPORT', paise: totalPaise, at: now));
+    final int oldOdometer = b.odometer;
+    if (odometer > b.odometer) b.odometer = odometer;
+    syncGarageObjectives();
+    changed();
+    return () {
+      fillups.removeWhere((FillUp e) => e.id == f.id);
+      txns.removeWhere((Txn t) => t.id == 'fuel:${f.id}');
+      b.odometer = oldOdometer;
+      syncGarageObjectives();
+      changed();
+    };
+  }
+
+  void removeFillUp(String id) {
+    fillups.removeWhere((FillUp f) => f.id == id);
+    txns.removeWhere((Txn t) => t.id == 'fuel:$id');
+    changed();
+  }
+
+  /// Fuel put in this month, across the bikes.
+  ({double litres, int paise}) fuelThisMonth([DateTime? now]) {
+    final DateTime n = now ?? DateTime.now();
+    final Iterable<FillUp> mine = fillups.where((FillUp f) => f.day.year == n.year && f.day.month == n.month);
+    return (litres: mine.fold(0.0, (double a, FillUp f) => a + f.litres), paise: mine.fold(0, (int a, FillUp f) => a + f.totalPaise));
+  }
+
+  /// The reminder was done now: it counts from this odometer and today.
+  void markReminderDone(String bikeId, String reminderId, {DateTime? now}) {
+    _garageJobDone(reminderId, bikeId: bikeId, now: now);
+    syncGarageObjectives(now);
+    changed();
+  }
+
+  void _garageJobDone(String reminderId, {String? bikeId, DateTime? now}) {
+    final DateTime t = now ?? DateTime.now();
+    for (final Bike b in bikes) {
+      if (bikeId != null && b.id != bikeId) continue;
+      for (final Reminder r in b.reminders) {
+        if (r.id != reminderId) continue;
+        r.lastKm = b.odometer;
+        r.lastDate = dateOnly(t);
+        // A paper with a fixed "valid till" date is renewed by editing the date, not by ticking it off.
+        if (!r.kind.isPaper) r.dueDate = null;
+      }
+    }
+  }
+
+  /// Reminders that are due or close become Ops objectives (red when overdue); ones that are no longer due go away.
+  void syncGarageObjectives([DateTime? now]) {
+    final DateTime t = now ?? DateTime.now();
+    final Set<String> wanted = <String>{};
+    for (final Bike b in bikes) {
+      for (final Reminder r in b.reminders) {
+        final DueStatus st = dueStatus(r, b.odometer, t);
+        if (st.level == DueLevel.ok) continue;
+        final String id = 'g:${r.id}';
+        wanted.add(id);
+        final String title = '${b.name} · ${r.title}';
+        final Threat threat = st.level == DueLevel.overdue ? Threat.crit : Threat.high;
+        final String label = dueText(st).toUpperCase();
+        final Objective? existing = objectives.where((Objective o) => o.id == id).firstOrNull;
+        if (existing == null) {
+          objectives.insert(0, Objective(id: id, title: title, threat: threat, dueLabel: label, tag: 'GARAGE'));
+        } else if (!existing.done) {
+          existing
+            ..title = title
+            ..threat = threat
+            ..dueLabel = label;
+        }
+      }
+    }
+    objectives.removeWhere((Objective o) => o.id.startsWith('g:') && !wanted.contains(o.id));
   }
 
   List<Block> get todayBlocks {

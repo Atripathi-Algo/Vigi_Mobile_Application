@@ -7,18 +7,23 @@ import '../app/common.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
 import '../app/shell.dart';
+import '../data/garage.dart';
 import '../data/models.dart';
 import '../data/store.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'calendar_sheets.dart';
 import 'capture_sheet.dart';
+import 'garage_screen.dart';
 
 /// 10 · Objectives and 11 · Timeline (tab 2).
 class OpsScreen extends ConsumerStatefulWidget {
-  const OpsScreen({super.key, required this.timeline});
+  const OpsScreen({super.key, required this.timeline, this.garage = false});
 
   final bool timeline;
+
+  /// The Garage tab (bikes, fuel, service reminders).
+  final bool garage;
 
   @override
   ConsumerState<OpsScreen> createState() => _OpsScreenState();
@@ -62,14 +67,23 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
     final DateTime selDay = monday.add(Duration(days: s.selectedDayIndex));
     final List<Block> dayBlocks = s.blocksFor(selDay);
     final int focus = dayBlocks.where((Block b) => b.kind == BlockKind.focus).fold(0, (int a, Block b) => a + b.endMin - b.startMin);
-    final String subtitle = widget.timeline
-        ? '${Fmt.dayStamp(selDay)} · ${dayBlocks.length} OPS · ${Fmt.durCompact(focus)} FOCUS'
-        : '${s.open.length} OPEN · ${s.cleared.length} CLEARED · ${s.overdueCount} OVERDUE';
+    int garageDue = 0;
+    for (final Bike b in s.bikes) {
+      for (final Reminder r in b.reminders) {
+        if (dueStatus(r, b.odometer, now).level == DueLevel.overdue) garageDue++;
+      }
+    }
+    final String subtitle = widget.garage
+        ? '${s.bikes.length} ${s.bikes.length == 1 ? 'BIKE' : 'BIKES'} · $garageDue OVERDUE'
+        : widget.timeline
+            ? '${Fmt.dayStamp(selDay)} · ${dayBlocks.length} OPS · ${Fmt.durCompact(focus)} FOCUS'
+            : '${s.open.length} OPEN · ${s.cleared.length} CLEARED · ${s.overdueCount} OVERDUE';
 
     return VigilScaffold(
       title: 'Ops',
       subtitle: subtitle,
       actions: <Widget>[
+        if (!widget.garage)
         VigilIconButton(
           icon: widget.timeline ? VigilIcons.calendar : VigilIcons.search,
           semanticLabel: widget.timeline ? 'Month view' : 'Search',
@@ -85,15 +99,15 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
           },
         ),
       ],
-      floatingActionButton: widget.timeline ? null : const CaptureFab(type: 'objective'),
+      floatingActionButton: widget.timeline || widget.garage ? null : const CaptureFab(type: 'objective'),
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<String>(
-          segments: const <(String, String)>[('o', 'OBJECTIVES'), ('t', 'TIMELINE')],
-          selected: widget.timeline ? 't' : 'o',
-          onSelected: (String v) => context.go(v == 'o' ? '/ops/objectives' : '/ops/timeline'),
+          segments: const <(String, String)>[('o', 'OBJECTIVES'), ('t', 'TIMELINE'), ('g', 'GARAGE')],
+          selected: widget.garage ? 'g' : (widget.timeline ? 't' : 'o'),
+          onSelected: (String v) => context.go(v == 'o' ? '/ops/objectives' : (v == 't' ? '/ops/timeline' : '/ops/garage')),
         ),
         const SizedBox(height: 12),
-        Expanded(child: widget.timeline ? _timeline(context, s, now, selDay, dayBlocks) : _objectives(context, s, now)),
+        Expanded(child: widget.garage ? const GarageView() : (widget.timeline ? _timeline(context, s, now, selDay, dayBlocks) : _objectives(context, s, now))),
       ]),
     );
   }
@@ -178,12 +192,16 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
     return Dismissible(
       key: ValueKey<String>('obj-${o.id}'),
       background: Container(color: c.signalTint(0.18), alignment: Alignment.centerLeft, padding: const EdgeInsets.only(left: 18), child: VigilIcon(VigilIcons.check, color: c.signal)),
-      secondaryBackground: Container(color: c.surfaceHigh, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 18), child: VigilIcon(VigilIcons.calendar, color: c.text)),
+      secondaryBackground: Container(color: c.critical.withValues(alpha: 0.18), alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 18), child: Icon(Icons.delete_outline, color: c.critical)),
       confirmDismiss: (DismissDirection d) async {
         if (d == DismissDirection.startToEnd) {
           _check(s, o, true);
         } else {
-          _reschedule(context, s, o);
+          // Swipe left deletes, with a few seconds to take it back.
+          final int at = s.objectives.indexWhere((Objective e) => e.id == o.id);
+          s.removeObjective(o.id);
+          HapticFeedback.mediumImpact();
+          showVigilSnack(context, 'Deleted ${o.title}', action: 'Undo', onAction: () => s.restoreObjective(o, at));
         }
         return false; // rows stay in place until the next visit, per the spec
       },
@@ -285,6 +303,16 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
                 ),
               ),
               const SizedBox(width: 8),
+              if (!o.done)
+                VigilButton(
+                  label: 'Reschedule',
+                  variant: VigilButtonVariant.secondary,
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _reschedule(context, s, o);
+                  },
+                ),
+              if (!o.done) const SizedBox(width: 8),
               VigilButton(
                 label: 'Delete',
                 variant: VigilButtonVariant.secondary,

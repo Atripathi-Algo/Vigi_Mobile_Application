@@ -9,6 +9,7 @@ import '../services/local_brain.dart';
 import '../vigil/vigil.dart';
 import 'agent.dart';
 import 'brain_pipeline.dart';
+import 'garage.dart';
 import 'brain_prompt.dart';
 import 'capture_parser.dart';
 import 'models.dart';
@@ -82,6 +83,36 @@ class Assistant {
   }
 
   static bool _has(String q, String pattern) => RegExp(pattern).hasMatch(q);
+
+  /// What the Garage knows, in a few short lines: odometer, mileage, cost, range and the next thing due.
+  String _garageAnswer() {
+    if (store.bikes.isEmpty) return 'No bikes yet. Add one in Ops, Garage, and tell me your fill-ups.';
+    final List<String> lines = <String>[];
+    final DateTime now = DateTime.now();
+    for (final Bike b in store.bikes) {
+      final BikeStats st = BikeStats.of(b, store.fillups);
+      final List<String> p = <String>[
+        '${b.name}: ${b.odometer} km',
+        if (st.avgKmPerLitre != null) '${st.avgKmPerLitre!.toStringAsFixed(1)} km/l',
+        if (st.paisePerKm != null) '${rupees2(st.paisePerKm!)}/km',
+        if (st.rangeKm != null) 'range about ${st.rangeKm} km',
+      ];
+      Reminder? next;
+      DueStatus? nextStatus;
+      for (final Reminder r in b.reminders) {
+        final DueStatus ds = dueStatus(r, b.odometer, now);
+        if (nextStatus == null || ds.fraction > nextStatus.fraction) {
+          next = r;
+          nextStatus = ds;
+        }
+      }
+      final String due = next == null || nextStatus == null ? '' : ' Next: ${next.title.toLowerCase()}, ${dueText(nextStatus).toLowerCase()}.';
+      lines.add('${p.join(', ')}.$due');
+    }
+    final ({double litres, int paise}) fuel = store.fuelThisMonth(now);
+    if (fuel.litres > 0) lines.add('This month: ${fuel.litres.toStringAsFixed(1)} L, ${Fmt.money(fuel.paise)} on fuel.');
+    return lines.join(' ');
+  }
 
   /// [onPartial] gets the words of an on-device answer as they are written.
   Future<ChatMsg> reply(String text, {void Function(String partial)? onPartial}) async {
@@ -173,6 +204,9 @@ class Assistant {
         return tag(msg('Logged ${CaptureParser.typeLabel(d.type).toLowerCase()}.', diff: <(String, String)>[('LOGGED', d.type == CaptureType.spend ? '${d.title} ${Fmt.money(d.paise ?? 0)}' : d.raw)], undo: undo), ReplySource.instant);
       }
       return tag(msg('Could not log that. For a spend, include an amount.'), null);
+    }
+    if (_has(q, r'\b(bikes?|mileage|odometer|garage|fuel|petrol|insurance|puc|motorcycle)\b')) {
+      return tag(msg(_garageAnswer()), ReplySource.data);
     }
     if (_has(q, r'\b(overdue|late|behind)\b')) {
       final List<Objective> o = store.open.where((Objective e) => e.isOverdue(now)).toList();

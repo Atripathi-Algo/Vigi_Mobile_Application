@@ -2,6 +2,7 @@ import '../app/brand.dart';
 import '../app/fmt.dart';
 import 'models.dart';
 import '../vigil/vigil.dart';
+import 'garage.dart';
 import 'store.dart';
 
 /// Everything the on-device model is told, kept small on purpose: a 1B model is fast and accurate when the
@@ -15,6 +16,7 @@ class BrainFacts {
     this.objectives = const <String>[],
     this.events = const <String>[],
     this.protocols = const <String>[],
+    this.bikes = const <String>[],
     this.waterMl = 0,
     this.waterTargetMl = 3000,
     this.steps,
@@ -25,6 +27,9 @@ class BrainFacts {
 
   final DateTime now;
   final String callsign;
+
+  /// Names of the bikes in the Garage.
+  final List<String> bikes;
 
   /// "Call the plumber · due 17:30 · high", open ones only.
   final List<String> objectives;
@@ -53,6 +58,7 @@ BrainFacts factsFromStore(VigilStore s, DateTime now) {
         '${o.title}${o.dueMin != null ? ' · due ${Fmt.hm(o.dueMin!)}' : (o.dueLabel != null ? ' · due ${o.dueLabel}' : '')}${o.threat == Threat.routine ? '' : ' · ${o.threat.name}'}',
     ],
     events: <String>[for (final Block b in events.take(8)) '${Fmt.hm(b.startMin)}-${Fmt.hm(b.endMin)} ${b.title}'],
+    bikes: <String>[for (final Bike b in s.bikes) b.name],
     protocols: <String>[for (final Protocol p in s.protocols.take(10)) '${p.name}${p.doneToday ? ' (done)' : ''}'],
     waterMl: s.waterMl,
     waterTargetMl: s.waterTargetMl,

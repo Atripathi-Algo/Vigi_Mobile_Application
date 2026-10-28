@@ -3,6 +3,7 @@ import 'dart:ui' show VoidCallback;
 import '../app/brand.dart';
 import '../app/fmt.dart';
 import '../vigil/vigil.dart';
+import 'garage.dart';
 import 'models.dart';
 import 'store.dart';
 
@@ -220,6 +221,29 @@ AgentResult applyAgentPlan(VigilStore store, AgentPlan plan, {DateTime? now}) {
         }
         store.toggleProtocol(p.id);
         done('CHECKED', p.name, () => store.toggleProtocol(p.id));
+      case 'log_fill_up':
+        final num? litres = g['litres'] is num ? g['litres'] as num : null;
+        final num? amount = g['amount'] is num ? g['amount'] as num : null;
+        if (store.bikes.isEmpty) {
+          failed.add('There is no bike in the Garage yet. Add one in Ops, Garage.');
+          break;
+        }
+        final Bike? bike = store.bikeByName(_str(g['bike'], 60));
+        if (bike == null) {
+          failed.add('Which bike? Say its name, for example "${store.bikes.first.name}".');
+          break;
+        }
+        if (litres == null || litres <= 0 || litres > bike.tankL * 1.5 || amount == null || amount <= 0 || amount > 1000000) {
+          failed.add('A fill-up needs the litres (up to ${bike.tankL.toStringAsFixed(0)} L plus a little) and the rupees paid.');
+          break;
+        }
+        final int odo = g['odometer'] is num ? (g['odometer'] as num).round() : bike.odometer;
+        final VoidCallback? undo = store.addFillUp(bikeId: bike.id, odometer: odo, litres: litres.toDouble(), totalPaise: (amount * 100).round(), full: g['full'] != false);
+        if (undo == null) {
+          failed.add('That fill-up did not make sense, so it was not saved.');
+          break;
+        }
+        done('FILL-UP', '${bike.name} · ${litres.toStringAsFixed(litres == litres.roundToDouble() ? 0 : 1)} L · ${Fmt.money((amount * 100).round())}${g['odometer'] is num ? ' · $odo km' : ''}', undo);
       case 'move_event':
         final String? title = _str(g['title']);
         final int? start = _hm(g['start']);

@@ -232,6 +232,39 @@ AgentPlan? _task(String q, String lower) {
   ]);
 }
 
+// ----------------------------------------------------------------------------------------------- fuel
+
+AgentPlan? _fuel(String q, String lower, BrainFacts f) {
+  if (f.bikes.isEmpty) return null;
+  if (!RegExp(r'\b(fill(?:ed)?|fuell?ed|refuell?ed|tank(?:ed)?|petrol|fuel|diesel|top(?:ped)?\s*up|poured|put)\b').hasMatch(lower)) return null;
+  final RegExpMatch? lit = RegExp(r'(\d+(?:\.\d+)?)\s*(?:l|ltr|ltrs|litres?|liters?)\b').firstMatch(lower);
+  if (lit == null) return null;
+  final double litres = double.parse(lit.group(1)!);
+  // The odometer reading: "at 9,412" or "9412 km".
+  final RegExpMatch? odo = RegExp(r'\b(?:at|odometer|odo|reading|on)\s*(\d[\d,]*)\s*(?:km|kms)?\b|\b(\d[\d,]*)\s*(?:km|kms)\b').firstMatch(lower);
+  final int? odometer = odo == null ? null : int.tryParse((odo.group(1) ?? odo.group(2))!.replaceAll(',', ''));
+  // The amount: after "for", "rs", "₹" or "rupees".
+  final String noOdo = odo == null ? lower : lower.replaceFirst(odo.group(0)!, ' ');
+  final RegExpMatch? amt = RegExp(r'(?:₹|rs\.?\s*|inr\s*|rupees?\s*|for\s+)(\d[\d,]*(?:\.\d{1,2})?)').firstMatch(noOdo);
+  if (amt == null) return null;
+  final double amount = double.parse(amt.group(1)!.replaceAll(',', ''));
+  if (amount <= 0 || litres <= 0) return null;
+  String? bike;
+  final Set<String> words = RegExp(r'[a-z0-9]+').allMatches(lower).map((Match m) => m.group(0)!).toSet();
+  for (final String name in f.bikes) {
+    if (RegExp(r'[a-z0-9]+').allMatches(name.toLowerCase()).any((Match m) => m.group(0)!.length >= 3 && words.contains(m.group(0)!))) {
+      bike = name;
+      break;
+    }
+  }
+  final bool partial = RegExp(r'\b(partial|half|top(?:ped)?\s*up)\b').hasMatch(lower);
+  final String lt = litres == litres.roundToDouble() ? litres.round().toString() : litres.toString();
+  final String rs = amount == amount.roundToDouble() ? amount.round().toString() : amount.toStringAsFixed(2);
+  return _plan('Logged $lt litres for ₹$rs${bike == null ? '' : ' on the ${bike.toLowerCase()}'}.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'log_fill_up', if (bike != null) 'bike': bike, 'litres': litres, 'amount': amount, if (odometer != null) 'odometer': odometer, if (partial) 'full': false},
+  ]);
+}
+
 // ----------------------------------------------------------------------------------------------- move an event
 
 AgentPlan? _move(String q, String lower, BrainFacts f) {
@@ -276,7 +309,7 @@ AgentPlan? _note(String q) {
 /// A question about the user's own data, which the router answers from the store with exact numbers.
 bool isFactsQuestion(String utterance) {
   if (!isQuestionOnly(utterance)) return false;
-  return RegExp(r'\b(water|hydrat\w*|steps?|walk\w*|sleep|slept|bed|bedtime|wake|spend|spent|spending|money|budget|ledger|expenses?|overdue|late|behind|plan|schedule|calendar|meetings?|events?|agenda|objectives?|tasks?|protocols?|habits?)\b|\bmy day\b|\btoday\b|\btomorrow\b', caseSensitive: false).hasMatch(utterance);
+  return RegExp(r'\b(water|hydrat\w*|steps?|walk\w*|sleep|slept|bed|bedtime|wake|spend|spent|spending|money|budget|ledger|expenses?|overdue|late|behind|plan|schedule|calendar|meetings?|events?|agenda|objectives?|tasks?|protocols?|habits?|bikes?|mileage|odometer|garage|fuel|petrol|insurance|puc)\b|\bmy day\b|\btoday\b|\btomorrow\b', caseSensitive: false).hasMatch(utterance);
 }
 
 /// Decides without the model when it can: [DecisionSource.rules] with a ready plan, [DecisionSource.router] for
@@ -287,7 +320,7 @@ Decision? decideWithoutModel(String utterance, BrainFacts facts) {
   final String lower = q.toLowerCase();
   if (isFactsQuestion(q)) return const Decision(DecisionSource.router, null);
   if (isQuestionOnly(q)) return null;
-  final AgentPlan? plan = _oneAtATime(lower) ?? _move(q, lower, facts) ?? _water(q, lower) ?? _note(q) ?? _task(q, lower) ?? _event(q, lower) ?? _spend(q, lower) ?? _completion(q, lower, facts);
+  final AgentPlan? plan = _oneAtATime(lower) ?? _move(q, lower, facts) ?? _water(q, lower) ?? _note(q) ?? _task(q, lower) ?? _event(q, lower) ?? _fuel(q, lower, facts) ?? _spend(q, lower) ?? _completion(q, lower, facts);
   return plan == null ? null : Decision(DecisionSource.rules, plan);
 }
 
