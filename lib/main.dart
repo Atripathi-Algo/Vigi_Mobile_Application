@@ -125,6 +125,7 @@ class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver
   Future<void> _bootstrap() async {
     final VigilStore s = widget.store;
     ref.read(outputSyncProvider.notifier).state = _sync;
+    s.notify = (String title, String body) => NotificationService.show(title, body, channel: 'ledger', payload: '/vault/ledger');
     // Home-screen widget taps: interactive controls run in the background; the rest open the app.
     await HomeWidget.registerInteractivityCallback(vigilWidgetCallback);
     HomeWidget.widgetClicked.listen(_openWidgetUri);

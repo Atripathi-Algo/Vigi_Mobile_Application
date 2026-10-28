@@ -110,6 +110,15 @@ class VigilStore extends ChangeNotifier {
   // ---- ledger -----------------------------------------------------------
   /// Set by the user; 0 means no budget yet.
   int monthBudgetPaise = 0;
+
+  /// One nudge when spending crosses 80 % of the month's budget.
+  bool budgetAlert = true;
+
+  /// Last month's unspent budget is added to this month's.
+  bool budgetRollover = false;
+
+  /// Shows a notification (set by the app); the store only decides when.
+  void Function(String title, String body)? notify;
   late List<Bill> bills;
   late List<Txn> txns;
   late List<Bike> bikes;
@@ -228,6 +237,8 @@ class VigilStore extends ChangeNotifier {
     }
     logStreak = _prefs.getInt('logStreak') ?? logStreak;
     monthBudgetPaise = _prefs.getInt('budget') ?? 0;
+    budgetAlert = _prefs.getBool('budgetAlert') ?? true;
+    budgetRollover = _prefs.getBool('budgetRollover') ?? false;
     final String? bj = _prefs.getString('bills');
     if (bj != null) bills = (jsonDecode(bj) as List<dynamic>).map((dynamic e) => Bill.fromJson(e as Map<String, dynamic>)).toList();
     final String? ob = _prefs.getString('objectives');
@@ -362,6 +373,8 @@ class VigilStore extends ChangeNotifier {
       ..setInt('logStreak', logStreak)
       ..setString('bills', jsonEncode(bills.map((Bill b) => b.toJson()).toList()))
       ..setInt('budget', monthBudgetPaise)
+      ..setBool('budgetAlert', budgetAlert)
+      ..setBool('budgetRollover', budgetRollover)
       ..setString('objectives', jsonEncode(objectives.map((Objective o) => o.toJson()).toList()))
       ..setString('notes', jsonEncode(notes.map((Note n) => n.toJson()).toList()))
       ..setString('txns', jsonEncode(txns.map((Txn t) => t.toJson()).toList()))
@@ -401,6 +414,7 @@ class VigilStore extends ChangeNotifier {
 
   void changed() {
     _save();
+    _checkBudgetAlert();
     notifyListeners();
     afterChange?.call();
   }
@@ -494,6 +508,8 @@ class VigilStore extends ChangeNotifier {
     deepSessionsDone = 0;
     logStreak = 0;
     monthBudgetPaise = 0;
+    budgetAlert = true;
+    budgetRollover = false;
     sealedAt = null;
     sealedMood = 2;
     logDraft = '';
@@ -794,10 +810,20 @@ class VigilStore extends ChangeNotifier {
     });
   }
 
-  void addProtocol(String name) {
+  void addProtocol(String name, {String? unit, int? target, int? remindMin, List<int> days = const <int>[]}) {
     final String n = name.trim();
     if (n.isEmpty) return;
-    protocols.add(Protocol(id: nextId(), name: n, streak: 0, week: List<bool>.filled(7, false)));
+    final List<int> picked = days.toSet().where((int d) => d >= 1 && d <= 7).toList()..sort();
+    protocols.add(Protocol(
+      id: nextId(),
+      name: n,
+      streak: 0,
+      week: List<bool>.filled(7, false),
+      unit: (unit ?? '').trim().isEmpty ? null : unit!.trim(),
+      target: target != null && target > 0 ? target : null,
+      remindMin: remindMin?.clamp(0, 1439),
+      days: picked.length == 7 ? <int>[] : picked,
+    ));
     changed();
   }
 
@@ -1067,12 +1093,45 @@ class VigilStore extends ChangeNotifier {
     return m;
   }
 
+  /// What was left of last month's budget, when roll-over is on and last month had spending (a first month gets no bonus).
+  int get rolledOverPaise {
+    if (!budgetRollover || monthBudgetPaise <= 0) return 0;
+    final DateTime n = DateTime.now();
+    final DateTime prev = DateTime(n.year, n.month - 1, 1);
+    final List<Txn> last = txns.where((Txn t) => t.at.year == prev.year && t.at.month == prev.month).toList();
+    if (last.isEmpty) return 0;
+    return math.max(0, monthBudgetPaise - last.fold(0, (int a, Txn t) => a + t.paise));
+  }
+
+  /// This month's limit: the budget plus anything rolled over.
+  int get effectiveBudgetPaise => monthBudgetPaise <= 0 ? 0 : monthBudgetPaise + rolledOverPaise;
+
   /// Whole percent of the month's budget spent, or null while no budget is set.
-  int? get monthSpentPercent => monthBudgetPaise <= 0 ? null : (monthSpentPaise * 100 / monthBudgetPaise).round();
+  int? get monthSpentPercent => effectiveBudgetPaise <= 0 ? null : (monthSpentPaise * 100 / effectiveBudgetPaise).round();
 
   void setBudget(int paise) {
     monthBudgetPaise = math.max(0, paise);
     changed();
+  }
+
+  void setBudgetOptions({bool? alert, bool? rollover}) {
+    if (alert != null) budgetAlert = alert;
+    if (rollover != null) budgetRollover = rollover;
+    changed();
+  }
+
+  /// Once a month, when spending reaches 80 % of the budget.
+  void _checkBudgetAlert() {
+    final int budget = effectiveBudgetPaise;
+    final void Function(String, String)? show = notify;
+    if (!budgetAlert || budget <= 0 || show == null) return;
+    final int spent = monthSpentPaise;
+    if (spent * 100 < budget * 80) return;
+    final DateTime n = DateTime.now();
+    final String key = '${n.year}-${n.month}';
+    if (_prefs.getString('budgetAlertMonth') == key) return;
+    _prefs.setString('budgetAlertMonth', key);
+    show('Budget at ${(spent * 100 / budget).round()} %', '${Fmt.money(spent)} of ${Fmt.money(budget)} spent this month.');
   }
 
   void addBill(String name, int paise, DateTime due) {
@@ -1089,7 +1148,7 @@ class VigilStore extends ChangeNotifier {
   int get safeToSpendPaise {
     final DateTime now = DateTime.now();
     final int daysLeft = DateUtils2.daysInMonth(now) - now.day + 1;
-    return monthBudgetPaise <= 0 ? 0 : math.max(0, (monthBudgetPaise - monthSpentPaise) ~/ daysLeft);
+    return effectiveBudgetPaise <= 0 ? 0 : math.max(0, (effectiveBudgetPaise - monthSpentPaise) ~/ daysLeft);
   }
 
   int yesterdaySpendPaise(DateTime now) {

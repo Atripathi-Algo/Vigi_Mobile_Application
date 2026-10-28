@@ -9,6 +9,7 @@ import '../app/providers.dart';
 import '../app/shell.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/vault_auth.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
@@ -48,6 +49,16 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     _entry.dispose();
     _search.dispose();
     super.dispose();
+  }
+
+  /// Asks the phone's screen lock (fingerprint, face, PIN). With no screen lock set there is nothing to check
+  /// against, so the Vault opens and says why.
+  Future<void> _unlock() async {
+    final VaultAuthResult r = await ref.read(vaultAuthProvider).unlock();
+    if (!mounted) return;
+    if (r == VaultAuthResult.ok || r == VaultAuthResult.unavailable) ref.read(vaultUnlocked.notifier).state = true;
+    if (r == VaultAuthResult.unavailable) showVigilSnack(context, 'No screen lock is set on this phone, so the Vault opened without a check. Set one in Android settings to protect it');
+    if (r == VaultAuthResult.failed) showVigilSnack(context, 'Not unlocked');
   }
 
   @override
@@ -96,9 +107,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                     const SizedBox(height: 14),
                     Text('Vault locked.', style: t.body.copyWith(color: c.textMuted)),
                     const SizedBox(height: 16),
-                    VigilButton(label: 'Unlock', onPressed: () => ref.read(vaultUnlocked.notifier).state = true),
+                    VigilButton(label: 'Unlock', onPressed: _unlock),
                     const SizedBox(height: 8),
-                    Text('Biometric check is not built. Tap unlocks.', style: t.micro.copyWith(color: c.textFaint)),
+                    Text("Uses this phone's screen lock · Loadout › Data & privacy", style: t.micro.copyWith(color: c.textFaint)),
                   ]),
                 ),
         ),
@@ -114,8 +125,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final int daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
     final double pace = now.day / daysInMonth;
     final int spent = s.monthSpentPaise;
-    final bool hasBudget = s.monthBudgetPaise > 0;
-    final bool overPace = hasBudget && spent / s.monthBudgetPaise > pace;
+    final bool hasBudget = s.effectiveBudgetPaise > 0;
+    final bool overPace = hasBudget && spent / s.effectiveBudgetPaise > pace;
     final Map<String, int> cats = s.categorySpend;
     final List<Color> palette = <Color>[c.signal, c.steel, c.text, c.textMuted, c.neutral];
     final int totalCats = cats.values.fold(0, (int a, int b) => a + b);
@@ -132,12 +143,16 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
           const SizedBox(height: 10),
           Text.rich(TextSpan(children: <InlineSpan>[
             TextSpan(text: Fmt.money(spent), style: t.hero.copyWith(fontSize: 34)),
-            if (hasBudget) TextSpan(text: ' / ${Fmt.money(s.monthBudgetPaise)}', style: t.metric.copyWith(color: c.textMuted, fontSize: 16)),
+            if (hasBudget) TextSpan(text: ' / ${Fmt.money(s.effectiveBudgetPaise)}', style: t.metric.copyWith(color: c.textMuted, fontSize: 16)),
           ])),
           const SizedBox(height: 10),
           if (hasBudget) ...<Widget>[
-            SegmentBar(fraction: (spent / s.monthBudgetPaise).clamp(0, 1).toDouble(), thickness: 8, marker: pace, color: overPace ? c.critical : c.signal),
+            SegmentBar(fraction: (spent / s.effectiveBudgetPaise).clamp(0, 1).toDouble(), thickness: 8, marker: pace, color: overPace ? c.critical : c.signal),
             const SizedBox(height: 10),
+            if (s.rolledOverPaise > 0) ...<Widget>[
+              Text('Includes ${Fmt.money(s.rolledOverPaise)} rolled over from last month', style: t.caption.copyWith(color: c.textMuted)),
+              const SizedBox(height: 8),
+            ],
             Row(children: <Widget>[
               Expanded(child: Text('SAFE TO SPEND TODAY ${Fmt.money(s.safeToSpendPaise)}', style: t.meta.copyWith(color: c.text))),
               Text('PACE ${(pace * 100).round()}%', style: t.meta.copyWith(color: c.textMuted)),

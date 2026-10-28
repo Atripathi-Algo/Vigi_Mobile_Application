@@ -67,7 +67,7 @@ BrainFacts factsFromStore(VigilStore s, DateTime now) {
     sleep: last == null ? 'no data' : 'last night ${Fmt.dur(last.asleep)}${s.hasSleepStats ? ', debt ${Fmt.dur(s.debtMin)}' : ''}',
     money: s.monthTxns.isEmpty
         ? 'no data'
-        : 'spent ${Fmt.money(s.monthSpentPaise)} this month${s.monthBudgetPaise > 0 ? ' of ${Fmt.money(s.monthBudgetPaise)}' : ', no budget set'}',
+        : 'spent ${Fmt.money(s.monthSpentPaise)} this month${s.effectiveBudgetPaise > 0 ? ' of ${Fmt.money(s.effectiveBudgetPaise)}' : ', no budget set'}',
   );
 }
 

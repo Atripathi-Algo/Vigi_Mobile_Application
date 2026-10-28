@@ -570,7 +570,7 @@ class _FillUpState extends State<_FillUp> {
     final List<FillUp> mine = widget.store.fillups.where((FillUp f) => f.bikeId == _bike.id).toList();
     final ({double kmPerLitre, int km, double? vsAveragePercent})? prev = (_int(_odo.text) == null || _double(_litres.text) == null) ? null : previewMileage(_bike, mine, odometer: _int(_odo.text)!, litres: _double(_litres.text)!, full: _full);
     final int? paise = _paise;
-    final int budget = widget.store.monthBudgetPaise;
+    final int budget = widget.store.effectiveBudgetPaise;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
       Text('LOG FILL-UP', style: t.h2),
       const SizedBox(height: 12),
@@ -700,7 +700,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
       const SizedBox(height: 12),
       Text('TYPE', style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 6),
-      Wrap(spacing: 8, runSpacing: 8, children: <Widget>[for (final ReminderKind k in ReminderKind.values) VigilFilterChip(label: k.label, selected: _kind == k, onTap: () => setState(() => _kind = k))]),
+      Wrap(spacing: 8, runSpacing: 8, children: <Widget>[for (final ReminderKind k in ReminderKind.values) SizedBox(width: (MediaQuery.sizeOf(context).width - 40 - 8) / 2, child: VigilFilterChip(label: k.label, selected: _kind == k, onTap: () => setState(() => _kind = k)))]),
       if (_kind == ReminderKind.custom) ...<Widget>[
         const SizedBox(height: 12),
         VigilField(controller: _label, label: 'Name', hint: 'Brake pads', onChanged: (_) => setState(() {})),

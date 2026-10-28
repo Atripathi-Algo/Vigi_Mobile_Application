@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/assistant.dart';
+import '../services/vault_auth.dart';
 import '../data/store.dart';
 import '../services/google_accounts.dart';
 import '../services/local_brain.dart';
@@ -15,6 +16,9 @@ final ChangeNotifierProvider<GoogleAccounts> googleAccountsProvider = ChangeNoti
 /// Overridden in main() with the loaded store.
 final ChangeNotifierProvider<VigilStore> storeProvider =
     ChangeNotifierProvider<VigilStore>((Ref ref) => throw UnimplementedError('storeProvider must be overridden'));
+
+/// How the Vault checks that it is the owner (the phone's screen lock). Replaced in tests.
+final Provider<VaultAuth> vaultAuthProvider = Provider<VaultAuth>((Ref ref) => DeviceVaultAuth());
 
 final Provider<Assistant> assistantProvider = Provider<Assistant>((Ref ref) => Assistant(ref.read(storeProvider)));
 

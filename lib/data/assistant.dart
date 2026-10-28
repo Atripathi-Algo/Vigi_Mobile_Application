@@ -229,7 +229,7 @@ class Assistant {
       final int? pct = store.monthSpentPercent;
       return tag(msg(pct == null
           ? 'Month spend ${Fmt.money(store.monthSpentPaise)}. No budget set: add one in the Ledger.'
-          : 'Month spend ${Fmt.money(store.monthSpentPaise)} of ${Fmt.money(store.monthBudgetPaise)} ($pct%). Recommend a cap of ${Fmt.money(store.safeToSpendPaise)} today.'), ReplySource.data);
+          : 'Month spend ${Fmt.money(store.monthSpentPaise)} of ${Fmt.money(store.effectiveBudgetPaise)} ($pct%). Recommend a cap of ${Fmt.money(store.safeToSpendPaise)} today.'), ReplySource.data);
     }
     if (_has(q, r'\b(screen|phone|usage)\b')) {
       return tag(msg('No data for screen time. The usage-access bridge is not built yet.'), ReplySource.data);

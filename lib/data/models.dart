@@ -156,7 +156,9 @@ class Protocol {
     this.missedDays = 0,
     this.unit,
     this.target,
-  });
+    this.remindMin,
+    List<int>? days,
+  }) : days = days ?? <int>[];
 
   final String id;
   String name;
@@ -171,6 +173,14 @@ class Protocol {
   String? unit;
   int? target;
 
+  /// Minutes after midnight for a daily reminder, or null for none.
+  int? remindMin;
+
+  /// Weekdays it applies to (1 = Monday ... 7 = Sunday); empty means every day.
+  List<int> days;
+
+  bool dueOn(DateTime d) => days.isEmpty || days.contains(d.weekday);
+
   int get streakNow => streak + (doneToday ? 1 : 0);
   bool get atRisk => !doneToday && missedDays >= 2;
 
@@ -183,6 +193,8 @@ class Protocol {
         'name': name,
         if (unit != null) 'unit': unit,
         if (target != null) 'target': target,
+        if (remindMin != null) 'remindMin': remindMin,
+        if (days.isNotEmpty) 'days': days,
       };
 
   factory Protocol.fromJson(Map<String, dynamic> j) => Protocol(
@@ -194,6 +206,8 @@ class Protocol {
         missedDays: j['missed'] as int,
         unit: j['unit'] as String?,
         target: j['target'] as int?,
+        remindMin: (j['remindMin'] as num?)?.toInt(),
+        days: <int>[for (final dynamic d in (j['days'] as List<dynamic>? ?? <dynamic>[])) (d as num).toInt()],
       );
 
   void applyJson(Map<String, dynamic> j) {

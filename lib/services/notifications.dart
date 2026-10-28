@@ -155,10 +155,21 @@ abstract final class NotificationService {
       if (s.toggles['notifyProtocols'] ?? true) {
         final List<Protocol> risk = s.protocols.where((Protocol p) => p.atRisk).toList();
         if (risk.isNotEmpty) nudges.add((at(20 * 60), 'protocols', 'Streak at risk', '${risk.first.name}: ${risk.first.missedDays} days missed', '/protocols/habits'));
+        // A protocol's own reminder: its next few days, on the days it applies to, skipping today if it is already done.
+        for (final Protocol p in s.protocols) {
+          if (p.remindMin == null) continue;
+          int found = 0;
+          for (int d = 0; d < 7 && found < 3; d++) {
+            final DateTime day = day0.add(Duration(days: d));
+            if (!p.dueOn(day) || (d == 0 && p.doneToday)) continue;
+            nudges.add((day.add(Duration(minutes: p.remindMin!)), 'protocols', p.name, 'Time for ${p.name}. Tap to check it off.', '/protocols/habits'));
+            found++;
+          }
+        }
       }
       nudges.sort(((DateTime, String, String, String, String?) a, (DateTime, String, String, String, String?) b) => a.$1.compareTo(b.$1));
       int id = 2000;
-      int budget = 6;
+      int budget = 24;
       for (final (DateTime, String, String, String, String?) n in nudges) {
         if (budget == 0) break;
         if (!n.$1.isAfter(now)) continue;
