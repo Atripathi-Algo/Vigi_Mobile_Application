@@ -263,15 +263,16 @@ class BikeScreen extends ConsumerWidget {
                   Padding(padding: const EdgeInsets.symmetric(vertical: 18), child: Text('Fill the tank to full twice and mileage shows here. It is measured between full tanks.', style: t.caption.copyWith(color: c.textMuted)))
                 else ...<Widget>[
                   MiniBars(
-                    values: <double>[for (final MileagePoint p in pts) p.kmPerLitre],
-                    colors: <Color>[for (int i = 0; i < pts.length; i++) i == pts.length - 1 ? c.signal : c.lineStrong],
+                    // Always eight slots, so one or two measured tanks do not become one huge bar.
+                    values: <double>[for (int i = pts.length; i < 8; i++) 0, for (final MileagePoint p in pts) p.kmPerLitre],
+                    colors: <Color>[for (int i = pts.length; i < 8; i++) c.lineStrong, for (int i = 0; i < pts.length; i++) i == pts.length - 1 ? c.signal : c.lineStrong],
                     height: 110,
                     gap: 6,
                     refLine: st.avgKmPerLitre,
                     semanticLabel: '${bike.name} mileage, last ${pts.length} full tanks, average ${st.avgKmPerLitre!.toStringAsFixed(1)} kilometres per litre',
                   ),
                   const SizedBox(height: 6),
-                  Row(children: <Widget>[for (final MileagePoint p in pts) Expanded(child: Text(_date(p.fill.day), style: t.micro.copyWith(color: c.textFaint, fontSize: 8.5), textAlign: TextAlign.center))]),
+                  Row(children: <Widget>[for (int i = pts.length; i < 8; i++) const Expanded(child: SizedBox()), for (final MileagePoint p in pts) Expanded(child: Text(_date(p.fill.day), style: t.micro.copyWith(color: c.textFaint, fontSize: 8.5), textAlign: TextAlign.center))]),
                   const SizedBox(height: 4),
                   Text('Average ${_l(st.avgKmPerLitre!)} km/l · latest ${_l(pts.last.kmPerLitre)}', style: t.caption.copyWith(color: c.textMuted)),
                 ],
