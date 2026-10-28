@@ -22,7 +22,7 @@ class AppShell extends StatelessWidget {
       child: Scaffold(
         extendBody: true,
         backgroundColor: context.vigil.ground,
-        body: shell,
+        body: StormFlicker(child: shell),
         bottomNavigationBar: VigilNavBar(
           current: VigilTab.values[shell.currentIndex],
           onSelected: (VigilTab t) {

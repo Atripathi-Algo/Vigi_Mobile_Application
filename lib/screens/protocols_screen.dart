@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +13,7 @@ import '../services/steps.dart';
 import 'data_sheets.dart';
 import 'log_sheets.dart';
 import '../vigil/vigil.dart';
+import '../services/haptics.dart';
 
 enum ProtocolsView { habits, vitals, screen }
 
@@ -130,8 +130,13 @@ class ProtocolsScreen extends ConsumerWidget {
                     critical: p.atRisk,
                     semanticLabel: p.name,
                     onChanged: (bool v) {
-                      HapticFeedback.lightImpact();
                       s.toggleProtocol(p.id);
+                      if (p.doneToday) {
+                        Haptics.strike();
+                        ThunderFx.strike(context);
+                      } else {
+                        Haptics.tick();
+                      }
                       SfxService.play(p.doneToday ? Sfx.clear : Sfx.tick);
                     },
                   ),

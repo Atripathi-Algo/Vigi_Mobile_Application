@@ -18,4 +18,5 @@ export 'widgets/charts.dart';
 export 'widgets/controls.dart';
 export 'widgets/hud.dart';
 export 'widgets/navigation.dart';
+export 'widgets/thunder.dart';
 export 'widgets/vigil_icon.dart';

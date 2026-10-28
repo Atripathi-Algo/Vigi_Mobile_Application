@@ -17,21 +17,24 @@ abstract final class NotificationService {
   static void Function(String? payload)? _onTap;
 
   /// One channel per kind of alert, each with its own original sound from
-  /// android/app/src/main/res/raw (made by tools/gen_sounds.py). Android fixes a
+  /// android/app/src/main/res/raw (made by tools/gen_thunder.py). Android fixes a
   /// channel's sound when it is created, so the ids carry a version suffix; the
   /// sound can still be changed per channel in the system settings.
   static const List<_Chan> _channels = <_Chan>[
-    _Chan('critical', 'K · Alerts', Importance.high, 'Deadlines and critical conflicts', 'bat_critical'),
-    _Chan('ops', 'K · Ops', Importance.defaultImportance, 'Next op and focus reminders', 'bat_ops'),
-    _Chan('protocols', 'K · Protocols', Importance.low, 'Streaks at risk', 'bat_soft'),
-    _Chan('sleep', 'K · Sleep', Importance.high, 'Wind-down and lights-out', 'bat_sleep'),
-    _Chan('screen', 'K · Screen', Importance.low, 'Screen-time limits', 'bat_soft'),
-    _Chan('ledger', 'K · Ledger', Importance.defaultImportance, 'Bills due', 'bat_soft'),
-    _Chan('briefings', 'K · Briefings', Importance.low, 'Dawn briefing and night debrief', 'bat_brief'),
+    _Chan('critical', 'K · Alerts', Importance.high, 'Deadlines and critical conflicts', 'k_critical'),
+    _Chan('ops', 'K · Ops', Importance.defaultImportance, 'Next op and focus reminders', 'k_ops'),
+    _Chan('protocols', 'K · Protocols', Importance.low, 'Streaks at risk', 'k_soft'),
+    _Chan('sleep', 'K · Sleep', Importance.high, 'Wind-down and lights-out', 'k_sleep'),
+    _Chan('screen', 'K · Screen', Importance.low, 'Screen-time limits', 'k_soft'),
+    _Chan('ledger', 'K · Ledger', Importance.defaultImportance, 'Bills due', 'k_soft'),
+    _Chan('briefings', 'K · Briefings', Importance.low, 'Dawn briefing and night debrief', 'k_brief'),
   ];
 
   /// Channel ids from before the sounds were added; removed on start so they do not clutter the settings.
-  static const List<String> _oldChannelIds = <String>['critical', 'ops', 'protocols', 'sleep', 'screen', 'ledger', 'briefings'];
+  static const List<String> _oldChannelIds = <String>[
+    'critical', 'ops', 'protocols', 'sleep', 'screen', 'ledger', 'briefings',
+    'critical_v2', 'ops_v2', 'protocols_v2', 'sleep_v2', 'screen_v2', 'ledger_v2', 'briefings_v2',
+  ];
 
   static AndroidFlutterLocalNotificationsPlugin? get _android => _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
@@ -211,5 +214,5 @@ class _Chan {
   /// Name of the file in res/raw, without the extension.
   final String sound;
 
-  String get id => '${key}_v2';
+  String get id => '${key}_v3';
 }

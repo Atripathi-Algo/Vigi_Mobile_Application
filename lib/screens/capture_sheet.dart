@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app/common.dart';
@@ -10,6 +9,7 @@ import '../data/models.dart';
 import '../data/store.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
+import '../services/haptics.dart';
 
 Future<void> showCaptureSheet(BuildContext context, {String? type, String? initialText}) {
   return showModalBottomSheet<void>(
@@ -74,7 +74,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
   void _commit() {
     final VigilStore s = ref.read(storeProvider);
     _draft.type = _type;
-    HapticFeedback.mediumImpact();
+    Haptics.tap();
     final VoidCallback? undo = s.commitCapture(_draft, _threat);
     if (undo == null) return;
     SfxService.play(Sfx.clear);

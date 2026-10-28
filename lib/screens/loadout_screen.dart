@@ -145,7 +145,9 @@ class LoadoutScreen extends ConsumerWidget {
         ]),
         head('Sounds'),
         RowList(children: <Widget>[
-          toggleRow('sfx', 'Sound effects', 'In-app cues · original audio'),
+          toggleRow('sfx', 'Sound effects', 'Thunder cues · original audio'),
+          toggleRow('haptics', 'Haptics', 'Ticks and taps that mirror the sounds'),
+          toggleRow('effects', 'Thunder effects', 'Lightning flashes and storm glow'),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
@@ -181,7 +183,7 @@ class LoadoutScreen extends ConsumerWidget {
               Text('PREVIEW ALERT SOUNDS', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-                for (final (String, String) a in const <(String, String)>[('bat_critical', 'critical'), ('bat_ops', 'ops'), ('bat_sleep', 'sleep'), ('bat_brief', 'briefing'), ('bat_soft', 'soft')])
+                for (final (String, String) a in const <(String, String)>[('k_critical', 'critical'), ('k_ops', 'ops'), ('k_sleep', 'sleep'), ('k_brief', 'briefing'), ('k_soft', 'soft')])
                   VigilButton(label: a.$2, variant: VigilButtonVariant.accent, onPressed: () => _preview(context, a.$1)),
               ]),
             ]),

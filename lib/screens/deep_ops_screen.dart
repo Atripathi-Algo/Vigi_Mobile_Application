@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +12,7 @@ import '../data/models.dart';
 import '../data/store.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
+import '../services/haptics.dart';
 
 enum _Phase { ready, engaged, paused, done }
 
@@ -128,7 +128,7 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
 
   void _complete() {
     _tick?.cancel();
-    HapticFeedback.mediumImpact();
+    Haptics.tap();
     SfxService.play(Sfx.pulse);
     final VigilStore s = ref.read(storeProvider);
     s.logFocus(_lengths[_len].$1);
@@ -307,7 +307,7 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
                 expand: true,
                 icon: _phase == _Phase.engaged ? VigilIcons.pause : VigilIcons.play,
                 onPressed: () {
-                  HapticFeedback.mediumImpact();
+                  Haptics.tap();
                   switch (_phase) {
                     case _Phase.engaged:
                       _hold();

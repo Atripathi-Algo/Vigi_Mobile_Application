@@ -1,3 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The notification sounds are looked up by name at run time, so tell the resource shrinker to keep them. -->
-<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/bat_*" />
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/k_*" />

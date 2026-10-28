@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +14,7 @@ import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
 import 'drive_sheet.dart';
 import 'notifications_screen.dart';
+import '../services/haptics.dart';
 
 /// 02 · Command · Home
 class CommandScreen extends ConsumerStatefulWidget {
@@ -150,7 +150,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                       onLongPress: long == null
                           ? null
                           : () {
-                              HapticFeedback.mediumImpact();
+                              Haptics.tap();
                               long();
                             },
                       child: VigilCard(
@@ -179,7 +179,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
 
   void _water(int ml) {
     final VigilStore s = ref.read(storeProvider);
-    HapticFeedback.lightImpact();
+    Haptics.tick();
     SfxService.play(Sfx.water);
     s.logWater(ml);
     showVigilSnack(context, '+$ml ml logged · ${Fmt.litres(s.waterMl)} L', action: 'UNDO', onAction: () => s.logWater(-ml));
@@ -199,7 +199,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
           VigilButton(
             label: 'Log 500 ml',
             onPressed: () {
-              HapticFeedback.mediumImpact();
+              Haptics.tap();
               SfxService.play(Sfx.water);
               s.logWater(500);
               _resolve('Logged. Hydration ${Fmt.litres(s.waterMl)} of ${Fmt.litres(s.waterTargetMl)} L. Next check at ${Fmt.hm((now.hour + 1) * 60 + 30)}.');

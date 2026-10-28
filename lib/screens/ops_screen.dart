@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +14,7 @@ import '../vigil/vigil.dart';
 import 'calendar_sheets.dart';
 import 'capture_sheet.dart';
 import 'garage_screen.dart';
+import '../services/haptics.dart';
 
 /// 10 · Objectives and 11 · Timeline (tab 2).
 class OpsScreen extends ConsumerStatefulWidget {
@@ -45,7 +45,12 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
   }
 
   void _check(VigilStore s, Objective o, bool done) {
-    HapticFeedback.lightImpact();
+    if (done) {
+      Haptics.strike();
+      ThunderFx.strike(context);
+    } else {
+      Haptics.tick();
+    }
     SfxService.play(done ? Sfx.clear : Sfx.tick);
     if (done) {
       _pinned.add(o.id);
@@ -200,7 +205,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
           // Swipe left deletes, with a few seconds to take it back.
           final int at = s.objectives.indexWhere((Objective e) => e.id == o.id);
           s.removeObjective(o.id);
-          HapticFeedback.mediumImpact();
+          Haptics.tap();
           showVigilSnack(context, 'Deleted ${o.title}', action: 'Undo', onAction: () => s.restoreObjective(o, at));
         }
         return false; // rows stay in place until the next visit, per the spec

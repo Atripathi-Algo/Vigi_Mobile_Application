@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../theme/vigil_tokens.dart';
 import 'vigil_icon.dart';
+import '../../services/haptics.dart';
 
 /// Threat levels used across objectives, alerts and capture.
 enum Threat { crit, high, routine }
@@ -69,7 +69,7 @@ class VigilCheckbox extends StatelessWidget {
         onTap: onChanged == null
             ? null
             : () {
-                HapticFeedback.lightImpact();
+                Haptics.tick();
                 onChanged!(!value);
               },
         child: SizedBox.square(
@@ -139,7 +139,7 @@ class VigilSwitch extends StatelessWidget {
         onTap: onChanged == null
             ? null
             : () {
-                HapticFeedback.selectionClick();
+                Haptics.tick();
                 onChanged!(!value);
               },
         child: SizedBox(

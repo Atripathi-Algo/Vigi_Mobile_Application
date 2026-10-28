@@ -46,26 +46,41 @@ void checkSound(File f, {required double maxSeconds}) {
   expect(mean.abs(), lessThan(0.01), reason: '${f.path} has a DC offset');
 }
 
+/// How long each sound may be, from the design's sound table (seconds).
+const Map<String, double> _fxMax = <String, double>{'tick': 0.1, 'clear': 0.25, 'engage': 0.75, 'pulse': 1.0, 'deny': 0.3, 'boot': 1.8, 'water': 0.3};
+const Map<String, double> _alertMax = <String, double>{'k_critical': 1.4, 'k_ops': 0.4, 'k_sleep': 2.3, 'k_brief': 2.6, 'k_soft': 0.7};
+
 void main() {
-  test('every in-app effect has a valid WAV asset', () {
+  test('every in-app effect has a valid WAV asset, as short as the design says', () {
     for (final Sfx s in Sfx.values) {
-      checkSound(File('assets/audio/sfx_${s.name}.wav'), maxSeconds: 4.0);
+      checkSound(File('assets/audio/sfx_${s.name}.wav'), maxSeconds: _fxMax[s.name]!);
     }
   });
 
-  test('every notification channel sound exists and is valid', () {
-    for (final String n in <String>['bat_critical', 'bat_ops', 'bat_sleep', 'bat_brief', 'bat_soft']) {
-      checkSound(File('android/app/src/main/res/raw/$n.wav'), maxSeconds: 4.0);
+  test('every notification channel sound exists, is valid, and has a copy for the Loadout previews', () {
+    for (final MapEntry<String, double> e in _alertMax.entries) {
+      checkSound(File('android/app/src/main/res/raw/${e.key}.wav'), maxSeconds: e.value);
+      checkSound(File('assets/audio/${e.key}.wav'), maxSeconds: e.value);
     }
+  });
+
+  test('the sounds are not the old ones, and nothing refers to them', () {
+    expect(Directory('assets/audio').listSync().map((FileSystemEntity f) => f.path), everyElement(isNot(contains('bat_'))));
+    expect(Directory('android/app/src/main/res/raw').listSync().map((FileSystemEntity f) => f.path), everyElement(isNot(contains('bat_'))));
+    expect(File('android/app/src/main/res/raw/keep.xml').readAsStringSync(), contains('@raw/k_*'));
+    expect(File('lib/services/notifications.dart').readAsStringSync(), isNot(contains('bat_')));
   });
 
   test('the effects folder is declared as an asset', () {
     expect(File('pubspec.yaml').readAsStringSync(), contains('assets/audio/'));
   });
 
-  test('alert sounds stay short enough for the system to play them whole', () {
-    // critical is the longest alert on purpose: ping, ping, pause, low ping.
-    expect(readWav(File('android/app/src/main/res/raw/bat_soft.wav')).samples.length / 32000, lessThan(1.0));
-    expect(readWav(File('android/app/src/main/res/raw/bat_ops.wav')).samples.length / 32000, lessThan(2.0));
+  test('a cold start is the longest sound, and quiet sounds are quiet', () {
+    final double boot = readWav(File('assets/audio/sfx_boot.wav')).samples.length / 32000;
+    for (final Sfx s in Sfx.values) {
+      if (s == Sfx.boot) continue;
+      expect(readWav(File('assets/audio/sfx_${s.name}.wav')).samples.length / 32000, lessThan(boot));
+    }
+    expect(readWav(File('android/app/src/main/res/raw/k_soft.wav')).samples.length / 32000, lessThan(1.0));
   });
 }

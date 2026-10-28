@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,6 +11,7 @@ import '../services/health.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'log_sheets.dart';
+import '../services/haptics.dart';
 
 /// 13a · Sleep tracker and 13b · Weekly schedule (pushed, no tab bar).
 class SleepScreen extends ConsumerStatefulWidget {
@@ -105,7 +105,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                   label: 'Arm ${Fmt.hm(rec)}',
                   expand: true,
                   onPressed: () {
-                    HapticFeedback.mediumImpact();
+                    Haptics.tap();
                     SfxService.play(Sfx.engage);
                     s.armedTonight = true;
                     s.changed();

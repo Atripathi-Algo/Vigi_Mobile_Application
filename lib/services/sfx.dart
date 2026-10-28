@@ -1,27 +1,27 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
-/// The in-app sound effects. All are original, synthesized by tools/gen_sounds.py.
+/// The in-app sound effects, in a thunder family. All are original, synthesized by tools/gen_thunder.py.
 enum Sfx {
-  /// A light click: tab changes, un-checking.
+  /// Spark: a tiny static tick for taps, tab changes, un-checking.
   tick,
 
-  /// Struck metal and a sonar ping: something cleared or saved.
+  /// Strike: a clean crack for something cleared or saved.
   clear,
 
-  /// Grapple whoosh into a clink: engaging Deep Ops, arming sleep.
+  /// Charge: a rising electric hum into a snap, for engaging Deep Ops or waking K.
   engage,
 
-  /// Two sub-bass hits and a ping: a session ends, standing down.
+  /// Rumble: a soft low thunder pulse under K while it thinks, and when a session ends.
   pulse,
 
-  /// Low double buzz: aborting.
+  /// Fizzle: a short dull zap for denied or invalid.
   deny,
 
-  /// Drone swell into a visor ping: first launch.
+  /// Thunderclap: a full clap with a rolling tail, on a cold start only.
   boot,
 
-  /// Cold droplet: water logged.
+  /// Droplet and a faint crackle: water logged.
   water,
 }
 

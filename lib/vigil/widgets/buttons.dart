@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../theme/vigil_tokens.dart';
 import 'hud.dart';
 import 'vigil_icon.dart';
+import '../../services/haptics.dart';
 
 enum VigilButtonVariant {
   /// Signal fill, chamfered. One per view.
@@ -89,7 +89,7 @@ class VigilButton extends StatelessWidget {
       child: InkWell(
         onTap: enabled
             ? () {
-                HapticFeedback.selectionClick();
+                Haptics.tick();
                 onPressed!();
               }
             : null,
@@ -201,7 +201,7 @@ class OctagonButton extends StatelessWidget {
           onTap: onPressed == null
               ? null
               : () {
-                  HapticFeedback.mediumImpact();
+                  Haptics.tap();
                   onPressed!();
                 },
           child: SizedBox.square(

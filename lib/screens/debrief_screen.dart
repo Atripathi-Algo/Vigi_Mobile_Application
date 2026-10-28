@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,6 +11,7 @@ import '../data/store.dart';
 import '../services/sfx.dart';
 import '../services/voice.dart';
 import '../vigil/vigil.dart';
+import '../services/haptics.dart';
 
 /// 05 · Night Debrief
 class DebriefScreen extends ConsumerStatefulWidget {
@@ -165,7 +165,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
           expand: true,
           icon: VigilIcons.standDown,
           onPressed: () {
-            HapticFeedback.mediumImpact();
+            Haptics.tap();
             SfxService.play(Sfx.pulse);
             if (_line.text.trim().isNotEmpty) s.notes.insert(0, Note(id: s.nextId(), title: 'Night log · ${Fmt.dayStamp(now)}', body: _line.text.trim(), at: now));
             s.nightShieldArmed = true;

@@ -57,6 +57,8 @@ class VigilStore extends ChangeNotifier {
     'notifyOps': true,
     'notifyProtocols': true,
     'sfx': true,
+    'haptics': true,
+    'effects': true,
   };
   final Map<String, bool> toggles = <String, bool>{..._defaultToggles};
   static const List<String> linkKeys = <String>['Calendar link', 'Health Connect', 'Notifications', 'Step sensor', 'Usage access', 'Exact alarms', 'Voice uplink'];

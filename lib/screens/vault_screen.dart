@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +13,7 @@ import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
 import 'data_sheets.dart';
+import '../services/haptics.dart';
 
 /// True while the Vault is unlocked. Locks again after 60 s in the background.
 final StateProvider<bool> vaultUnlocked = StateProvider<bool>((Ref ref) => false);
@@ -319,7 +319,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                     label: 'Seal entry',
                     expand: true,
                     onPressed: () {
-                      HapticFeedback.mediumImpact();
+                      Haptics.tap();
                       SfxService.play(Sfx.clear);
                       s.sealLog(_entry.text, s.logMood);
                       _entry.clear();

@@ -12,6 +12,7 @@ import '../app/providers.dart';
 import '../data/assistant.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/haptics.dart';
 import '../services/local_brain.dart';
 import '../services/sfx.dart';
 import '../services/voice.dart';
@@ -103,6 +104,11 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
       _busy = false;
     });
     _toEnd();
+    // A change was made and it worked: the strike.
+    if (reply.diff != null && !reply.alert) {
+      Haptics.strike();
+      ThunderFx.strike(context);
+    }
     if (spoken || (s.toggles['spoken'] ?? false)) {
       await _voice.speak(reply.text);
       // Keep the conversation going if hands-free is on, but only while this tab is on screen.

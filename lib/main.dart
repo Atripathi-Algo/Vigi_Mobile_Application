@@ -14,6 +14,7 @@ import 'screens/drive_sheet.dart';
 import 'services/calendar_sync.dart';
 import 'services/drive_sync.dart';
 import 'services/google_accounts.dart';
+import 'services/haptics.dart';
 import 'services/health.dart';
 import 'services/local_brain.dart';
 import 'services/home_widgets.dart';
@@ -36,8 +37,14 @@ Future<void> main() async {
   ));
   await Env.load();
   final VigilStore store = await VigilStore.load();
-  SfxService.configure(on: store.toggles['sfx'] ?? true, level: store.sfxLevel);
-  store.addListener(() => SfxService.configure(on: store.toggles['sfx'] ?? true, level: store.sfxLevel));
+  void applySensory() {
+    SfxService.configure(on: store.toggles['sfx'] ?? true, level: store.sfxLevel);
+    Haptics.enabled = store.toggles['haptics'] ?? true;
+    ThunderFx.enabled = store.toggles['effects'] ?? true;
+  }
+
+  applySensory();
+  store.addListener(applySensory);
   SfxService.init(); // loads the effects in the background; the first frame does not wait for it
   runApp(ProviderScope(
     overrides: <Override>[storeProvider.overrideWith((Ref ref) => store)],

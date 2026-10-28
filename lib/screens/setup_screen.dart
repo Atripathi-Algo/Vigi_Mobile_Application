@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -19,6 +18,7 @@ import '../services/sfx.dart';
 import '../services/steps.dart';
 import '../services/voice.dart';
 import '../vigil/vigil.dart';
+import '../services/haptics.dart';
 
 /// First-run setup guide: seven steps, each one idea. Shown on the first launch after a fresh install, and again
 /// from Loadout, "Run K setup again" (then it only changes the profile and settings, never wipes anything).
@@ -245,7 +245,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   void _finish() {
     final VigilStore s = ref.read(storeProvider);
-    HapticFeedback.mediumImpact();
+    Haptics.tap();
     SfxService.play(Sfx.boot);
     if (s.booted) {
       s.setProfile(fullName: _full.text, nickname: _nick.text);
@@ -605,6 +605,19 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             child: Row(children: <Widget>[
               Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Spoken replies', style: t.rowTitle), Text('READS ANSWERS ALOUD', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
               VigilSwitch(value: s.toggles['spoken'] ?? false, onChanged: (bool v) => s.setToggle('spoken', v), semanticLabel: 'Spoken replies'),
+            ]),
+          ),
+        ),
+      ]),
+      const SizedBox(height: 8),
+      RowList(children: <Widget>[
+        SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 14, right: 8),
+            child: Row(children: <Widget>[
+              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Haptics', style: t.rowTitle), Text('TICKS AND TAPS THAT MIRROR THE SOUNDS', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+              VigilSwitch(value: s.toggles['haptics'] ?? true, onChanged: (bool v) => s.setToggle('haptics', v), semanticLabel: 'Haptics'),
             ]),
           ),
         ),

@@ -1,11 +1,11 @@
-"""Synthesizes the VIGIL sound set. Every sound is original: built here from sine and
-saw oscillators, filtered noise, echoes and a small reverb. Nothing is sampled, and
-nothing imitates an existing film or game theme, so there are no licence issues.
+"""Synthesizes K's thunder sound set. Every sound is original: built here from filtered noise, oscillators,
+echoes and a small reverb. Nothing is sampled, so there are no licence issues.
 
-Mood: cold, metallic, sonar pings over sub-bass.
+Mood: storm. Short electric cracks and sparks for taps, low rolling thunder for states and alerts.
 
-Usage:  python tools/gen_sounds.py [--preview preview.png]
-Writes: assets/audio/*.wav            in-app effects (played by lib/services/sfx.dart)
+Usage:  python tools/gen_thunder.py [--preview preview.png]
+Writes: assets/audio/sfx_*.wav        in-app effects (played by lib/services/sfx.dart)
+        assets/audio/k_*.wav          alert previews in Loadout
         android/app/src/main/res/raw  notification sounds (one per channel)
 Needs:  numpy, scipy (and matplotlib for --preview)
 """
@@ -70,7 +70,6 @@ def mix(total, *parts):
 
 
 def echo(x, delays, gains, darken=3000):
-    """Adds darkened repeats, like a ping bouncing off concrete."""
     out = np.concatenate([x, np.zeros(int(SR * (max(delays) + 0.05)))])
     for d, g in zip(delays, gains):
         rep = lp(np.concatenate([np.zeros(int(SR * d)), x]), darken, 2) * g
@@ -98,8 +97,10 @@ def reverb(x, wet=0.25, tail=0.6):
     return x * (1 - wet) + lp(y, 5000, 2) * wet * 2.2
 
 
-def finish(x, peak=0.85, fade_in=0.002, fade_out=0.04):
-    """Remove DC, fade the ends so nothing clicks, normalise to the peak."""
+def finish(x, peak=0.85, fade_in=0.002, fade_out=0.04, maxlen=None):
+    """Remove DC, cut to [maxlen] seconds, fade the ends so nothing clicks, normalise to the peak."""
+    if maxlen:
+        x = x[:int(SR * maxlen)]
     x = x - np.mean(x)
     nin, nout = int(SR * fade_in), int(SR * fade_out)
     if nin:
@@ -109,125 +110,129 @@ def finish(x, peak=0.85, fade_in=0.002, fade_out=0.04):
     return (x / (np.max(np.abs(x)) + 1e-9) * peak).astype(np.float32)
 
 
-def metal(freqs, amps, taus, t):
-    """Inharmonic partials: the sound of struck metal."""
-    return sum(a * np.sin(2 * np.pi * f * t) * decay(t, tau, 0.0008) for f, a, tau in zip(freqs, amps, taus))
+# ----------------------------------------------------------------- thunder elements
+def crack(dur=0.25, seed=1, bright=1.0):
+    """The snap of a lightning strike: a hard broadband burst that dies in a few milliseconds, with a short body."""
+    t = tt(dur)
+    snap = hp(noise(len(t), seed), 1200) * decay(t, 0.010 / bright, 0.0002)
+    body = bp(noise(len(t), seed + 7), 300, 2500) * decay(t, 0.045, 0.0004) * 0.55
+    return snap + body
 
 
-def ping(f, t, tau=0.3, bright=1.0):
-    """A sonar ping: a fundamental with two inharmonic overtones."""
-    return decay(t, tau, 0.002) * (np.sin(2 * np.pi * f * t) + 0.5 * bright * np.sin(2 * np.pi * f * 1.51 * t) * np.exp(-t / (tau * 0.6)) + 0.3 * bright * np.sin(2 * np.pi * f * 2.24 * t) * np.exp(-t / (tau * 0.35)))
+def spark(dur=0.05, seed=2, hits=4):
+    """A few tiny static ticks."""
+    t = tt(dur)
+    out = np.zeros_like(t)
+    rng = np.random.default_rng(seed)
+    for _ in range(hits):
+        i = int(rng.uniform(0, 0.6) * len(t))
+        n = int(SR * 0.0025)
+        click = hp(noise(n, int(rng.integers(0, 1 << 30))), 3500) * np.linspace(1, 0, n) ** 2
+        out[i:i + n] += click[:len(out) - i] * rng.uniform(0.5, 1.0)
+    return out
+
+
+def rumble(dur, seed=3, fc=150, tau=None, roll=2.5):
+    """Low thunder: low-passed noise with a rolling, uneven loudness and a faint sub-bass underneath."""
+    t = tt(dur)
+    base = lp(noise(len(t), seed), fc, 4)
+    wobble = lp(np.abs(noise(len(t), seed + 11)), roll, 2)
+    wobble = wobble / (wobble.max() + 1e-9)
+    env = (0.35 + 0.65 * wobble)
+    tau = tau or dur / 2.2
+    env = env * np.exp(-t / tau) * np.minimum(1.0, t / 0.03)
+    sub = sine(46 + 10 * np.exp(-t / 0.4), t) * np.exp(-t / (tau * 0.8)) * 0.5
+    return base * env * 6 + sub
 
 
 def thump(f0, f1, t, tau=0.14):
-    """A sub-bass hit with a falling pitch."""
     f = f1 + (f0 - f1) * np.exp(-t / 0.05)
     return decay(t, tau, 0.002) * sine(f, t)
 
 
-def whoosh(dur, lo, hi, peak_at, seed=3):
-    """Noise whose colour sweeps from lo to hi Hz, loudest at peak_at seconds."""
-    t = tt(dur)
-    n = noise(len(t), seed)
-    centres = np.geomspace(lo, hi, 7)
-    out = np.zeros_like(t)
-    for i, c in enumerate(centres):
-        band = bp(n, c * 0.6, c * 1.5)
-        when = (i / (len(centres) - 1)) * peak_at
-        out += band * np.exp(-((t - when) ** 2) / (2 * (peak_at / 5) ** 2))
-    env = np.minimum(1, t / (peak_at * 0.9)) ** 1.5 * np.exp(-np.maximum(0, t - peak_at) / (dur * 0.15))
-    return out * env
+def ping(f, t, tau=0.3, bright=1.0):
+    return decay(t, tau, 0.002) * (np.sin(2 * np.pi * f * t) + 0.5 * bright * np.sin(2 * np.pi * f * 2.0 * t) * np.exp(-t / (tau * 0.5)))
 
 
 # ----------------------------------------------------------------- in-app effects
 def sfx_tick():
-    t = tt(0.07)
-    click = hp(noise(len(t), 1), 3000) * decay(t, 0.004, 0.0003) * 0.6
-    return finish(click + 0.5 * np.sin(2 * np.pi * 1900 * t) * decay(t, 0.012, 0.0005), 0.7, 0.0005, 0.02)
+    return finish(spark(0.05, 2, 4), 0.7, 0.0004, 0.01)
 
 
 def sfx_clear():
-    t = tt(0.6)
-    plate = metal((196, 311, 463, 729), (1.0, 0.8, 0.6, 0.4), (0.11, 0.09, 0.07, 0.05), t)
-    x = mix(0.6, (plate, 0.0), (ping(880, tt(0.5), 0.16, 0.6) * 0.5, 0.04))
-    return finish(echo(x, (0.09, 0.18), (0.3, 0.14)), 0.88, 0.001, 0.08)
+    x = mix(0.25, (crack(0.25, 11), 0.0), (0.5 * thump(90, 55, tt(0.2), 0.05), 0.0))
+    return finish(echo(x, (0.05,), (0.12,), 4000), 0.88, 0.0004, 0.06, maxlen=0.22)
 
 
 def sfx_engage():
-    w = whoosh(1.0, 220, 5200, 0.42)
-    t = tt(1.0)
-    clink = metal((1180, 1870, 2650, 3320), (0.8, 0.6, 0.4, 0.3), (0.12, 0.09, 0.07, 0.05), tt(0.5))
-    x = mix(1.0, (w * 0.7, 0.0), (thump(78, 46, t, 0.14) * 0.9, 0.0), (clink * 0.55, 0.45))
-    return finish(echo(x, (0.12, 0.26), (0.22, 0.1)), 0.9, 0.001, 0.12)
+    t = tt(0.62)
+    sweep = np.linspace(110, 520, len(t)) ** 1.0
+    hum = lp(saw(sweep, t), 1800) * (0.6 + 0.4 * np.sin(2 * np.pi * 70 * t))
+    hum *= np.minimum(1, t / 0.4) ** 1.8 * np.where(t > 0.5, np.exp(-(t - 0.5) / 0.015), 1.0)
+    snap = crack(0.2, 21) * 1.4
+    x = mix(0.8, (hum * 0.7, 0.0), (snap, 0.5), (thump(80, 50, tt(0.2), 0.06) * 0.6, 0.5))
+    return finish(x, 0.9, 0.003, 0.1, maxlen=0.7)
 
 
 def sfx_pulse():
-    t = tt(0.7)
-
-    def boom():
-        return lp(saw(55, t), 170) * decay(t, 0.17, 0.004) * 0.7 + sine(55, t) * decay(t, 0.22, 0.004)
-
-    p = ping(1100, tt(1.0), 0.38) * 0.45
-    x = mix(1.6, (boom(), 0.0), (boom() * 0.85, 0.42), (p, 0.92))
-    return finish(reverb(x, 0.3, 0.7), 0.9, 0.001, 0.25)
+    x = rumble(0.9, 31, fc=130, tau=0.3, roll=3.0)
+    return finish(x, 0.85, 0.01, 0.35)
 
 
 def sfx_deny():
-    t = tt(0.2)
-    buzz = lp(saw(98, t) + saw(104, t), 700) * (0.65 + 0.35 * np.sign(np.sin(2 * np.pi * 26 * t)))
-    buzz *= np.minimum(1, t / 0.004) * np.exp(-np.maximum(0, t - 0.1) / 0.04)
-    return finish(mix(0.45, (buzz, 0.0), (buzz * 0.8, 0.22)), 0.8, 0.001, 0.05)
+    t = tt(0.25)
+    f = 380 * np.exp(-t / 0.07) + 90
+    fizz = lp(saw(f, t), 900) * 0.7 + lp(noise(len(t), 41), 1400) * 0.5
+    fizz *= decay(t, 0.07, 0.002) * (0.7 + 0.3 * np.sin(2 * np.pi * 38 * t))
+    return finish(fizz, 0.8, 0.001, 0.06, maxlen=0.3)
 
 
 def sfx_boot():
-    t = tt(2.6)
-    base = sine(44, t) + 0.5 * saw(44, t)
-    swept = lp(base, 90) * np.clip(1.2 - t / 1.3, 0, 1) + lp(base, 420) * np.clip(t / 1.3, 0, 1)
-    swell = np.where(t < 1.3, (t / 1.3) ** 2, np.exp(-(t - 1.3) / 0.8))
-    pp = ping(1500, tt(1.2), 0.5) * 0.55
-    x = mix(2.6, (swept * swell, 0.0), (pp, 1.25), (thump(60, 40, tt(0.6), 0.2) * 0.7, 1.25))
-    return finish(reverb(x, 0.35, 0.8), 0.9, 0.004, 0.5)
+    c = crack(0.4, 51) * 1.3
+    r = rumble(1.7, 52, fc=170, tau=0.65, roll=3.4)
+    x = mix(2.0, (c, 0.0), (r, 0.02), (thump(70, 40, tt(0.5), 0.2) * 0.8, 0.02))
+    return finish(reverb(x, 0.32, 0.5), 0.9, 0.0005, 0.4, maxlen=1.7)
 
 
 def sfx_water():
-    t = tt(0.25)
+    t = tt(0.22)
     f = 700 + 900 * (1 - np.exp(-t / 0.02))
-    drop = sine(f, t) * decay(t, 0.07, 0.001)
-    return finish(echo(drop, (0.12, 0.24), (0.35, 0.15)), 0.8, 0.001, 0.12)
+    drop = sine(f, t) * decay(t, 0.06, 0.001)
+    x = drop + spark(0.22, 61, 5) * 0.35
+    return finish(echo(x, (0.09,), (0.25,)), 0.8, 0.001, 0.08, maxlen=0.25)
 
 
-# ----------------------------------------------------------------- notification sounds
+# ----------------------------------------------------------------- alert sounds (notification channels)
 def n_critical():
-    t = tt(0.4)
-    p1 = ping(1250, tt(0.9), 0.28)
-    x = mix(1.9, (thump(64, 42, t, 0.16) * 0.9, 0.0), (p1, 0.0), (p1 * 0.9, 0.32), (ping(1000, tt(0.9), 0.5) * 0.9, 1.0))
-    return finish(echo(x, (0.16, 0.32, 0.48), (0.3, 0.18, 0.1)), 0.92, 0.001, 0.2)
+    c1 = crack(0.3, 71) * 1.3
+    c2 = crack(0.3, 72) * 1.1
+    boom = thump(60, 38, tt(0.7), 0.25) * 0.9
+    r = rumble(1.0, 73, fc=140, tau=0.4)
+    x = mix(1.25, (c1, 0.0), (c2, 0.24), (boom, 0.1), (r * 0.7, 0.1))
+    return finish(reverb(x, 0.2, 0.3), 0.93, 0.0005, 0.2, maxlen=1.3)
 
 
 def n_ops():
-    x = mix(1.0, (ping(1000, tt(0.9), 0.3), 0.0), (thump(70, 48, tt(0.3), 0.1) * 0.5, 0.0))
-    return finish(echo(x, (0.2, 0.4), (0.25, 0.12)), 0.85, 0.001, 0.15)
+    x = mix(0.3, (crack(0.3, 81), 0.0), (0.4 * thump(80, 50, tt(0.25), 0.08), 0.0))
+    return finish(echo(x, (0.08,), (0.15,), 3500), 0.85, 0.0005, 0.1, maxlen=0.35)
 
 
 def n_sleep():
-    t = tt(2.2)
-    pad = (sine(164.8, t) + sine(110.7, t) * 0.8) * decay(t, 0.9, 0.3)
-    glide = sine(np.linspace(330, 247, len(t)), t) * decay(t, 0.7, 0.25) * 0.3
-    x = mix(2.4, (pad * 0.7, 0.0), (glide, 0.0), (ping(880, tt(0.8), 0.25) * 0.3, 0.0))
-    return finish(reverb(x, 0.4, 0.5), 0.8, 0.003, 0.5)
+    r = rumble(2.0, 91, fc=95, tau=0.9, roll=1.6)
+    return finish(reverb(r, 0.4, 0.4), 0.75, 0.15, 0.7, maxlen=2.2)
 
 
 def n_brief():
-    t = tt(1.4)
-    drone = lp(sine(110, t) + 0.5 * saw(110, t), 500) * decay(t, 0.8, 0.25)
-    x = mix(1.6, (drone * 0.6, 0.0), (ping(659, tt(0.9), 0.3) * 0.7, 0.45), (ping(988, tt(0.8), 0.28) * 0.6, 0.8))
-    return finish(reverb(x, 0.3, 0.5), 0.85, 0.003, 0.3)
+    r = rumble(2.0, 101, fc=120, tau=0.9, roll=2.0) * 0.8
+    chimes = mix(2.4, (ping(523.25, tt(0.8), 0.3) * 0.5, 0.9), (ping(659.25, tt(0.8), 0.3) * 0.55, 1.2), (ping(783.99, tt(1.0), 0.4) * 0.6, 1.5))
+    x = mix(2.4, (r, 0.0), (chimes, 0.0))
+    return finish(reverb(x, 0.3, 0.4), 0.85, 0.05, 0.5, maxlen=2.5)
 
 
 def n_soft():
-    t = tt(0.4)
-    x = ping(740, t, 0.12) * 0.7 + hp(noise(len(t), 5), 2500) * decay(t, 0.004, 0.0003) * 0.2
-    return finish(echo(x, (0.12,), (0.2,)), 0.7, 0.001, 0.12)
+    t = tt(0.6)
+    shimmer = bp(noise(len(t), 111), 3000, 9000) * (0.5 + 0.5 * np.sin(2 * np.pi * 14 * t)) * np.sin(np.pi * t / 0.6) ** 2
+    return finish(shimmer + spark(0.6, 112, 6) * 0.3, 0.6, 0.02, 0.2)
 
 
 FX = {
@@ -240,11 +245,11 @@ FX = {
     'sfx_water': sfx_water,
 }
 NOTIF = {
-    'bat_critical': n_critical,
-    'bat_ops': n_ops,
-    'bat_sleep': n_sleep,
-    'bat_brief': n_brief,
-    'bat_soft': n_soft,
+    'k_critical': n_critical,
+    'k_ops': n_ops,
+    'k_sleep': n_sleep,
+    'k_brief': n_brief,
+    'k_soft': n_soft,
 }
 
 
@@ -268,6 +273,7 @@ def main():
     for name, fn in NOTIF.items():
         made[name] = fn()
         write_wav(os.path.join(OUT_NOTIF, name + '.wav'), made[name])
+        write_wav(os.path.join(OUT_FX, name + '.wav'), made[name])
     print('%-14s %7s %7s %8s %8s' % ('sound', 'secs', 'peak', 'rms dB', 'KB'))
     for name, x in made.items():
         rms = 20 * np.log10(np.sqrt(np.mean(x.astype(float) ** 2)) + 1e-9)
@@ -277,16 +283,16 @@ def main():
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         names = list(made)
-        fig, axes = plt.subplots(len(names), 2, figsize=(11, 1.55 * len(names)))
+        fig, axes = plt.subplots(len(names), 2, figsize=(11, 1.4 * len(names)))
         for i, n in enumerate(names):
             x = made[n]
-            axes[i][0].plot(np.arange(len(x)) / SR, x, lw=0.4, color='#c8a200')
+            axes[i][0].plot(np.arange(len(x)) / SR, x, lw=0.4, color='#3FB6FF')
             axes[i][0].set_ylim(-1, 1)
             axes[i][0].set_ylabel(n, rotation=0, ha='right', va='center', fontsize=8)
             axes[i][0].set_xlim(0, len(x) / SR)
             f, tm, sxx = signal.spectrogram(x, SR, nperseg=512, noverlap=384)
             axes[i][1].pcolormesh(tm, f, 10 * np.log10(sxx + 1e-12), shading='auto', cmap='magma', vmin=-90, vmax=-20)
-            axes[i][1].set_ylim(0, 6000)
+            axes[i][1].set_ylim(0, 8000)
             axes[i][1].set_xlim(0, len(x) / SR)
         plt.tight_layout()
         plt.savefig(args.preview, dpi=70)

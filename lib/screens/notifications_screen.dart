@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,6 +9,7 @@ import '../data/inbox.dart';
 import '../data/store.dart';
 import '../services/drive_sync.dart';
 import '../vigil/vigil.dart';
+import '../services/haptics.dart';
 
 /// The last time a backup finished, when Drive is set up.
 DateTime? lastBackupForInbox() => DriveSync.instance.configured ? DriveSync.instance.lastSync : null;
@@ -57,7 +57,7 @@ class NotificationsScreen extends ConsumerWidget {
         direction: DismissDirection.endToStart,
         background: Container(color: c.critical.withValues(alpha: 0.15), alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 18), child: Icon(Icons.delete_outline, color: c.critical)),
         onDismissed: (_) {
-          HapticFeedback.lightImpact();
+          Haptics.tick();
           dismissInbox(s, it.id);
         },
         child: InkWell(
