@@ -550,6 +550,21 @@ class VigilStore extends ChangeNotifier {
     changed();
   }
 
+  /// Pushes a timed objective later by [minutes] (past midnight it becomes "tomorrow").
+  void snoozeObjective(String id, int minutes) {
+    final Objective o = objectives.firstWhere((Objective e) => e.id == id);
+    final DateTime now = DateTime.now();
+    final int at = now.hour * 60 + now.minute + minutes;
+    if (at >= 1440) {
+      o.dueMin = null;
+      o.dueLabel = 'TOMORROW';
+    } else {
+      o.dueMin = at;
+      o.dueLabel = null;
+    }
+    changed();
+  }
+
   void rescheduleObjective(String id, String label) {
     final Objective o = objectives.firstWhere((Objective e) => e.id == id);
     o.dueMin = null;

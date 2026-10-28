@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,8 +6,10 @@ import '../api/weather_api.dart';
 import '../app/common.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
+import '../data/briefing_script.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../services/voice.dart';
 import '../vigil/vigil.dart';
 
 /// 01 · Dawn Briefing
@@ -23,38 +23,31 @@ class BriefingScreen extends ConsumerStatefulWidget {
 class _BriefingScreenState extends ConsumerState<BriefingScreen> {
   Weather? _wx;
   bool _wxDone = false;
-  bool _playing = false;
-  int _pos = 0;
-  Timer? _timer;
-  static const int _len = 124;
+  final VoiceService _voice = VoiceService.instance;
 
   @override
   void initState() {
     super.initState();
+    _voice.addListener(_onVoice);
     fetchWeather().then((Weather? w) {
       if (mounted) setState(() { _wx = w; _wxDone = true; });
     });
   }
 
+  void _onVoice() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
-    _timer?.cancel();
+    _voice.removeListener(_onVoice);
+    _voice.stopSpeaking();
     super.dispose();
   }
 
-  void _toggle() {
-    setState(() => _playing = !_playing);
-    _timer?.cancel();
-    if (_playing) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
-        if (!mounted) return;
-        setState(() {
-          _pos++;
-          if (_pos >= _len) { _pos = 0; _playing = false; t.cancel(); }
-        });
-      });
-    }
-  }
+  bool get _playing => _voice.state == VoiceState.speaking;
+
+  void _toggle(String script) => _playing ? _voice.stopSpeaking() : _voice.speak(script);
 
   @override
   Widget build(BuildContext context) {
@@ -64,9 +57,7 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
     final DateTime now = DateTime.now();
     final List<Objective> primary = s.prioritised().take(3).toList();
     final int crit = s.critCount;
-    final String script = '${s.open.length} objectives open, $crit critical. '
-        '${primary.isEmpty ? '' : 'Start with ${primary.first.title}. '}'
-        '${s.lastNight == null ? 'No data for sleep.' : 'Sleep ${Fmt.dur(s.lastNight!.asleep)}${s.hasSleepStats ? ', debt ${Fmt.dur(s.debtMin)}' : ''}.'}';
+    final String script = dawnScript(s, now);
     return VigilScaffold(
       title: 'Dawn briefing',
       subtitle: '${Fmt.time(now)} · ${Fmt.dayStamp(now)}',
@@ -74,18 +65,18 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
       body: ListView(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 20), children: <Widget>[
         VigilCard(
           child: Row(children: <Widget>[
-            OctagonButton(size: 44, semanticLabel: _playing ? 'Pause' : 'Play', onPressed: _toggle, child: VigilIcon(_playing ? VigilIcons.pause : VigilIcons.play, size: 18, color: c.onSignal)),
+            OctagonButton(size: 44, semanticLabel: _playing ? 'Stop' : 'Play briefing', onPressed: () => _toggle(script), child: VigilIcon(_playing ? VigilIcons.pause : VigilIcons.play, size: 18, color: c.onSignal)),
             const SizedBox(width: 12),
             Expanded(
               child: Row(children: <Widget>[
                 for (int i = 0; i < 38; i++) ...<Widget>[
                   if (i > 0) const SizedBox(width: 2),
-                  Expanded(child: Container(height: 6.0 + ((i * 7) % 5) * 5, color: i / 38 < _pos / _len ? c.signal : c.lineStrong)),
+                  Expanded(child: Container(height: 6.0 + ((i * 7) % 5) * 5, color: _playing ? c.signal : c.lineStrong)),
                 ],
               ]),
             ),
             const SizedBox(width: 12),
-            Text('${Fmt.mmss(_pos).substring(1)} / 2:04', style: t.meta.copyWith(color: c.textMuted)),
+            Text(_playing ? 'SPEAKING' : 'SPOKEN BY K', style: t.meta.copyWith(color: c.textMuted)),
           ]),
         ),
         const SizedBox(height: 16),
@@ -95,7 +86,7 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
           const TextSpan(text: '. Protect the focus window.'),
         ])),
         const SizedBox(height: 6),
-        Text('Spoken audio is not wired. Script: $script', style: t.meta.copyWith(color: c.textFaint, fontSize: 11)),
+        Text(script, style: t.caption.copyWith(color: c.textMuted)),
         const SizedBox(height: 16),
         Text('PRIMARY OBJECTIVES', style: t.label.copyWith(color: c.textFaint)),
         const SizedBox(height: 8),

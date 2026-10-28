@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../app/common.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
+import '../data/inbox.dart';
 import '../data/models.dart';
 import '../data/store.dart';
 import '../services/drive_sync.dart';
@@ -13,6 +14,7 @@ import '../services/sfx.dart';
 import '../vigil/vigil.dart';
 import 'capture_sheet.dart';
 import 'drive_sheet.dart';
+import 'notifications_screen.dart';
 
 /// 02 · Command · Home
 class CommandScreen extends ConsumerStatefulWidget {
@@ -64,9 +66,9 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                   ),
                   VigilIconButton(
                     icon: VigilIcons.alert,
-                    badge: s.conflict != null || s.overdueCount > 0,
-                    semanticLabel: 'Alerts',
-                    onPressed: () => context.go('/ops/timeline'),
+                    badge: unreadCount(s, now, lastBackup: lastBackupForInbox()) > 0,
+                    semanticLabel: 'Notifications',
+                    onPressed: () => context.push('/notifications'),
                   ),
                   const SizedBox(width: 8),
                   VigilIconButton(icon: VigilIcons.loadout, semanticLabel: 'Loadout settings', onPressed: () => context.push('/loadout')),

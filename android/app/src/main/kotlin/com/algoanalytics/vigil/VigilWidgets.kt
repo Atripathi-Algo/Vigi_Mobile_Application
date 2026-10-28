@@ -13,7 +13,7 @@ import es.antonborri.home_widget.HomeWidgetProvider
 /** Shared rendering. The Dart side saves plain strings under these keys (lib/services/home_widgets.dart). */
 private object WidgetUi {
     fun accent(d: SharedPreferences): Int =
-        try { Color.parseColor(d.getString("accent", "#F2C230")) } catch (_: Exception) { Color.parseColor("#F2C230") }
+        try { Color.parseColor(d.getString("accent", "#3FB6FF")) } catch (_: Exception) { Color.parseColor("#3FB6FF") }
 
     fun open(context: Context, uri: String) =
         HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java, Uri.parse(uri))
@@ -36,7 +36,7 @@ class VigilObjectivesWidget : HomeWidgetProvider() {
                 val done = d.getString("o${n}_done", "0") == "1"
                 val oid = d.getString("o${n}_id", "") ?: ""
                 v.setTextViewText(rid, if (title.isEmpty()) "" else (if (done) "\u25A0  " else "\u25A1  ") + title)
-                v.setTextColor(rid, if (done) Color.parseColor("#8A9099") else Color.parseColor("#ECEAE4"))
+                v.setTextColor(rid, if (done) Color.parseColor("#7A8FB0") else Color.parseColor("#E6F0FF"))
                 if (oid.isNotEmpty()) v.setOnClickPendingIntent(rid, WidgetUi.background(context, "vigil://toggle?id=$oid"))
             }
             v.setTextViewText(R.id.w_stats, d.getString("stats", ""))

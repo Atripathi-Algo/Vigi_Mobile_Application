@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:fontFamily="monospace"
         android:letterSpacing="0.2"
-        android:textColor="#A3A8B0"
+        android:textColor="#A3B5D0"
         android:textSize="10sp"
         android:text="READINESS"/>
     <TextView
@@ -21,7 +21,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="monospace"
-        android:textColor="#F2C230"
+        android:textColor="#3FB6FF"
         android:textSize="34sp"
         android:textStyle="bold"
         android:text="--"/>
@@ -31,7 +31,7 @@
         android:layout_height="wrap_content"
         android:fontFamily="monospace"
         android:gravity="center"
-        android:textColor="#ECEAE4"
+        android:textColor="#E6F0FF"
         android:textSize="10sp"
         android:text=""/>
     <TextView
@@ -45,7 +45,7 @@
         android:paddingTop="5dp"
         android:paddingEnd="12dp"
         android:paddingBottom="5dp"
-        android:textColor="#7FA7C9"
+        android:textColor="#CFE8FF"
         android:textSize="10sp"
         android:textStyle="bold"
         android:text="+250 ML"/>

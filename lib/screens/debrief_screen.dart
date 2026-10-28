@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import '../app/common.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
+import '../data/briefing_script.dart';
 import '../data/models.dart';
 import '../data/store.dart';
 import '../services/sfx.dart';
+import '../services/voice.dart';
 import '../vigil/vigil.dart';
 
 /// 05 · Night Debrief
@@ -24,8 +26,22 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
   String? _first;
   List<String>? _carryIds;
 
+  final VoiceService _voice = VoiceService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _voice.addListener(_onVoice);
+  }
+
+  void _onVoice() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _voice.removeListener(_onVoice);
+    _voice.stopSpeaking();
     _line.dispose();
     super.dispose();
   }
@@ -37,7 +53,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
     final VigilStore s = ref.watch(storeProvider);
     final DateTime now = DateTime.now();
     final int obj = s.objectivesToday == 0 ? 0 : (s.cleared.length * 100 / s.objectivesToday).round();
-    final int prot = (s.protocolsDone * 100 / s.protocols.length).round();
+    final int prot = s.protocols.isEmpty ? 0 : (s.protocolsDone * 100 / s.protocols.length).round();
     final int focus = (s.focusTodayMin * 100 / s.focusTargetMin).clamp(0, 100).round();
     final int water = (s.waterMl * 100 / s.waterTargetMl).clamp(0, 100).round();
     final int score = ((obj + prot + focus + water) / 4).round();
@@ -55,7 +71,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
       actions: <Widget>[VigilIconButton(icon: VigilIcons.close, semanticLabel: 'Close debrief', onPressed: () => context.go('/'))],
       body: ListView(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 20), children: <Widget>[
         VigilCard(
-          color: const Color(0xFF08090B),
+          color: c.stealth,
           brackets: true,
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
@@ -66,14 +82,25 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
               const SizedBox(width: 6),
               Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('/ 100', style: t.metric.copyWith(color: c.textMuted))),
               const Spacer(),
-              SizedBox(
-                width: 110,
-                child: MiniBars(values: <double>[62, 55, 71, 48, 66, 58, score.toDouble()], colors: <Color>[for (int i = 0; i < 7; i++) i == 6 ? c.signal : c.lineStrong], height: 44, gap: 4, semanticLabel: 'Seven day mission score trend'),
-              ),
+              if (s.weekLevels.isNotEmpty)
+                SizedBox(
+                  width: 110,
+                  child: MiniBars(values: <double>[for (final int l in s.weekLevels) l.toDouble()], colors: <Color>[for (int i = 0; i < 7; i++) i == 6 ? c.signal : c.lineStrong], height: 44, gap: 4, semanticLabel: 'Protocols done each of the last seven days'),
+                ),
             ]),
             const SizedBox(height: 6),
-            Text('${score - 58 >= 0 ? '+' : '−'}${(score - 58).abs()} VS 7-DAY AVG', style: t.meta.copyWith(color: c.textMuted)),
+            Text(s.weekLevels.isNotEmpty ? 'PROTOCOLS · LAST 7 DAYS' : 'FROM OBJECTIVES, PROTOCOLS, FOCUS AND WATER', style: t.meta.copyWith(color: c.textMuted)),
           ]),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: VigilButton(
+            label: _voice.state == VoiceState.speaking ? 'Stop' : 'Play debrief',
+            variant: VigilButtonVariant.secondary,
+            icon: VigilIcons.voice,
+            onPressed: () => _voice.state == VoiceState.speaking ? _voice.stopSpeaking() : _voice.speak(nightScript(s, now)),
+          ),
         ),
         const SizedBox(height: 12),
         Row(children: <Widget>[

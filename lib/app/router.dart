@@ -5,6 +5,7 @@ import '../data/store.dart';
 import '../screens/accounts_screen.dart';
 import '../screens/api_keys_screen.dart';
 import '../screens/garage_screen.dart';
+import '../screens/notifications_screen.dart';
 import '../screens/setup_screen.dart';
 import '../screens/brain_screen.dart';
 import '../screens/briefing_screen.dart';
@@ -30,6 +31,7 @@ GoRouter buildRouter(VigilStore store) {
     routes: <RouteBase>[
       GoRoute(path: '/boot', builder: (BuildContext c, GoRouterState s) => const SetupScreen()),
       GoRoute(path: '/garage/:id', builder: (BuildContext c, GoRouterState s) => BikeScreen(bikeId: s.pathParameters['id'] ?? '')),
+      GoRoute(path: '/notifications', builder: (BuildContext c, GoRouterState s) => const NotificationsScreen()),
       GoRoute(path: '/briefing', builder: (BuildContext c, GoRouterState s) => const BriefingScreen()),
       GoRoute(path: '/debrief', builder: (BuildContext c, GoRouterState s) => const DebriefScreen()),
       GoRoute(

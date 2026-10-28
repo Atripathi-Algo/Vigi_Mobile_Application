@@ -79,10 +79,17 @@ class LoadoutScreen extends ConsumerWidget {
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
       body: ListView(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 28), children: <Widget>[
         VigilCard(
+          onTap: () => showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            useRootNavigator: true,
+            builder: (BuildContext ctx) => Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, MediaQuery.viewInsetsOf(ctx).bottom + MediaQuery.paddingOf(ctx).bottom + 20), child: _ProfileSheet(store: s)),
+          ),
+          semanticLabel: 'Profile. Tap to edit',
           child: Row(children: <Widget>[
             Container(width: 48, height: 48, decoration: BoxDecoration(border: Border.all(color: c.lineStrong), color: c.surfaceHigh), child: const Center(child: VigilEmblem(size: 28, semanticLabel: ''))),
             const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(s.fullName.isEmpty ? s.nickname : s.fullName, style: t.title), Text('${s.nickname.isEmpty ? 'NO NICKNAME' : s.nickname.toUpperCase()} · 24H CLOCK · ₹ INR', style: t.micro.copyWith(color: c.textFaint))])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(s.fullName.isEmpty ? s.nickname : s.fullName, style: t.title), Text('${s.nickname.isEmpty ? 'NO NICKNAME' : s.nickname.toUpperCase()} · ${s.clock24 ? '24H' : '12H'} CLOCK · ₹ INR · EDIT', style: t.micro.copyWith(color: c.textFaint))])),
           ]),
         ),
         head('$kAssistantName · Brain'),
@@ -298,5 +305,57 @@ class LoadoutScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Edit the name, the nickname used in greetings, and the clock.
+class _ProfileSheet extends StatefulWidget {
+  const _ProfileSheet({required this.store});
+
+  final VigilStore store;
+
+  @override
+  State<_ProfileSheet> createState() => _ProfileSheetState();
+}
+
+class _ProfileSheetState extends State<_ProfileSheet> {
+  late final TextEditingController _nick = TextEditingController(text: widget.store.callsign);
+  late final TextEditingController _full = TextEditingController(text: widget.store.fullName);
+
+  @override
+  void dispose() {
+    _nick.dispose();
+    _full.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.vigil;
+    final t = context.vtype;
+    final VigilStore s = widget.store;
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+      Text('PROFILE', style: t.h2),
+      const SizedBox(height: 6),
+      Text('Your nickname is used in greetings and briefings; your full name for formal moments.', style: t.caption.copyWith(color: c.textMuted)),
+      const SizedBox(height: 14),
+      VigilField(controller: _nick, label: 'Nickname', hint: 'Shown as "Evening, nickname."', autofocus: true),
+      const SizedBox(height: 12),
+      VigilField(controller: _full, label: 'Full name', hint: 'Used by the Butler persona and on exports'),
+      const SizedBox(height: 14),
+      Text('24-HOUR CLOCK', style: t.label.copyWith(color: c.textFaint)),
+      const SizedBox(height: 6),
+      VigilSegmented<bool>(segments: const <(bool, String)>[(true, '24 H · 19:42'), (false, '12 H · 7:42 PM')], selected: s.clock24, onSelected: s.setClock24),
+      const SizedBox(height: 14),
+      VigilButton(
+        label: 'Save',
+        size: VigilButtonSize.large,
+        expand: true,
+        onPressed: () {
+          s.setProfile(fullName: _full.text, nickname: _nick.text);
+          Navigator.pop(context);
+        },
+      ),
+    ]);
   }
 }
