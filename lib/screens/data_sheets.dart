@@ -23,7 +23,7 @@ int? parseRupees(String text) {
   return (v * 100).round();
 }
 
-Future<void> showAddProtocolSheet(BuildContext context, VigilStore s) => _sheet(context, _AddProtocol(store: s));
+Future<void> showAddProtocolSheet(BuildContext context, VigilStore s, {Protocol? edit}) => _sheet(context, _AddProtocol(store: s, edit: edit));
 
 Future<void> showAddBillSheet(BuildContext context, VigilStore s) => _sheet(context, _AddBill(store: s));
 
@@ -46,9 +46,10 @@ Future<bool> confirmDelete(BuildContext context, {required String title, require
 }
 
 class _AddProtocol extends StatefulWidget {
-  const _AddProtocol({required this.store});
+  const _AddProtocol({required this.store, this.edit});
 
   final VigilStore store;
+  final Protocol? edit;
 
   @override
   State<_AddProtocol> createState() => _AddProtocolState();
@@ -66,6 +67,19 @@ class _AddProtocolState extends State<_AddProtocol> {
   final Set<int> _days = <int>{};
 
   @override
+  void initState() {
+    super.initState();
+    final Protocol? p = widget.edit;
+    if (p == null) return;
+    _name.text = p.name;
+    _unit = p.unit;
+    if (p.target != null) _target.text = '${p.target}';
+    _remind = p.remindMin != null;
+    _remindMin = p.remindMin ?? _remindMin;
+    _days.addAll(p.days);
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _target.dispose();
@@ -76,7 +90,13 @@ class _AddProtocolState extends State<_AddProtocol> {
 
   void _save() {
     if (_name.text.trim().isEmpty) return;
-    widget.store.addProtocol(_name.text, unit: _unit, target: _unit == null ? null : _targetValue, remindMin: _remind ? _remindMin : null, days: _days.toList());
+    final int? target = _unit == null ? null : _targetValue;
+    final int? remind = _remind ? _remindMin : null;
+    if (widget.edit != null) {
+      widget.store.editProtocol(widget.edit!.id, name: _name.text, unit: _unit, target: target, remindMin: remind, days: _days.toList());
+    } else {
+      widget.store.addProtocol(_name.text, unit: _unit, target: target, remindMin: remind, days: _days.toList());
+    }
     Navigator.pop(context);
   }
 
@@ -95,9 +115,9 @@ class _AddProtocolState extends State<_AddProtocol> {
     final c = context.vigil;
     final t = context.vtype;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('NEW PROTOCOL', style: t.h2),
+      Text(widget.edit == null ? 'NEW PROTOCOL' : 'EDIT PROTOCOL', style: t.h2),
       const SizedBox(height: 6),
-      Text('A habit you want to check off. Streaks start from today.', style: t.caption.copyWith(color: c.textMuted)),
+      Text(widget.edit == null ? 'A habit you want to check off. Streaks start from today.' : 'Your streak and this week stay as they are.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),
       VigilField(controller: _name, label: 'Name', hint: 'Read', autofocus: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
       const SizedBox(height: 12),
@@ -153,7 +173,7 @@ class _AddProtocolState extends State<_AddProtocol> {
       const SizedBox(height: 12),
       Text(_summary, style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 12),
-      Align(alignment: Alignment.centerLeft, child: VigilButton(label: 'Add protocol', onPressed: _name.text.trim().isEmpty ? null : _save)),
+      Align(alignment: Alignment.centerLeft, child: VigilButton(label: widget.edit == null ? 'Add protocol' : 'Save changes', onPressed: _name.text.trim().isEmpty ? null : _save)),
     ]);
   }
 }

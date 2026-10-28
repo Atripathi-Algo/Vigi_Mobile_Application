@@ -57,6 +57,21 @@ void main() {
       expect(p.target, isNull);
     });
 
+    test('editing a protocol changes what it asks for and keeps its streak', () async {
+      store.addProtocol('Read', unit: 'Pages', target: 20, remindMin: 600, days: <int>[1, 3]);
+      final Protocol p = store.protocols.single;
+      p.streak = 4;
+      store.editProtocol(p.id, name: ' Study ', unit: 'Min', target: 30, remindMin: null, days: <int>[1, 2, 3, 4, 5, 6, 7]);
+      await store.reloadFromDisk();
+      final Protocol back = store.protocols.single;
+      expect((back.id, back.name, back.unit, back.target, back.remindMin, back.streak), (p.id, 'Study', 'Min', 30, null, 4));
+      expect(back.days, isEmpty, reason: 'all seven days is every day');
+      store.editProtocol(p.id, name: 'Study');
+      expect((store.protocols.single.unit, store.protocols.single.target), (null, null));
+      store.editProtocol(p.id, name: '  ');
+      expect(store.protocols.single.name, 'Study', reason: 'a blank name is ignored');
+    });
+
     test('protocols saved by older builds, with no reminder fields, still load', () async {
       store.addProtocol('Old');
       await store.reloadFromDisk();

@@ -844,6 +844,21 @@ class VigilStore extends ChangeNotifier {
     changed();
   }
 
+  /// Changes what a protocol asks for; its streak and week are kept.
+  void editProtocol(String id, {required String name, String? unit, int? target, int? remindMin, List<int> days = const <int>[]}) {
+    final int i = protocols.indexWhere((Protocol p) => p.id == id);
+    final String n = name.trim();
+    if (i < 0 || n.isEmpty) return;
+    final Protocol p = protocols[i];
+    final List<int> picked = days.toSet().where((int d) => d >= 1 && d <= 7).toList()..sort();
+    p.name = n;
+    p.unit = (unit ?? '').trim().isEmpty ? null : unit!.trim();
+    p.target = p.unit != null && target != null && target > 0 ? target : null;
+    p.remindMin = remindMin?.clamp(0, 1439);
+    p.days = picked.length == 7 ? <int>[] : picked;
+    changed();
+  }
+
   void removeProtocol(String id) {
     protocols.removeWhere((Protocol p) => p.id == id);
     changed();

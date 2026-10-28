@@ -118,6 +118,7 @@ class ProtocolsScreen extends ConsumerWidget {
         RowList(children: <Widget>[
           for (final Protocol p in s.protocols)
             InkWell(
+              onTap: () => showAddProtocolSheet(context, s, edit: p),
               onLongPress: () async {
                 if (await confirmDelete(context, title: 'DELETE PROTOCOL?', message: '${p.name} and its streak are removed.')) s.removeProtocol(p.id);
               },
