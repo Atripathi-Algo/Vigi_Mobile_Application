@@ -4,6 +4,7 @@ import '../services/local_brain.dart';
 import 'agent.dart';
 import 'brain_pipeline.dart';
 import 'brain_prompt.dart';
+import 'skills.dart';
 
 /// A fixed set of requests with the action each should produce, run on the phone to measure how accurate the
 /// chosen model file is (Q4_K_M or Q8_0) before trusting it. It only reads the plan; nothing is applied.
@@ -117,7 +118,7 @@ Future<({AgentPlan? plan, String source, String? error})> _decide(LocalBrain bra
   final Decision? d = decideWithoutModel(c.utterance, kEvalFacts);
   if (d?.source == DecisionSource.rules) return (plan: d!.plan, source: 'rules', error: null);
   if (d?.source == DecisionSource.router) return (plan: null, source: 'router', error: null);
-  final reply = await brain.ask(kEvalFacts, c.utterance, const <(bool, String)>[]);
+  final reply = await brain.ask(kEvalFacts, c.utterance, const <(bool, String)>[], route: routeSkills(c.utterance));
   if (reply.text == null) return (plan: null, source: 'model', error: reply.error ?? 'no reply');
   final v = validateModelPlan(parseAgentPlan(reply.text!), c.utterance, kEvalFacts);
   return (plan: v.plan, source: 'model', error: null);

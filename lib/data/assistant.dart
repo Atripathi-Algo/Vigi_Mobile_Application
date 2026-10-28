@@ -10,6 +10,7 @@ import '../vigil/vigil.dart';
 import 'agent.dart';
 import 'brain_pipeline.dart';
 import 'garage.dart';
+import 'skills.dart';
 import 'brain_prompt.dart';
 import 'capture_parser.dart';
 import 'models.dart';
@@ -32,6 +33,10 @@ class Assistant {
 
   /// True when the last reply came from K's on-device model.
   bool lastWasLocal = false;
+
+  /// A deletion that is waiting for the user to say yes, and when it was asked.
+  AgentPlan? _pending;
+  DateTime? _pendingAt;
 
   /// For tests; the real app uses a fresh client per call.
   final http.Client? client;
@@ -79,6 +84,7 @@ class Assistant {
       onUndo: res.undo,
       alert: res.failed.isNotEmpty,
       note: note,
+      route: res.route,
     );
   }
 
@@ -135,9 +141,27 @@ class Assistant {
 
     // Rules decide clear commands exactly (no model, the same answer every time). Questions about the user's own
     // data go to the router below, so the numbers are always the real ones.
+    // A deletion asks first: the next message answers it, and anything but a yes leaves things as they are.
+    final AgentPlan? waiting = _pending;
+    final bool fresh = _pendingAt != null && now.difference(_pendingAt!) < const Duration(minutes: 3);
+    _pending = null;
+    if (waiting != null && fresh) {
+      if (RegExp(r'^(yes|yep|yeah|yup|confirm|confirmed|do it|go ahead|sure|ok|okay)\b').hasMatch(q)) return tag(_apply(waiting, null, now), ReplySource.instant);
+      if (RegExp(r"^(no|nope|cancel|stop|don't|dont|never mind|nevermind|keep it)\b").hasMatch(q)) return tag(msg('Left as it is.'), ReplySource.instant);
+    }
+
     final BrainFacts facts = factsFromStore(store, now);
     final Decision? decided = decideWithoutModel(text.trim(), facts);
-    if (decided?.source == DecisionSource.rules) return tag(_apply(decided!.plan!, null, now), ReplySource.instant);
+    if (decided?.source == DecisionSource.rules) {
+      final AgentPlan plan = decided!.plan!;
+      final AgentAction? gated = plan.actions.where((AgentAction a) => kConfirmActions.contains(a.type)).firstOrNull;
+      if (gated != null) {
+        _pending = plan;
+        _pendingAt = now;
+        return tag(msg('${gated.args['ask'] ?? 'Are you sure? Say yes to confirm.'}'), ReplySource.instant);
+      }
+      return tag(_apply(plan, null, now), ReplySource.instant);
+    }
     final bool routerOnly = decided?.source == DecisionSource.router;
 
     // Open chat with Cloud AI on: plain sentences only, no app data sent, nothing changed. If the call fails, say why
@@ -165,6 +189,7 @@ class Assistant {
         facts,
         text.trim(),
         _pairs(text),
+        route: routeSkills(text.trim()),
         onPartial: onPartial == null
             ? null
             : (String raw) {

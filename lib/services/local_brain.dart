@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/cloud_ai.dart';
 import '../data/brain_prompt.dart';
+import '../data/skills.dart';
 import 'local_llm.dart';
 import 'model_store.dart';
 
@@ -203,7 +204,7 @@ class LocalBrain extends ChangeNotifier {
   }
 
   /// Runs the model on [messages] and returns its reply text, or why there is none.
-  Future<CloudReply> run(List<BrainTurn> messages, {BrainSampling sampling = const BrainSampling(), Duration timeout = const Duration(seconds: 240), bool constrained = true, void Function(String raw)? onPartial}) {
+  Future<CloudReply> run(List<BrainTurn> messages, {BrainSampling sampling = const BrainSampling(), Duration timeout = const Duration(seconds: 240), bool constrained = true, Map<String, dynamic>? schema, void Function(String raw)? onPartial}) {
     if (!usable) {
       return Future<CloudReply>.value(CloudReply.fail(_path == null ? 'K\'s brain is not downloaded yet. Get it in Loadout, K brain.' : 'K\'s brain is switched off.'));
     }
@@ -221,7 +222,7 @@ class LocalBrain extends ChangeNotifier {
         // Consumed in its own future so a stuck generation can be abandoned: cancelling a stream that is not
         // yielding would otherwise wait for it forever.
         final Future<void> consume = () async {
-          await for (final String piece in _engine.generate(messages, schema: constrained ? kBrainSchema : null, sampling: sampling)) {
+          await for (final String piece in _engine.generate(messages, schema: constrained ? (schema ?? kBrainSchema) : null, sampling: sampling)) {
             firstMs ??= sw.elapsedMilliseconds;
             out.write(piece);
             pieces++;
@@ -274,8 +275,10 @@ class LocalBrain extends ChangeNotifier {
   }
 
   /// One request for the assistant: the facts and question go through the prompt builder, then the model.
-  Future<CloudReply> ask(BrainFacts facts, String question, List<(bool, String)> history, {Duration timeout = const Duration(seconds: 240), void Function(String raw)? onPartial}) =>
-      run(buildBrainMessages(facts, question, history), timeout: timeout, onPartial: onPartial);
+  /// With a [route] the prompt, facts and output schema are cut down to the areas the question is about.
+  Future<CloudReply> ask(BrainFacts facts, String question, List<(bool, String)> history, {SkillRoute? route, Duration timeout = const Duration(seconds: 240), void Function(String raw)? onPartial}) => route == null
+      ? run(buildBrainMessages(facts, question, history), timeout: timeout, onPartial: onPartial)
+      : run(buildRoutedMessages(facts, question, history, route), timeout: timeout, schema: schemaFor(route), onPartial: onPartial);
 
   Completer<void>? _stop;
 

@@ -420,6 +420,10 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
                 ),
               ),
             ],
+            if (m.route != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Align(alignment: Alignment.centerLeft, child: VigilButton(label: 'Open', variant: VigilButtonVariant.secondary, onPressed: () => context.go(m.route!))),
+            ],
             if (m.note != null) ...<Widget>[
               const SizedBox(height: 6),
               Text(m.note!, style: t.micro.copyWith(color: m.note!.contains('failed') ? c.critical : c.textFaint, fontSize: 10)),

@@ -441,7 +441,11 @@ class ChatMsg {
     this.onUndo,
     this.source,
     this.ms,
+    this.route,
   });
+
+  /// A screen this reply opened, shown as an Open button.
+  final String? route;
 
   final bool fromUser;
   final String text;
@@ -478,6 +482,7 @@ class ChatMsg {
         if (note != null) 'note': note,
         if (source != null) 'source': source!.name,
         if (ms != null) 'ms': ms,
+        if (route != null) 'route': route,
         if (diff != null) 'diff': <List<String>>[for (final (String, String) r in diff!) <String>[r.$1, r.$2]],
       };
 
@@ -489,6 +494,7 @@ class ChatMsg {
         note: j['note'] as String?,
         source: ReplySource.values.where((ReplySource e) => e.name == j['source']).firstOrNull,
         ms: j['ms'] as int?,
+        route: j['route'] as String?,
         diff: (j['diff'] as List<dynamic>?)?.map((dynamic r) => ((r as List<dynamic>)[0] as String, r[1] as String)).toList(),
       );
 }

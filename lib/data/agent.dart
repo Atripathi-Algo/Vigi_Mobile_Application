@@ -8,8 +8,8 @@ import 'models.dart';
 import 'store.dart';
 
 /// The assistant's brain when a cloud model is on: the model answers in JSON, {"say": ..., "actions": [...]},
-/// and this file validates the actions and applies them to the store. Only a short allow-list of additive,
-/// undoable actions exists: nothing here can delete data, send anything out, or spend money.
+/// and this file validates the actions and applies them to the store. Only a short allow-list of
+/// actions exists. Deletions are asked about first and can be undone; nothing here can send anything out or spend money.
 class AgentAction {
   const AgentAction(this.type, this.args);
 
@@ -25,7 +25,10 @@ class AgentPlan {
 }
 
 class AgentResult {
-  const AgentResult({required this.diff, required this.failed, required this.undo});
+  const AgentResult({required this.diff, required this.failed, required this.undo, this.route});
+
+  /// A screen K opened for the user (the chat shows an Open button), or null.
+  final String? route;
 
   /// Rows for the diff card: what changed.
   final List<(String, String)> diff;
@@ -38,6 +41,45 @@ class AgentResult {
 }
 
 const int _maxActions = 5;
+
+/// Actions that remove something. K asks "yes?" before running one, and each can still be undone afterwards.
+const Set<String> kConfirmActions = <String>{'delete_objective', 'delete_event', 'delete_protocol'};
+
+/// The settings K may switch from chat. Security and data-sharing ones (Vault lock, Cloud AI, Drive) are left out on
+/// purpose: those stay in Loadout, behind the user's own hand.
+const Map<String, String> kToggleLabels = <String, String>{
+  'sfx': 'Sound effects',
+  'haptics': 'Haptics',
+  'effects': 'Thunder effects',
+  'spoken': 'Spoken replies',
+  'dawn': 'Dawn briefing',
+  'debrief': 'Night debrief',
+  'notifyOps': 'Ops alerts',
+  'notifyProtocols': 'Protocol alerts',
+};
+
+/// Screens K can take the user to: key -> (route, name).
+const Map<String, (String, String)> kScreens = <String, (String, String)>{
+  'garage': ('/ops/garage', 'Garage'),
+  'objectives': ('/ops/objectives', 'Objectives'),
+  'timeline': ('/ops/timeline', 'Timeline'),
+  'protocols': ('/protocols/habits', 'Protocols'),
+  'vitals': ('/protocols/vitals', 'Vitals'),
+  'sleep': ('/protocols/vitals/sleep', 'Sleep'),
+  'ledger': ('/vault/ledger', 'Ledger'),
+  'notes': ('/vault/log', 'Field log'),
+  'loadout': ('/loadout', 'Loadout'),
+  'inbox': ('/notifications', 'Notifications'),
+  'briefing': ('/briefing', 'Dawn briefing'),
+  'debrief': ('/debrief', 'Night debrief'),
+  'brain': ('/loadout/brain', 'K brain'),
+};
+
+/// The user's own events (not Google's) whose title matches [title].
+List<Block> _myEvents(VigilStore store, String title) {
+  final String needle = title.toLowerCase();
+  return store.blocks.where((Block b) => b.kind == BlockKind.event && b.src == null && (b.title.toLowerCase().contains(needle) || needle.contains(b.title.toLowerCase()))).toList();
+}
 
 /// Reads the model's reply. Accepts a bare JSON object, one wrapped in a code fence or in chatter, and falls
 /// back to treating the whole reply as plain speech with no actions.
@@ -125,6 +167,7 @@ AgentResult applyAgentPlan(VigilStore store, AgentPlan plan, {DateTime? now}) {
   final List<(String, String)> diff = <(String, String)>[];
   final List<String> failed = <String>[];
   final List<VoidCallback> undos = <VoidCallback>[];
+  String? route;
 
   void done(String label, String text, VoidCallback? undo) {
     diff.add((label, text));
@@ -271,11 +314,130 @@ AgentResult applyAgentPlan(VigilStore store, AgentPlan plan, {DateTime? now}) {
           b.dayKey = oldDay;
           store.changed();
         });
+      case 'snooze_objective':
+        final String? title = _str(g['title']);
+        final Objective? o = title == null ? null : openObjective(title);
+        final num? mins = g['minutes'] is num ? g['minutes'] as num : null;
+        if (o == null || mins == null || mins < 5 || mins > 720) {
+          failed.add('Snoozing needed one open objective and 5 to 720 minutes.');
+          break;
+        }
+        final int? oldDue = o.dueMin;
+        final String? oldLabel = o.dueLabel;
+        store.snoozeObjective(o.id, mins.round());
+        done('SNOOZED', '${o.title} · ${mins.round()} min', () {
+          o.dueMin = oldDue;
+          o.dueLabel = oldLabel;
+          store.changed();
+        });
+      case 'delete_objective':
+        final String? title = _str(g['title']);
+        final Objective? o = title == null ? null : openObjective(title);
+        if (o == null) {
+          failed.add('Could not match "${title ?? ''}" to exactly one open objective.');
+          break;
+        }
+        if (o.id.startsWith('g:')) {
+          failed.add('${o.title} comes from a bike reminder. Clear it in Ops, Garage.');
+          break;
+        }
+        final int at = store.objectives.indexWhere((Objective e) => e.id == o.id);
+        store.removeObjective(o.id);
+        done('DELETED', o.title, () => store.restoreObjective(o, at));
+      case 'delete_event':
+        final String? title = _str(g['title']);
+        final List<Block> hits = title == null ? <Block>[] : _myEvents(store, title);
+        if (hits.length != 1) {
+          failed.add('Could not match "${title ?? ''}" to exactly one event on this phone. Events from Google are read-only here.');
+          break;
+        }
+        final Block b = hits.first;
+        final int at = store.blocks.indexOf(b);
+        store.removeBlock(b.id);
+        done('DELETED', b.title, () {
+          store.blocks.insert(at.clamp(0, store.blocks.length), b);
+          store.changed();
+        });
+      case 'delete_protocol':
+        final String? name = _str(g['name']);
+        final List<Protocol> hits = name == null ? <Protocol>[] : store.protocols.where((Protocol p) => p.name.toLowerCase().contains(name.toLowerCase())).toList();
+        if (hits.length != 1) {
+          failed.add('Could not match "${name ?? ''}" to exactly one protocol.');
+          break;
+        }
+        final Protocol p = hits.first;
+        final int at = store.protocols.indexOf(p);
+        store.removeProtocol(p.id);
+        done('DELETED', p.name, () {
+          store.protocols.insert(at.clamp(0, store.protocols.length), p);
+          store.changed();
+        });
+      case 'add_protocol':
+        final String? name = _str(g['name'], 60);
+        if (name == null) {
+          failed.add('A protocol needs a name.');
+          break;
+        }
+        if (store.protocols.any((Protocol p) => p.name.toLowerCase() == name.toLowerCase())) {
+          failed.add('There is already a protocol called $name.');
+          break;
+        }
+        final int? remind = _hm(g['remind']);
+        store.addProtocol(name, remindMin: remind);
+        final String id = store.protocols.last.id;
+        done('PROTOCOL', remind == null ? name : '$name · reminder ${Fmt.hm(remind)}', () => store.removeProtocol(id));
+      case 'set_budget':
+        final num? amount = g['amount'] is num ? g['amount'] as num : null;
+        if (amount == null || amount <= 0 || amount > 10000000) {
+          failed.add('A budget needs a rupee amount above zero.');
+          break;
+        }
+        final int old = store.monthBudgetPaise;
+        store.setBudget((amount * 100).round());
+        done('BUDGET', '${Fmt.money((amount * 100).round())} a month', () => store.setBudget(old));
+      case 'set_toggle':
+        final String? key = g['key'] is String ? g['key'] as String : null;
+        final bool? on = g['on'] is bool ? g['on'] as bool : null;
+        if (key == null || !kToggleLabels.containsKey(key) || on == null) {
+          failed.add('That setting cannot be changed from chat.');
+          break;
+        }
+        final bool before = store.toggles[key] ?? false;
+        store.setToggle(key, on);
+        done('SETTING', '${kToggleLabels[key]} ${on ? 'on' : 'off'}', () => store.setToggle(key, before));
+      case 'open_screen':
+        final String? key = g['screen'] is String ? g['screen'] as String : null;
+        final (String, String)? target = key == null ? null : kScreens[key];
+        if (target == null) {
+          failed.add('I do not know that screen.');
+          break;
+        }
+        route = target.$1;
+        done('OPEN', target.$2, null);
+      case 'set_odometer':
+        final num? km = g['km'] is num ? g['km'] as num : null;
+        if (store.bikes.isEmpty) {
+          failed.add('There is no bike in the Garage yet.');
+          break;
+        }
+        final Bike? bike = store.bikeByName(_str(g['bike'], 60));
+        if (bike == null) {
+          failed.add('Which bike? Say its name, for example "${store.bikes.first.name}".');
+          break;
+        }
+        if (km == null || km < bike.odometer || km > 1000000) {
+          failed.add('The odometer can only move forward from ${bike.odometer} km.');
+          break;
+        }
+        final int old = bike.odometer;
+        store.setOdometer(bike.id, km.round());
+        done('ODOMETER', '${bike.name} · ${km.round()} km', () => store.setOdometer(bike.id, old));
       default:
         failed.add('Unknown action "${a.type}" was ignored.');
     }
   }
   return AgentResult(
+    route: route,
     diff: diff,
     failed: failed,
     undo: undos.isEmpty ? null : () {

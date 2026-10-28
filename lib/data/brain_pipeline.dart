@@ -304,6 +304,173 @@ AgentPlan? _note(String q) {
   ]);
 }
 
+// ----------------------------------------------------------------------------------------------- control of the rest of the app
+
+const Map<String, String> _screenWords = <String, String>{
+  'garage': 'garage', 'bikes': 'garage', 'my bike': 'garage', 'bike': 'garage',
+  'objectives': 'objectives', 'tasks': 'objectives', 'ops': 'objectives', 'to-dos': 'objectives', 'todos': 'objectives',
+  'timeline': 'timeline', 'calendar': 'timeline', 'schedule': 'timeline',
+  'protocols': 'protocols', 'habits': 'protocols',
+  'vitals': 'vitals', 'sleep': 'sleep',
+  'ledger': 'ledger', 'money': 'ledger', 'spending': 'ledger', 'vault': 'ledger', 'expenses': 'ledger',
+  'notes': 'notes', 'field log': 'notes',
+  'loadout': 'loadout', 'settings': 'loadout',
+  'notifications': 'inbox', 'inbox': 'inbox', 'alerts': 'inbox',
+  'briefing': 'briefing', 'dawn briefing': 'briefing', 'morning briefing': 'briefing',
+  'debrief': 'debrief', 'night debrief': 'debrief',
+  'brain': 'brain', 'k brain': 'brain',
+};
+
+AgentPlan? _open(String q) {
+  final RegExpMatch? m = RegExp(r'^(?:please\s+)?(?:open|go to|take me to|show me|show|switch to)\s+(?:the\s+|my\s+)?(.+?)(?:\s+(?:screen|page|tab|section))?\s*$', caseSensitive: false).firstMatch(q.trim());
+  if (m == null) return null;
+  final String key = _screenWords[m.group(1)!.toLowerCase().trim()] ?? '';
+  final (String, String)? target = kScreens[key];
+  if (target == null) return null;
+  return _plan('Opening ${target.$2}.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'open_screen', 'screen': key},
+  ]);
+}
+
+const Map<String, String> _toggleWords = <String, String>{
+  'sound effects': 'sfx', 'sound': 'sfx', 'sounds': 'sfx', 'sfx': 'sfx',
+  'haptics': 'haptics', 'haptic': 'haptics', 'vibration': 'haptics', 'vibrations': 'haptics',
+  'thunder effects': 'effects', 'effects': 'effects', 'lightning': 'effects', 'animations': 'effects',
+  'spoken replies': 'spoken', 'voice replies': 'spoken', 'spoken': 'spoken', 'voice': 'spoken',
+  'dawn briefing': 'dawn', 'morning briefing': 'dawn', 'briefing': 'dawn',
+  'night debrief': 'debrief', 'evening debrief': 'debrief', 'debrief': 'debrief',
+  'ops alerts': 'notifyOps', 'task alerts': 'notifyOps', 'objective alerts': 'notifyOps', 'ops notifications': 'notifyOps',
+  'protocol alerts': 'notifyProtocols', 'habit alerts': 'notifyProtocols', 'habit reminders': 'notifyProtocols', 'protocol notifications': 'notifyProtocols',
+};
+
+AgentPlan? _toggle(String q) {
+  final String t = q.trim();
+  final RegExp a = RegExp(r'^(?:please\s+)?(?:turn|switch)\s+(on|off)\s+(?:the\s+|my\s+)?(.+)$', caseSensitive: false);
+  final RegExp b = RegExp(r'^(?:please\s+)?(?:turn|switch)\s+(?:the\s+|my\s+)?(.+?)\s+(on|off)$', caseSensitive: false);
+  final RegExp c = RegExp(r'^(?:please\s+)?(enable|disable|mute|unmute)\s+(?:the\s+|my\s+)?(.+)$', caseSensitive: false);
+  String? name;
+  bool? on;
+  final RegExpMatch? ma = a.firstMatch(t);
+  final RegExpMatch? mb = ma == null ? b.firstMatch(t) : null;
+  final RegExpMatch? mc = ma == null && mb == null ? c.firstMatch(t) : null;
+  if (ma != null) {
+    on = ma.group(1)!.toLowerCase() == 'on';
+    name = ma.group(2);
+  } else if (mb != null) {
+    on = mb.group(2)!.toLowerCase() == 'on';
+    name = mb.group(1);
+  } else if (mc != null) {
+    final String v = mc.group(1)!.toLowerCase();
+    on = v == 'enable' || v == 'unmute';
+    name = mc.group(2);
+  }
+  if (name == null || on == null) return null;
+  final String n = name.toLowerCase().trim();
+  final String? key = _toggleWords[n];
+  if (key == null) {
+    if (RegExp(r'\b(vault|cloud|drive|backup|lock|key|password|biometric|fingerprint)\b').hasMatch(n)) {
+      return _plan('That is a security or data setting, so it stays in Loadout, in your hands.', const <Map<String, dynamic>>[]);
+    }
+    return null;
+  }
+  return _plan('${kToggleLabels[key]} ${on ? 'on' : 'off'}.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'set_toggle', 'key': key, 'on': on},
+  ]);
+}
+
+AgentPlan? _snooze(String q, BrainFacts f) {
+  final RegExpMatch? m = RegExp(r'^(?:please\s+)?(?:snooze|postpone|delay)\s+(.+?)(?:\s+(?:for|by)\s+(half an?|an?|one|\d+)\s*(min\w*|hours?|hrs?))?\s*$', caseSensitive: false).firstMatch(q.trim());
+  if (m == null) return null;
+  int minutes = 60;
+  final String? n = m.group(2)?.toLowerCase();
+  if (n != null) {
+    final bool hours = m.group(3)!.toLowerCase().startsWith('h');
+    final double v = n.startsWith('half') ? 0.5 : (n == 'a' || n == 'an' || n == 'one' ? 1 : double.parse(n));
+    minutes = (hours ? v * 60 : v).round();
+  }
+  if (minutes < 5 || minutes > 720) return _plan('I can snooze between 5 minutes and 12 hours.', const <Map<String, dynamic>>[]);
+  final List<String> words = _tokens(m.group(1)!);
+  final ({String name, bool protocol, int score})? best = words.isEmpty ? null : _bestMatch(f.objectives, words, false);
+  if (best == null) return _plan('Which objective? Say its name as it is in Ops.', const <Map<String, dynamic>>[]);
+  return _plan('Snoozed ${best.name.toLowerCase()} by $minutes minutes.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'snooze_objective', 'title': best.name, 'minutes': minutes},
+  ]);
+}
+
+typedef _Hit = ({String name, bool protocol, int score});
+
+AgentPlan? _delete(String q, BrainFacts f) {
+  final RegExpMatch? m = RegExp(r'^(?:please\s+)?(?:delete|remove|cancel|scrap|drop)\s+(?:my\s+|the\s+)?(?:(task|objective|event|meeting|protocol|habit)\s+)?(.+)$', caseSensitive: false).firstMatch(q.trim());
+  if (m == null) return null;
+  final String noun = (m.group(1) ?? '').toLowerCase();
+  final List<String> words = _tokens(m.group(2)!);
+  if (words.isEmpty) return null;
+  final bool any = noun.isEmpty;
+  final _Hit? obj = any || noun == 'task' || noun == 'objective' ? _bestMatch(f.objectives, words, false) : null;
+  final _Hit? ev = any || noun == 'event' || noun == 'meeting'
+      ? _bestMatch(<String>[for (final String e in f.events) e.replaceFirst(RegExp(r'^\d{2}:\d{2}-\d{2}:\d{2}\s+'), '')], words, false)
+      : null;
+  final _Hit? pro = any || noun == 'protocol' || noun == 'habit' ? _bestMatch(f.protocols, words, true) : null;
+  final List<(String, _Hit)> hits = <(String, _Hit)>[
+    if (obj != null) ('delete_objective', obj),
+    if (ev != null) ('delete_event', ev),
+    if (pro != null) ('delete_protocol', pro),
+  ];
+  if (hits.isEmpty) return _plan('I could not find that to delete. Say its name as it appears in the app.', const <Map<String, dynamic>>[]);
+  final int top = hits.map(((String, _Hit) h) => h.$2.score).reduce((int a, int b) => a > b ? a : b);
+  final List<(String, _Hit)> best = hits.where(((String, _Hit) h) => h.$2.score == top).toList();
+  if (best.length > 1) return _plan('That matches more than one thing. Say which: the task, the event or the protocol.', const <Map<String, dynamic>>[]);
+  final String type = best.first.$1;
+  final String name = best.first.$2.name;
+  final String kind = type == 'delete_objective' ? 'objective' : (type == 'delete_event' ? 'event' : 'protocol');
+  return _plan('Deleted $name.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': type, (type == 'delete_protocol' ? 'name' : 'title'): name, 'ask': 'Delete the $kind "$name"? Say yes to confirm.'},
+  ]);
+}
+
+AgentPlan? _budget(String q) {
+  final RegExpMatch? m = RegExp(r'^(?:please\s+)?(?:set|change|update|make)\s+(?:my\s+|the\s+)?(?:monthly\s+)?budget\s+(?:to|at|as|of)?\s*(?:₹|rs\.?\s*|inr\s*)?(\d[\d,]*(?:\.\d+)?)\s*(k)?\b', caseSensitive: false).firstMatch(q.trim());
+  if (m == null) return null;
+  double v = double.parse(m.group(1)!.replaceAll(',', ''));
+  if (m.group(2) != null) v *= 1000;
+  if (v <= 0 || v > 10000000) return _plan('A budget has to be above zero.', const <Map<String, dynamic>>[]);
+  final String amt = v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(2);
+  return _plan('Monthly budget set to $amt rupees.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'set_budget', 'amount': v},
+  ]);
+}
+
+AgentPlan? _addProtocol(String q) {
+  final RegExpMatch? m = RegExp(r'^(?:please\s+)?(?:add|create|start|new)\s+(?:a\s+|an\s+)?(?:new\s+)?(?:protocol|habit)(?:\s+(?:called|named|for|to))?\s+(.+)$', caseSensitive: false).firstMatch(q.trim());
+  if (m == null) return null;
+  final String body = m.group(1)!;
+  final CaptureDraft d = CaptureParser.parse(body);
+  final String name = _cap(_stripWhen(body));
+  if (name.isEmpty) return null;
+  return _plan('Added the protocol $name${d.when != null ? ', reminder at ${_hm(d.when!)}' : ''}.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'add_protocol', 'name': name, if (d.when != null) 'remind': _hm(d.when!)},
+  ]);
+}
+
+AgentPlan? _odometer(String q, String lower, BrainFacts f) {
+  if (f.bikes.isEmpty || !RegExp(r'\b(odometer|odo)\b').hasMatch(lower)) return null;
+  if (RegExp(r'\b(?:l|ltr|ltrs|litres?|liters?)\b').hasMatch(lower)) return null; // a fill-up
+  final RegExpMatch? m = RegExp(r'\b(?:set|update|change|is|at|reads?|to)\s*(?:to|at)?\s*(\d[\d,]*)\s*(?:km|kms)?\s*$').firstMatch(lower);
+  if (m == null) return null;
+  final int km = int.parse(m.group(1)!.replaceAll(',', ''));
+  String? bike;
+  final Set<String> words = RegExp(r'[a-z0-9]+').allMatches(lower).map((Match x) => x.group(0)!).toSet();
+  for (final String name in f.bikes) {
+    if (RegExp(r'[a-z0-9]+').allMatches(name.toLowerCase()).any((Match x) => x.group(0)!.length >= 3 && words.contains(x.group(0)!))) {
+      bike = name;
+      break;
+    }
+  }
+  return _plan('Odometer set to $km km.', <Map<String, dynamic>>[
+    <String, dynamic>{'type': 'set_odometer', if (bike != null) 'bike': bike, 'km': km},
+  ]);
+}
+
 // ----------------------------------------------------------------------------------------------- public
 
 /// A question about the user's own data, which the router answers from the store with exact numbers.
@@ -320,7 +487,7 @@ Decision? decideWithoutModel(String utterance, BrainFacts facts) {
   final String lower = q.toLowerCase();
   if (isFactsQuestion(q)) return const Decision(DecisionSource.router, null);
   if (isQuestionOnly(q)) return null;
-  final AgentPlan? plan = _oneAtATime(lower) ?? _move(q, lower, facts) ?? _water(q, lower) ?? _note(q) ?? _task(q, lower) ?? _event(q, lower) ?? _fuel(q, lower, facts) ?? _spend(q, lower) ?? _completion(q, lower, facts);
+  final AgentPlan? plan = _oneAtATime(lower) ?? _open(q) ?? _toggle(q) ?? _snooze(q, facts) ?? _delete(q, facts) ?? _budget(q) ?? _addProtocol(q) ?? _odometer(q, lower, facts) ?? _move(q, lower, facts) ?? _water(q, lower) ?? _note(q) ?? _task(q, lower) ?? _event(q, lower) ?? _fuel(q, lower, facts) ?? _spend(q, lower) ?? _completion(q, lower, facts);
   return plan == null ? null : Decision(DecisionSource.rules, plan);
 }
 
