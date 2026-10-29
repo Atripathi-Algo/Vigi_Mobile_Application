@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/vigil_tokens.dart';
 
-/// Draws the HUD corner brackets used on "intel" and hero cards:
-/// a 12 px L in the top-left and bottom-right corners, 2 px stroke, signal colour.
+/// The "hot card" edge: a 1 dp gradient border (signal, violet, magenta) with a faint bolt watermark in the
+/// bottom-right corner. One per screen. The class keeps its old name so existing call sites compile.
 class CornerBrackets extends StatelessWidget {
   const CornerBrackets({
     super.key,
@@ -12,6 +12,7 @@ class CornerBrackets extends StatelessWidget {
     this.length = VigilSize.bracket,
     this.stroke = 2,
     this.allCorners = false,
+    this.radius = KRadius.card,
   });
 
   final Widget child;
@@ -19,64 +20,59 @@ class CornerBrackets extends StatelessWidget {
   final double length;
   final double stroke;
   final bool allCorners;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.vigil;
     return CustomPaint(
-      foregroundPainter: _BracketPainter(
-        color: color ?? context.vigil.signal,
-        length: length,
-        stroke: stroke,
-        allCorners: allCorners,
+      foregroundPainter: _HotEdgePainter(
+        gradient: color == null ? c.hotGradient : LinearGradient(colors: <Color>[color!, color!]),
+        radius: radius,
+        bolt: (color ?? c.violet).withValues(alpha: c.isDark ? 0.10 : 0.07),
       ),
       child: child,
     );
   }
 }
 
-class _BracketPainter extends CustomPainter {
-  _BracketPainter({required this.color, required this.length, required this.stroke, required this.allCorners});
+class _HotEdgePainter extends CustomPainter {
+  _HotEdgePainter({required this.gradient, required this.radius, required this.bolt});
 
-  final Color color;
-  final double length;
-  final double stroke;
-  final bool allCorners;
+  final Gradient gradient;
+  final double radius;
+  final Color bolt;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint p = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.butt
-      ..strokeJoin = StrokeJoin.miter;
-    final double h = stroke / 2;
-    final double w = size.width;
-    final double ht = size.height;
-    final Path path = Path()
-      // top-left
-      ..moveTo(h, length)
-      ..lineTo(h, h)
-      ..lineTo(length, h)
-      // bottom-right
-      ..moveTo(w - h, ht - length)
-      ..lineTo(w - h, ht - h)
-      ..lineTo(w - length, ht - h);
-    if (allCorners) {
-      path
-        ..moveTo(w - length, h)
-        ..lineTo(w - h, h)
-        ..lineTo(w - h, length)
-        ..moveTo(h, ht - length)
-        ..lineTo(h, ht - h)
-        ..lineTo(length, ht - h);
-    }
-    canvas.drawPath(path, p);
+    final Rect r = Offset.zero & size;
+    final RRect rr = RRect.fromRectAndRadius(r.deflate(0.5), Radius.circular(radius));
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..shader = gradient.createShader(r)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+    // A faint bolt in the bottom-right corner.
+    canvas.save();
+    canvas.clipRRect(rr);
+    final double s = (size.shortestSide * 0.5).clamp(30.0, 70.0);
+    final Offset o = Offset(size.width - s * 0.95, size.height - s * 1.05);
+    final Path p = Path()
+      ..moveTo(o.dx + s * 0.62, o.dy)
+      ..lineTo(o.dx + s * 0.12, o.dy + s * 0.58)
+      ..lineTo(o.dx + s * 0.46, o.dy + s * 0.58)
+      ..lineTo(o.dx + s * 0.30, o.dy + s)
+      ..lineTo(o.dx + s * 0.86, o.dy + s * 0.38)
+      ..lineTo(o.dx + s * 0.52, o.dy + s * 0.38)
+      ..close();
+    canvas.drawPath(p, Paint()..color = bolt);
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_BracketPainter old) =>
-      old.color != color || old.length != length || old.stroke != stroke || old.allCorners != allCorners;
+  bool shouldRepaint(_HotEdgePainter old) => old.gradient != gradient || old.radius != radius || old.bolt != bolt;
 }
 
 /// The faint 26 px grid behind every screen (text colour at 3 % opacity).

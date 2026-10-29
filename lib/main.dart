@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:home_widget/home_widget.dart';
 
 import 'app/env.dart';
@@ -27,7 +26,6 @@ import 'vigil/vigil.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
   await SystemChrome.setPreferredOrientations(<DeviceOrientation>[DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -164,14 +162,18 @@ class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = buildVigilTheme();
-    return MaterialApp.router(
-      title: 'K',
-      debugShowCheckedModeBanner: false,
-      theme: theme,
-      darkTheme: theme,
-      themeMode: ThemeMode.dark,
-      routerConfig: _router,
+    final ThemeData light = buildVigilTheme(Brightness.light);
+    final ThemeData dark = buildVigilTheme(Brightness.dark);
+    return ListenableBuilder(
+      listenable: widget.store,
+      builder: (BuildContext context, Widget? _) => MaterialApp.router(
+        title: 'K',
+        debugShowCheckedModeBanner: false,
+        theme: light,
+        darkTheme: dark,
+        themeMode: const <ThemeMode>[ThemeMode.light, ThemeMode.dark, ThemeMode.system][widget.store.appearance.clamp(0, 2)],
+        routerConfig: _router,
+      ),
     );
   }
 }

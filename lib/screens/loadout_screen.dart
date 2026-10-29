@@ -143,6 +143,21 @@ class LoadoutScreen extends ConsumerWidget {
           }),
           linkRow('Background & battery', 'ColorOS: allow auto-start, no restrictions', 'OPEN', onTap: () => openAppSettings()),
         ]),
+        head('Appearance'),
+        RowList(children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+              Text('Theme', style: t.label.copyWith(color: c.textMuted)),
+              const SizedBox(height: 6),
+              VigilSegmented<int>(
+                segments: const <(int, String)>[(0, 'Light'), (1, 'Dark'), (2, 'System')],
+                selected: s.appearance,
+                onSelected: s.setAppearance,
+              ),
+            ]),
+          ),
+        ]),
         head('Sounds'),
         RowList(children: <Widget>[
           toggleRow('sfx', 'Sound effects', 'Thunder cues · original audio'),

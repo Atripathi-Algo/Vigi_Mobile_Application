@@ -41,6 +41,9 @@ class VigilStore extends ChangeNotifier {
 
   /// In-app sound effect volume: 0 low, 1 medium, 2 high.
   int sfxLevel = 1;
+
+  /// Theme: 0 light (default), 1 dark, 2 follow the system.
+  int appearance = 0;
   Verbosity verbosity = Verbosity.terse;
   Set<String> modules = <String>{..._allModules};
   static const List<String> _allModules = <String>['OBJECTIVES', 'TIMELINE', 'PROTOCOLS', 'VITALS', 'DEEP OPS', 'FIELD LOG', 'LEDGER'];
@@ -227,6 +230,7 @@ class VigilStore extends ChangeNotifier {
     verbosity = Verbosity.values[_prefs.getInt('verbosity') ?? 0];
     needMin = _prefs.getInt('needMin') ?? needMin;
     sfxLevel = (_prefs.getInt('sfxLevel') ?? 1).clamp(0, 2);
+    appearance = (_prefs.getInt('appearance') ?? 0).clamp(0, 2);
     final List<String>? mods = _prefs.getStringList('modules');
     if (mods != null) modules = mods.toSet();
     final String? tg = _prefs.getString('toggles');
@@ -369,6 +373,7 @@ class VigilStore extends ChangeNotifier {
       ..setInt('verbosity', verbosity.index)
       ..setInt('needMin', needMin)
       ..setInt('sfxLevel', sfxLevel)
+      ..setInt('appearance', appearance)
       ..setStringList('modules', modules.toList())
       ..setString('toggles', jsonEncode(toggles))
       ..setString('links', jsonEncode(linkStatus))
@@ -465,6 +470,11 @@ class VigilStore extends ChangeNotifier {
 
   void setPersona(Persona p) {
     persona = p;
+    changed();
+  }
+
+  void setAppearance(int i) {
+    appearance = i.clamp(0, 2);
     changed();
   }
 

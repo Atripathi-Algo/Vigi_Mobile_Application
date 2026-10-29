@@ -43,3 +43,8 @@ Assumptions to confirm as we go:
 | Mic copy promised on-device speech | Copy updated to match (offline pack needed) |
 
 Not done in R0 (needs your call or a later phase): release keystore, real encryption of notes and money, weather default city, `.env` bundling.
+
+## Status
+
+- **R0** done and pushed (b6a1933).
+- **R1** done (design system): Storm violet tokens for Light (default) and Dark (`VigilColors.light/dark`, gradients, icon tiles), Sora / Inter / IBM Plex Mono bundled in `assets/fonts` (OFL, no network fetch), rounded shapes (cards 18, sheets 26, dialogs 22, fields 14, pills), restyled button, icon button, K octagon, card, hot-card edge (the old corner brackets), section label, progress bar, checkbox, switch, segmented control, filter chip, threat tag, nav bar (pill indicator, rounded top), snackbar always dark. Settings has Appearance: Light / Dark / System. Checked on the emulator in both themes; 285 tests pass. **Left for the next phases**: nav labels are still the old names (R2); screens still write many labels in capitals and several draw more than one hot card (R4/R5); screens that draw their own boxes keep their old look until rebuilt; the grid background is gone from every screen; the splash, launcher icon and widgets are still the old navy (R3, R6).

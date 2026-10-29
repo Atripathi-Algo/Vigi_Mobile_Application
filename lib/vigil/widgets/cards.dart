@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../theme/vigil_colors.dart';
 import '../theme/vigil_tokens.dart';
 import 'hud.dart';
 
-/// Base card: surface fill, 1 px line border, square corners.
-/// [brackets] adds the HUD corner brackets (hero + intel cards only).
+/// Base card: card fill, 1 dp line border, radius 18, soft violet shadow in light.
+/// [brackets] makes it the screen's one "hot card" (gradient edge and bolt watermark).
 class VigilCard extends StatelessWidget {
   const VigilCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(14),
+    this.padding = const EdgeInsets.all(16),
     this.brackets = false,
     this.bracketColor,
     this.borderColor,
@@ -30,12 +31,16 @@ class VigilCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.vigil;
-    Widget card = Material(
-      color: color ?? c.surface,
-      shape: VigilShapes.square(BorderSide(color: borderColor ?? c.line)),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(padding: padding, child: child),
+    Widget card = DecoratedBox(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(KRadius.card), boxShadow: c.cardShadow),
+      child: Material(
+        color: color ?? c.surface,
+        shape: VigilShapes.card(BorderSide(color: borderColor ?? c.line)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(padding: padding, child: child),
+        ),
       ),
     );
     if (brackets) card = CornerBrackets(color: bracketColor, child: card);
@@ -46,7 +51,7 @@ class VigilCard extends StatelessWidget {
   }
 }
 
-/// UPPERCASE mono section label with an optional trailing label.
+/// Sentence-case section label with an optional trailing label.
 class SectionLabel extends StatelessWidget {
   const SectionLabel(this.text, {super.key, this.trailing, this.color, this.trailingColor});
 
@@ -63,9 +68,9 @@ class SectionLabel extends StatelessWidget {
       header: true,
       child: Row(
         children: <Widget>[
-          Expanded(child: Text(text.toUpperCase(), style: t.label.copyWith(color: color ?? c.textFaint))),
+          Expanded(child: Text(text, style: t.label.copyWith(color: color ?? c.textMuted))),
           if (trailing != null)
-            Text(trailing!.toUpperCase(), style: t.meta.copyWith(color: trailingColor ?? c.textMuted)),
+            Text(trailing!, style: t.meta.copyWith(color: trailingColor ?? c.textMuted)),
         ],
       ),
     );
@@ -95,17 +100,17 @@ class IntelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.vigil;
     final t = context.vtype;
-    final Color tagColor = tone == IntelTone.alert ? c.critical : c.signal;
+    final Color tagColor = tone == IntelTone.alert ? c.critical : c.violet;
     return VigilCard(
       brackets: true,
       bracketColor: tagColor,
-      borderColor: c.lineStrong,
+      borderColor: Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
-              Expanded(child: Text(tag.toUpperCase(), style: t.label.copyWith(color: tagColor))),
+              Expanded(child: Text(tag, style: t.label.copyWith(color: tagColor))),
               if (time != null) Text(time!, style: t.meta.copyWith(color: c.textFaint)),
             ],
           ),
@@ -143,7 +148,7 @@ class StatTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Text(label.toUpperCase(), style: t.micro.copyWith(color: c.textFaint, letterSpacing: 1.4)),
+          Text(label, style: t.label.copyWith(color: c.textMuted)),
           const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -152,7 +157,7 @@ class StatTile extends StatelessWidget {
           ),
           if (caption != null) ...<Widget>[
             const SizedBox(height: 4),
-            Text(caption!.toUpperCase(), style: t.meta.copyWith(color: c.textMuted)),
+            Text(caption!, style: t.meta.copyWith(color: c.textMuted)),
           ],
         ],
       ),
@@ -162,7 +167,7 @@ class StatTile extends StatelessWidget {
 
 /// Label + value over a 4 px progress bar (Command readiness stats).
 class StatBar extends StatelessWidget {
-  const StatBar({super.key, required this.label, required this.value, required this.fraction, this.color, this.thickness = 4});
+  const StatBar({super.key, required this.label, required this.value, required this.fraction, this.color, this.thickness = 6});
 
   final String label;
   final String value;
@@ -183,26 +188,26 @@ class StatBar extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Expanded(child: Text(label.toUpperCase(), style: t.meta.copyWith(color: c.textFaint, letterSpacing: 1.3))),
+              Expanded(child: Text(label, style: t.meta.copyWith(color: c.textMuted))),
               Text(value, style: t.meta.copyWith(color: c.text, fontWeight: FontWeight.w500, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 5),
-          SegmentBar(fraction: fraction, color: color ?? c.signal, thickness: thickness),
+          SegmentBar(fraction: fraction, color: color, thickness: thickness),
         ],
       ),
     );
   }
 }
 
-/// Flat progress bar with optional marker (budget pace, limits).
+/// Rounded progress bar (gradient fill by default) with optional marker (budget pace, limits).
 class SegmentBar extends StatelessWidget {
   const SegmentBar({
     super.key,
     required this.fraction,
     this.color,
     this.trackColor,
-    this.thickness = 4,
+    this.thickness = 6,
     this.marker,
     this.markerColor,
   });
@@ -228,13 +233,13 @@ class SegmentBar extends StatelessWidget {
           return Stack(
             clipBehavior: Clip.none,
             children: <Widget>[
-              Positioned(left: 0, right: 0, top: top, height: thickness, child: ColoredBox(color: trackColor ?? c.line)),
+              Positioned(left: 0, right: 0, top: top, height: thickness, child: DecoratedBox(decoration: BoxDecoration(color: trackColor ?? c.surfaceHigh, borderRadius: BorderRadius.circular(thickness)))),
               Positioned(
                 left: 0,
                 top: top,
                 height: thickness,
                 width: w * fraction.clamp(0.0, 1.0),
-                child: ColoredBox(color: color ?? c.signal),
+                child: DecoratedBox(decoration: BoxDecoration(color: color, gradient: color == null ? KGradients.primary : null, borderRadius: BorderRadius.circular(thickness))),
               ),
               if (marker != null)
                 Positioned(

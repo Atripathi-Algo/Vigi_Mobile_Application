@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/vigil_colors.dart';
 import '../theme/vigil_tokens.dart';
 import 'vigil_icon.dart';
 import '../../services/haptics.dart';
@@ -7,7 +8,7 @@ import '../../services/haptics.dart';
 /// Threat levels used across objectives, alerts and capture.
 enum Threat { crit, high, routine }
 
-/// CRIT (critical fill) · HIGH (signal outline) · ROUTINE (neutral outline).
+/// Threat tag: a diamond and CRIT / HIGH / ROUTINE, in a pill. Never colour alone.
 class ThreatTag extends StatelessWidget {
   const ThreatTag(this.threat, {super.key, this.width});
 
@@ -19,9 +20,9 @@ class ThreatTag extends StatelessWidget {
     final c = context.vigil;
     final t = context.vtype;
     final (Color bg, Color fg, Color bd, String label, String spoken) = switch (threat) {
-      Threat.crit => (c.critical, c.onSignal, c.critical, 'CRIT', 'critical'),
-      Threat.high => (Colors.transparent, c.signal, c.signal, 'HIGH', 'high'),
-      Threat.routine => (Colors.transparent, c.textMuted, c.neutral, 'ROUTINE', 'routine'),
+      Threat.crit => (c.critical.withValues(alpha: 0.12), c.critical, c.critical.withValues(alpha: 0.4), 'CRIT', 'critical'),
+      Threat.high => (c.warning.withValues(alpha: 0.12), c.warning, c.warning.withValues(alpha: 0.4), 'HIGH', 'high'),
+      Threat.routine => (Colors.transparent, c.textMuted, c.lineStrong, 'ROUTINE', 'routine'),
     };
     return Semantics(
       label: 'Threat level $spoken',
@@ -29,16 +30,20 @@ class ThreatTag extends StatelessWidget {
       child: Container(
         height: 22,
         width: width,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: bg, border: Border.all(color: bd)),
-        child: Text(label, style: t.micro.copyWith(color: fg, fontWeight: FontWeight.w600)),
+        decoration: BoxDecoration(color: bg, border: Border.all(color: bd), borderRadius: BorderRadius.circular(KRadius.pill)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          Transform.rotate(angle: 0.785398, child: SizedBox.square(dimension: 6, child: ColoredBox(color: fg))),
+          const SizedBox(width: 5),
+          Text(label, style: t.micro.copyWith(color: fg, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+        ]),
       ),
     );
   }
 }
 
-/// Square checkbox: 20 px box inside a 44 px hit area.
+/// Checkbox: 22 dp box, radius 7, inside a 48 dp hit area. Done = gradient fill and a white check.
 class VigilCheckbox extends StatelessWidget {
   const VigilCheckbox({
     super.key,
@@ -58,7 +63,7 @@ class VigilCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.vigil;
-    final Color border = value ? c.signal : (critical ? c.critical : c.neutral);
+    final Color border = value ? Colors.transparent : (critical ? c.critical : c.lineStrong);
     return Semantics(
       checked: value,
       enabled: onChanged != null,
@@ -81,7 +86,8 @@ class VigilCheckbox extends StatelessWidget {
               width: VigilSize.checkbox,
               height: VigilSize.checkbox,
               decoration: BoxDecoration(
-                color: value ? c.signal : Colors.transparent,
+                gradient: value ? KGradients.primary : null,
+                borderRadius: BorderRadius.circular(KRadius.checkbox),
                 border: Border.all(color: border, width: 1.5),
               ),
               child: value ? CustomPaint(painter: _CheckPainter(c.onSignal)) : null,
@@ -110,7 +116,8 @@ class _CheckPainter extends CustomPainter {
         ..color = color
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3.2 * s
-        ..strokeJoin = StrokeJoin.miter,
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
     );
   }
 
@@ -118,7 +125,7 @@ class _CheckPainter extends CustomPainter {
   bool shouldRepaint(_CheckPainter old) => old.color != color;
 }
 
-/// Square switch: 44 × 24 track, 16 px square knob, inside a 52 × 44 hit area.
+/// Switch: 50 × 30 pill. On = gradient track and a white knob.
 class VigilSwitch extends StatelessWidget {
   const VigilSwitch({super.key, required this.value, required this.onChanged, required this.semanticLabel});
 
@@ -143,26 +150,34 @@ class VigilSwitch extends StatelessWidget {
                 onChanged!(!value);
               },
         child: SizedBox(
-          width: 52,
+          width: 58,
           height: VigilSize.touch,
           child: Center(
             child: AnimatedContainer(
               duration: VigilMotion.fast,
               curve: VigilMotion.curve,
-              width: 44,
-              height: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 3),
+              width: 50,
+              height: 30,
+              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: value ? c.signalTint(0.15) : Colors.transparent,
-                border: Border.all(color: value ? c.signal : c.neutral),
+                gradient: value ? KGradients.primary : null,
+                color: value ? null : c.surfaceHigh,
+                border: Border.all(color: value ? Colors.transparent : c.lineStrong),
+                borderRadius: BorderRadius.circular(KRadius.pill),
               ),
               child: AnimatedAlign(
                 duration: VigilMotion.fast,
                 curve: VigilMotion.curve,
                 alignment: value ? Alignment.centerRight : Alignment.centerLeft,
                 child: SizedBox.square(
-                  dimension: 16,
-                  child: ColoredBox(color: value ? c.signal : c.textFaint),
+                  dimension: 22,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: value ? Colors.white : c.textFaint,
+                      shape: BoxShape.circle,
+                      boxShadow: value ? const <BoxShadow>[BoxShadow(color: Color(0x33000000), blurRadius: 4, offset: Offset(0, 1))] : null,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -173,8 +188,8 @@ class VigilSwitch extends StatelessWidget {
   }
 }
 
-/// Two- or three-way view switch under a screen title (OBJECTIVES | TIMELINE).
-/// The selected segment fills with signal.
+/// Two- to four-way view switch under a screen title (Tasks | Timeline).
+/// Pill track; the selected segment fills with the primary gradient.
 class VigilSegmented<T> extends StatelessWidget {
   const VigilSegmented({
     super.key,
@@ -192,9 +207,10 @@ class VigilSegmented<T> extends StatelessWidget {
     final c = context.vigil;
     final t = context.vtype;
     return DecoratedBox(
-      position: DecorationPosition.foreground,
-      decoration: BoxDecoration(border: Border.all(color: c.lineStrong)),
-      child: Row(
+      decoration: BoxDecoration(color: c.surfaceHigh, borderRadius: BorderRadius.circular(KRadius.pill), border: Border.all(color: c.line)),
+      child: Padding(
+        padding: const EdgeInsets.all(3),
+        child: Row(
         children: <Widget>[
           for (final (T value, String label) in segments)
             Expanded(
@@ -204,30 +220,35 @@ class VigilSegmented<T> extends StatelessWidget {
                 label: label,
                 excludeSemantics: true,
                 child: InkWell(
+                  borderRadius: BorderRadius.circular(KRadius.pill),
                   onTap: () => onSelected(value),
                   child: AnimatedContainer(
                     duration: VigilMotion.fast,
-                    height: VigilSize.button,
+                    height: VigilSize.button - 6,
                     alignment: Alignment.center,
-                    color: value == selected ? c.signal : Colors.transparent,
+                    decoration: BoxDecoration(
+                      gradient: value == selected ? KGradients.primary : null,
+                      borderRadius: BorderRadius.circular(KRadius.pill),
+                      boxShadow: value == selected ? c.actionShadow : null,
+                    ),
                     child: Text(
-                      label.toUpperCase(),
-                      style: t.button.copyWith(
-                        color: value == selected ? c.onSignal : c.textMuted,
-                        fontWeight: value == selected ? FontWeight.w600 : FontWeight.w400,
-                      ),
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.button.copyWith(color: value == selected ? c.onSignal : c.textMuted),
                     ),
                   ),
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Filter chip (ALL · WORK · HOME…). 44 px tall; selected = text-colour outline.
+/// Filter chip (All, Work, Home). 32 dp pill inside a 48 dp hit area; selected = soft gradient and a violet edge.
 class VigilFilterChip extends StatelessWidget {
   const VigilFilterChip({super.key, required this.label, required this.selected, required this.onTap});
 
@@ -246,12 +267,24 @@ class VigilFilterChip extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
-        child: Container(
-          height: VigilSize.button,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(border: Border.all(color: selected ? c.text : c.lineStrong)),
-          child: Text(label.toUpperCase(), style: t.button.copyWith(color: selected ? c.text : c.textMuted, fontWeight: FontWeight.w400)),
+        borderRadius: BorderRadius.circular(KRadius.pill),
+        child: SizedBox(
+          height: VigilSize.touch,
+          child: Center(
+            widthFactor: 1,
+            child: Container(
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: selected ? c.softGradient : null,
+                color: selected ? null : c.surface,
+                border: Border.all(color: selected ? c.violet : c.lineStrong),
+                borderRadius: BorderRadius.circular(KRadius.pill),
+              ),
+              child: Text(label, style: t.button.copyWith(fontSize: 12.5, fontWeight: FontWeight.w500, color: selected ? c.text : c.textMuted)),
+            ),
+          ),
         ),
       ),
     );
@@ -282,7 +315,7 @@ class ParsedChip extends StatelessWidget {
         onTap: onTap,
         child: Container(
           height: 32,
-          decoration: BoxDecoration(border: Border.all(color: bd)),
+          decoration: BoxDecoration(border: Border.all(color: bd), borderRadius: BorderRadius.circular(KRadius.pill)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -290,11 +323,11 @@ class ParsedChip extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(border: Border(right: BorderSide(color: bd))),
-                child: Text(keyLabel.toUpperCase(), style: t.meta.copyWith(color: c.textFaint)),
+                child: Text(keyLabel, style: t.meta.copyWith(color: c.textMuted)),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(value.toUpperCase(), style: t.meta.copyWith(color: c.text)),
+                child: Text(value, style: t.meta.copyWith(color: c.text)),
               ),
             ],
           ),
@@ -335,7 +368,7 @@ class VigilStepper extends StatelessWidget {
               width: VigilSize.touch,
               height: VigilSize.touch,
               alignment: Alignment.center,
-              decoration: BoxDecoration(border: Border.all(color: c.lineStrong)),
+              decoration: BoxDecoration(border: Border.all(color: c.lineStrong), borderRadius: BorderRadius.circular(KRadius.field), color: c.surface),
               child: VigilIcon(icon, size: 16, color: c.text),
             ),
           ),

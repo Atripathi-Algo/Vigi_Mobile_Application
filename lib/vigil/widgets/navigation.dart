@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme/vigil_tokens.dart';
 import 'buttons.dart';
-import 'hud.dart';
 import 'vigil_icon.dart';
 
 /// Primary tabs. Index 2 is the raised core VIGIL button (assistant).
@@ -45,9 +44,13 @@ class VigilNavBar extends StatelessWidget {
             right: 0,
             bottom: 0,
             height: barHeight,
-            child: Material(
-              color: c.navBar,
-              shape: Border(top: BorderSide(color: c.line)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: c.navBar,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(top: BorderSide(color: c.line)),
+                boxShadow: <BoxShadow>[BoxShadow(color: c.shadow.withValues(alpha: c.isDark ? 0.4 : 0.18), blurRadius: 30, offset: const Offset(0, -10), spreadRadius: -12)],
+              ),
               child: Padding(
                 padding: EdgeInsets.only(left: 6, right: 6, bottom: bottom),
                 child: Row(
@@ -99,7 +102,7 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.vigil;
     final t = context.vtype;
-    final Color color = active ? c.signal : c.textFaint;
+    final Color color = active ? c.signal2 : c.textFaint;
     final bool big = MediaQuery.textScalerOf(context).scale(10) >= 13; // 1.3x and up: icon only
     return Semantics(
       selected: active,
@@ -108,21 +111,21 @@ class _NavItem extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
-        child: Stack(
-          alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            if (active)
-              Positioned(top: 0, child: SizedBox(width: 26, height: 2, child: ColoredBox(color: c.signal))),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                VigilIcon(icon, color: color),
-                if (!big) ...<Widget>[
-                  const SizedBox(height: 5),
-                  Text(label, style: t.micro.copyWith(color: color), maxLines: 1, overflow: TextOverflow.fade, softWrap: false),
-                ],
-              ],
+            AnimatedContainer(
+              duration: VigilMotion.fast,
+              width: 52,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(gradient: active ? c.softGradient : null, borderRadius: BorderRadius.circular(KRadius.pill)),
+              child: VigilIcon(icon, color: color),
             ),
+            if (!big) ...<Widget>[
+              const SizedBox(height: 3),
+              Text(label, style: t.micro.copyWith(color: color, fontWeight: active ? FontWeight.w600 : FontWeight.w500), maxLines: 1, overflow: TextOverflow.fade, softWrap: false),
+            ],
           ],
         ),
       ),
@@ -145,7 +148,7 @@ class _CoreLabel extends StatelessWidget {
         alignment: Alignment.bottomCenter,
         child: Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text(label, style: style.copyWith(color: active ? c.signal : c.text)),
+          child: Text(label, style: style.copyWith(color: active ? c.signal2 : c.textMuted, fontWeight: FontWeight.w600)),
         ),
       ),
     );
@@ -196,11 +199,11 @@ class VigilScaffold extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Semantics(header: true, child: Text(title.toUpperCase(), style: t.section)),
+                Semantics(header: true, child: Text(title, style: t.section)),
                 if (subtitle != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text(subtitle!.toUpperCase(), style: t.micro.copyWith(color: c.textFaint)),
+                    child: Text(subtitle!, style: t.meta.copyWith(color: c.textMuted)),
                   ),
               ],
             ),
@@ -231,7 +234,7 @@ class VigilScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: stealth ? c.stealth : c.ground,
       extendBody: tab != null,
-      body: stealth ? content : GridBackground(child: content),
+      body: content,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: tab == null ? null : VigilNavBar(current: tab!, onSelected: onTab ?? (_) {}),
     );
