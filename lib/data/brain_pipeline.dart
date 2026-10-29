@@ -422,7 +422,7 @@ AgentPlan? _delete(String q, BrainFacts f) {
   if (best.length > 1) return _plan('That matches more than one thing. Say which: the task, the event or the protocol.', const <Map<String, dynamic>>[]);
   final String type = best.first.$1;
   final String name = best.first.$2.name;
-  final String kind = type == 'delete_objective' ? 'objective' : (type == 'delete_event' ? 'event' : 'protocol');
+  final String kind = type == 'delete_objective' ? 'task' : (type == 'delete_event' ? 'event' : 'protocol');
   return _plan('Deleted $name.', <Map<String, dynamic>>[
     <String, dynamic>{'type': type, (type == 'delete_protocol' ? 'name' : 'title'): name, 'ask': 'Delete the $kind "$name"? Say yes to confirm.'},
   ]);

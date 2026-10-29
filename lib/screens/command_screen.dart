@@ -8,6 +8,7 @@ import '../app/providers.dart';
 import '../data/inbox.dart';
 import '../data/models.dart';
 import '../data/store.dart';
+import '../data/assistant.dart';
 import '../services/drive_sync.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
@@ -27,6 +28,35 @@ class CommandScreen extends ConsumerStatefulWidget {
 class _CommandScreenState extends ConsumerState<CommandScreen> {
   String? _resolved; // confirmation text replacing the intel card body
   DateTime? _resolvedAt;
+  final TextEditingController _quick = TextEditingController();
+
+  @override
+  void dispose() {
+    _quick.dispose();
+    super.dispose();
+  }
+
+  /// The quick-add bar: the exact rules file a clear command as a task, spend, note or water straight away (with
+  /// Undo); anything else is handed to K.
+  void _quickAdd(String text) {
+    final String q = text.trim();
+    if (q.isEmpty) return;
+    final VigilStore s = ref.read(storeProvider);
+    final ChatMsg? m = Assistant(s).quick(q);
+    _quick.clear();
+    FocusScope.of(context).unfocus();
+    if (m == null) {
+      ref.read(pendingPromptProvider.notifier).state = q;
+      context.go('/vigil');
+      return;
+    }
+    if (m.diff != null) {
+      Haptics.strike();
+      ThunderFx.strike(context);
+      SfxService.play(Sfx.clear);
+    }
+    showVigilSnack(context, m.text, action: m.undoable ? 'Undo' : null, onAction: m.onUndo);
+  }
 
   void _resolve(String text) => setState(() {
         _resolved = text;
@@ -55,13 +85,12 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
               SizedBox(
                 height: VigilSize.touch,
                 child: Row(children: <Widget>[
-                  const VigilEmblem(size: 28),
+                  const KBadge(size: 32),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                      Text('K', style: t.button.copyWith(fontSize: 13, letterSpacing: 3.4)),
-                      const SizedBox(height: 2),
-                      Text('● SYSTEMS NOMINAL', style: t.micro.copyWith(color: c.signal)),
+                      Text('K', style: t.section.copyWith(fontSize: 18)),
+                      Text('● Systems nominal', style: t.micro.copyWith(color: c.success)),
                     ]),
                   ),
                   VigilIconButton(
@@ -75,23 +104,28 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                 ]),
               ),
               const SizedBox(height: 18),
-              Text('${Fmt.dayStamp(now)} · ${Fmt.time(now)} IST', style: t.meta.copyWith(color: c.textFaint, letterSpacing: 1.3, fontSize: 12)),
+              Text('${Fmt.dayStamp(now)} · ${Fmt.time(now)}', style: t.meta.copyWith(color: c.textMuted)),
               const SizedBox(height: 6),
               Text(s.nickname.isEmpty ? '${Fmt.greeting(now)}.' : '${Fmt.greeting(now)}, ${s.nickname}.', style: t.h1),
               const SizedBox(height: 6),
               Text.rich(TextSpan(style: t.body.copyWith(color: c.textMuted), children: <InlineSpan>[
-                TextSpan(text: '$open tasks open. '),
-                if (crit > 0) TextSpan(text: '$crit critical', style: TextStyle(color: c.critical)),
-                if (crit > 0) const TextSpan(text: '. '),
-                TextSpan(text: next == null ? 'Nothing else scheduled today.' : 'Next op in ${next.startMin - (now.hour * 60 + now.minute)} min.'),
+                TextSpan(text: open == 0 ? 'No open tasks.' : '$open ${open == 1 ? 'task' : 'tasks'} open'),
+                if (crit > 0) TextSpan(text: ', $crit urgent', style: TextStyle(color: c.critical)),
+                if (open > 0) const TextSpan(text: '.'),
               ])),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+              Row(children: <Widget>[
+                Expanded(child: VigilField(controller: _quick, hint: 'Add a task, expense, note or water…', semanticLabel: 'Quick add', onSubmitted: _quickAdd, onChanged: (_) => setState(() {}))),
+                const SizedBox(width: 8),
+                CircleButton(size: 48, semanticLabel: 'Add', onPressed: _quick.text.trim().isEmpty ? null : () => _quickAdd(_quick.text), child: VigilIcon(VigilIcons.arrowRight, color: c.onSignal)),
+              ]),
+              const SizedBox(height: 16),
               if (showBriefing) ...<Widget>[
                 VigilCard(
                   onTap: () => context.push('/briefing'),
                   semanticLabel: 'Open dawn briefing',
                   child: Row(children: <Widget>[
-                    Text('DAWN BRIEFING READY', style: t.label.copyWith(color: c.signal)),
+                    Text('Morning briefing is ready', style: t.rowTitle),
                     const Spacer(),
                     VigilIcon(VigilIcons.chevronRight, size: 18, color: c.textMuted),
                   ]),
@@ -99,7 +133,6 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                 const SizedBox(height: 12),
               ],
               VigilCard(
-                brackets: true,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
                   ListenableBuilder(
                     listenable: DriveSync.instance,
@@ -135,11 +168,12 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
               const SizedBox(height: 12),
               _intel(context, s, now),
               const SizedBox(height: 12),
-              _nextOp(context, s, next, now),
+              if (next != null) ...<Widget>[_nextOp(context, s, next, now), const SizedBox(height: 12)],
+              _todayTasks(context, s),
               const SizedBox(height: 12),
               Row(children: <Widget>[
                 for (final (VigilIcons icon, String label, Color? tint, VoidCallback action, VoidCallback? long) in <(VigilIcons, String, Color?, VoidCallback, VoidCallback?)>[
-                  (VigilIcons.deepOps, 'Focus', c.signal, () => context.push('/deep-ops'), null),
+                  (VigilIcons.deepOps, 'Focus', c.violet, () => context.push('/deep-ops'), null),
                   (VigilIcons.plus, 'Capture', null, () => showCaptureSheet(context), null),
                   (VigilIcons.water, 'Water', c.steel, () => _water(250), () => _water(500)),
                   (VigilIcons.vault, 'Expense', null, () => showCaptureSheet(context, type: 'spend'), null),
@@ -162,7 +196,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
                             VigilIcon(icon, color: tint ?? c.text),
                             const SizedBox(height: 7),
-                            Text(label, style: t.micro.copyWith(color: c.text)),
+                            Text(label, style: t.meta.copyWith(color: c.text)),
                           ]),
                         ),
                       ),
@@ -211,7 +245,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
     }
     if (conflict != null) {
       return IntelCard(
-        tag: 'K · ALERT',
+        tag: 'K · Alert',
         tone: IntelTone.alert,
         time: Fmt.time(now),
         message: '${conflict.$1.title} overlaps ${conflict.$2.title} by ${conflict.$1.endMin - conflict.$2.startMin} min${conflict.$1.clashWith(conflict.$2) == null ? '' : ' (${conflict.$1.clashWith(conflict.$2)})'}. Recommend moving ${conflict.$2.title}.',
@@ -219,31 +253,60 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
       );
     }
     final Block? nb = s.nextBlock(now);
-    return IntelCard(time: Fmt.time(now), message: nb == null ? 'All clear.' : 'All clear. Next op ${Fmt.hm(nb.startMin)}.');
+    return IntelCard(time: Fmt.time(now), message: nb == null ? 'All clear.' : 'All clear. Next up at ${Fmt.hm(nb.startMin)}.');
   }
 
-  Widget _nextOp(BuildContext context, VigilStore s, Block? next, DateTime now) {
+  /// The open tasks, a few at a time, so the screen is never empty. Ticking one off is the same strike as in Plan.
+  Widget _todayTasks(BuildContext context, VigilStore s) {
     final c = context.vigil;
     final t = context.vtype;
-    String title, meta, big;
-    if (next != null) {
-      final int mins = next.startMin - (now.hour * 60 + now.minute);
-      title = next.title;
-      meta = '${Fmt.hm(next.startMin)}–${Fmt.hm(next.endMin)} · MEET · ${next.attendees} ATTENDEES';
-      big = '$mins';
-    } else if (s.open.isNotEmpty) {
-      final Objective o = s.open.first;
-      title = o.title;
-      meta = o.meta;
-      big = '—';
-    } else {
-      title = 'Nothing scheduled';
-      meta = 'ALL CLEAR';
-      big = '—';
-    }
+    final List<Objective> list = s.open.take(4).toList();
+    return VigilCard(
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Row(children: <Widget>[
+          Expanded(child: Text('Today\'s tasks', style: t.title)),
+          VigilButton(label: 'See all', variant: VigilButtonVariant.ghost, size: VigilButtonSize.small, onPressed: () => context.go('/ops/objectives')),
+        ]),
+        if (list.isEmpty)
+          Padding(padding: const EdgeInsets.only(bottom: 8, right: 8), child: Text('No open tasks. Clear skies.', style: t.caption.copyWith(color: c.textMuted)))
+        else
+          for (final Objective o in list)
+            Row(children: <Widget>[
+              VigilCheckbox(
+                value: o.done,
+                critical: o.threat == Threat.crit,
+                semanticLabel: o.title,
+                onChanged: (bool v) {
+                  s.toggleObjective(o.id, true);
+                  Haptics.strike();
+                  ThunderFx.strike(context);
+                  SfxService.play(Sfx.clear);
+                },
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                  Text(o.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.rowTitle),
+                  Text(o.meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.caption.copyWith(color: c.textFaint)),
+                ]),
+              ),
+              const SizedBox(width: 8),
+            ]),
+      ]),
+    );
+  }
+
+  Widget _nextOp(BuildContext context, VigilStore s, Block next, DateTime now) {
+    final c = context.vigil;
+    final t = context.vtype;
+    final int mins = next.startMin - (now.hour * 60 + now.minute);
+    final String title = next.title;
+    final String meta = '${Fmt.hm(next.startMin)}–${Fmt.hm(next.endMin)}${next.attendees > 0 ? ' · ${next.attendees} attendees' : ''}';
+    final String big = '$mins';
     return VigilCard(
       onTap: () => context.go('/ops/timeline'),
-      semanticLabel: 'Next op: $title',
+      semanticLabel: 'Next: $title',
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: <Widget>[
         Container(
@@ -251,16 +314,17 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
           padding: const EdgeInsets.only(right: 12),
           decoration: BoxDecoration(border: Border(right: BorderSide(color: c.line))),
           child: Column(children: <Widget>[
-            Text('T–MIN', style: t.micro.copyWith(color: c.textFaint)),
-            Text(big, style: t.metric.copyWith(color: c.signal)),
+            Text('min', style: t.micro.copyWith(color: c.textFaint)),
+            Text(big, style: t.metric.copyWith(color: c.signal2)),
           ]),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Text('Next up', style: t.label.copyWith(color: c.textMuted)),
             Text(title, style: t.rowTitle.copyWith(fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 3),
-            Text(meta, style: t.meta.copyWith(color: c.textFaint, fontSize: 12)),
+            const SizedBox(height: 2),
+            Text(meta, style: t.meta.copyWith(color: c.textFaint)),
           ]),
         ),
         VigilIcon(VigilIcons.chevronRight, size: 18, color: c.textMuted),

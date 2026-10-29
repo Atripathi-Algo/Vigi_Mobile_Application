@@ -120,6 +120,19 @@ class Assistant {
     return lines.join(' ');
   }
 
+  /// Rules only, for the quick-add bar: applies a command the exact rules recognise and returns its reply, or null when
+  /// they do not (the caller then hands the text to K) or when the change needs a Confirm first.
+  ChatMsg? quick(String text) {
+    final DateTime now = DateTime.now();
+    final Decision? d = decideWithoutModel(text.trim(), factsFromStore(store, now));
+    if (d == null || d.source != DecisionSource.rules) return null;
+    final AgentPlan plan = d.plan!;
+    if (plan.actions.any((AgentAction a) => kConfirmActions.contains(a.type))) return null;
+    final ChatMsg m = _apply(plan, null, now);
+    m.source = ReplySource.instant;
+    return m;
+  }
+
   /// [onPartial] gets the words of an on-device answer as they are written.
   Future<ChatMsg> reply(String text, {void Function(String partial)? onPartial}) async {
     final String q = text.toLowerCase().trim();
@@ -158,7 +171,9 @@ class Assistant {
       if (gated != null) {
         _pending = plan;
         _pendingAt = now;
-        return tag(msg('${gated.args['ask'] ?? 'Are you sure? Say yes to confirm.'}'), ReplySource.instant);
+        final ChatMsg ask = tag(msg('${gated.args['ask'] ?? 'Are you sure? Say yes to confirm.'}'), ReplySource.instant);
+        ask.confirm = true;
+        return ask;
       }
       return tag(_apply(plan, null, now), ReplySource.instant);
     }

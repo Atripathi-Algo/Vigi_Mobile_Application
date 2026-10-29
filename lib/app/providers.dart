@@ -22,6 +22,9 @@ final Provider<VaultAuth> vaultAuthProvider = Provider<VaultAuth>((Ref ref) => D
 
 final Provider<Assistant> assistantProvider = Provider<Assistant>((Ref ref) => Assistant(ref.read(storeProvider)));
 
+/// Text handed to K from elsewhere (the quick-add bar on Today): the K tab sends it when it opens.
+final StateProvider<String?> pendingPromptProvider = StateProvider<String?>((Ref ref) => null);
+
 /// Wall clock, ticking every 30 s so greetings and T-minus counters stay fresh.
 final StreamProvider<DateTime> clockProvider = StreamProvider<DateTime>((Ref ref) async* {
   yield DateTime.now();

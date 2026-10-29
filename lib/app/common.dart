@@ -19,9 +19,12 @@ void showVigilSnack(BuildContext context, String message, {String? action, VoidC
   final ScaffoldMessengerState m = ScaffoldMessenger.of(context);
   m.hideCurrentSnackBar();
   m.showSnackBar(SnackBar(
-    content: Text(message.toUpperCase(), style: context.vtype.meta.copyWith(color: context.vigil.text, fontSize: 12)),
+    // The snackbar is dark in both themes, so its text is always light.
+    content: Text(message, style: context.vtype.body.copyWith(color: const Color(0xFFF1F2FF), fontSize: 13.5)),
     duration: const Duration(seconds: 4),
-    action: action == null ? null : SnackBarAction(label: action, textColor: context.vigil.signal, onPressed: onAction ?? () {}),
+    // A snackbar with an action stays until dismissed unless told not to (Flutter 3.29+): these are short notices.
+    persist: false,
+    action: action == null ? null : SnackBarAction(label: action, textColor: VigilPalette.signal2, onPressed: onAction ?? () {}),
   ));
 }
 

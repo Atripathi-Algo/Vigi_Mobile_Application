@@ -466,6 +466,9 @@ class ChatMsg {
   bool undoable;
   bool undone;
 
+  /// The reply is a question that waits for Confirm or Cancel (a deletion). Not saved.
+  bool confirm = false;
+
   /// Instant (rules), from your data (router), on-device AI (model) or cloud. Null for system notes.
   ReplySource? source;
 

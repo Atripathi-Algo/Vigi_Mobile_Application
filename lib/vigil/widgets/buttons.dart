@@ -232,6 +232,44 @@ class OctagonButton extends StatelessWidget {
   }
 }
 
+/// A round gradient action button (send, mic). The K octagon stays the one hard shape.
+class CircleButton extends StatelessWidget {
+  const CircleButton({super.key, required this.onPressed, required this.semanticLabel, required this.child, this.size = 52});
+
+  final VoidCallback? onPressed;
+  final String semanticLabel;
+  final Widget child;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.vigil;
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: ShapeDecoration(gradient: KGradients.primary, shape: const CircleBorder(), shadows: c.actionShadow),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onPressed == null
+                ? null
+                : () {
+                    Haptics.tap();
+                    onPressed!();
+                  },
+            child: SizedBox.square(dimension: size, child: Center(child: child)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The K button content: the white K mark on the gradient octagon.
 class CoreEmblem extends StatelessWidget {
   const CoreEmblem({super.key});

@@ -152,24 +152,44 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     final t = context.vtype;
     final bool empty = s.chat.isEmpty;
     final String status = switch (_voice.state) {
-      VoiceState.idle => _voice.error ?? 'TAP THE ORB OR MIC AND SPEAK',
-      VoiceState.listening => _voice.partial.isEmpty ? 'LISTENING…' : _voice.partial,
-      VoiceState.thinking => 'THINKING…',
-      VoiceState.speaking => 'SPEAKING · TAP THE ORB TO STOP',
+      VoiceState.idle => _voice.error ?? 'Tap the orb or mic and speak',
+      VoiceState.listening => _voice.partial.isEmpty ? 'Listening…' : _voice.partial,
+      VoiceState.thinking => 'Thinking…',
+      VoiceState.speaking => 'Speaking · tap the orb to stop',
     };
+    final Color statusColor = _voice.error != null && _voice.state == VoiceState.idle ? c.critical : c.textMuted;
+    JarvisOrb orb(double size) => JarvisOrb(
+          state: _voice.state,
+          level: _voice.level,
+          color: c.violet,
+          size: size,
+          crackle: !empty,
+          onTap: () => _voice.state == VoiceState.idle ? _listen() : _voice.stopAll(),
+        );
+    // Once there is a conversation the orb shrinks to a header row, so messages get the room.
+    if (!empty) {
+      return Column(children: <Widget>[
+        Row(children: <Widget>[
+          orb(56),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: t.caption.copyWith(color: statusColor)),
+              const SizedBox(height: 2),
+              _brainLine(context, center: false),
+            ]),
+          ),
+          VigilFilterChip(label: 'Hands-free', selected: _handsFree, onTap: () => setState(() => _handsFree = !_handsFree)),
+        ]),
+        if (_micNeeded) _micCard(context),
+      ]);
+    }
     return Column(children: <Widget>[
-      JarvisOrb(
-        state: _voice.state,
-        level: _voice.level,
-        color: c.signal,
-        size: empty ? 150 : 104,
-        crackle: true,
-        onTap: () => _voice.state == VoiceState.idle ? _listen() : _voice.stopAll(),
-      ),
+      orb(150),
       const SizedBox(height: 4),
-      Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: t.micro.copyWith(color: _voice.error != null && _voice.state == VoiceState.idle ? c.critical : c.textFaint, fontSize: 10)),
+      Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: t.caption.copyWith(color: statusColor)),
       const SizedBox(height: 6),
-      SizedBox(width: 170, child: VigilFilterChip(label: 'HANDS-FREE', selected: _handsFree, onTap: () => setState(() => _handsFree = !_handsFree))),
+      VigilFilterChip(label: 'Hands-free', selected: _handsFree, onTap: () => setState(() => _handsFree = !_handsFree)),
       const SizedBox(height: 6),
       _brainLine(context),
       if (_micNeeded) _micCard(context),
@@ -177,28 +197,35 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
   }
 
   /// One line about K's brain: warm, asleep, off, or not installed (with a way to get it).
-  Widget _brainLine(BuildContext context) {
+  Widget _brainLine(BuildContext context, {bool center = true}) {
     final c = context.vigil;
     final t = context.vtype;
     final LocalBrain b = ref.watch(brainProvider);
+    if (b.status == BrainStatus.notInstalled && !center) {
+      return Row(children: <Widget>[
+        Flexible(child: Text('AI model not installed', style: t.micro.copyWith(color: c.textFaint))),
+        const SizedBox(width: 4),
+        VigilButton(label: 'Download', variant: VigilButtonVariant.ghost, size: VigilButtonSize.small, onPressed: () => context.push('/loadout/brain')),
+      ]);
+    }
     if (b.status == BrainStatus.notInstalled) {
       return Container(
         margin: const EdgeInsets.only(top: 4, bottom: 4),
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        decoration: BoxDecoration(border: Border.all(color: c.lineStrong), color: c.surface),
+        decoration: BoxDecoration(border: Border.all(color: c.lineStrong), color: c.surface, borderRadius: BorderRadius.circular(KRadius.field)),
         child: Row(children: <Widget>[
-          Expanded(child: Text('$kAssistantName\'S BRAIN ISN\'T INSTALLED · COMMANDS AND YOUR DATA STILL WORK', style: t.micro.copyWith(color: c.textMuted, fontSize: 10))),
+          Expanded(child: Text('The AI model is not installed. Commands and your data still work.', style: t.caption.copyWith(color: c.textMuted))),
           const SizedBox(width: 8),
           VigilButton(label: 'Download', variant: VigilButtonVariant.secondary, onPressed: () => context.push('/loadout/brain')),
         ]),
       );
     }
-    if (!b.enabled) return Text('BRAIN OFF · INSTANT AND YOUR DATA ONLY', style: t.micro.copyWith(color: c.textFaint, fontSize: 10));
+    if (!b.enabled) return Text('AI model off · instant answers and your data only', style: t.micro.copyWith(color: c.textFaint));
     final bool warm = b.loaded;
-    return Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-      Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: warm ? VigilPalette.success : Colors.transparent, border: Border.all(color: warm ? VigilPalette.success : c.textFaint))),
+    return Row(mainAxisAlignment: center ? MainAxisAlignment.center : MainAxisAlignment.start, children: <Widget>[
+      Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: warm ? c.success : Colors.transparent, border: Border.all(color: warm ? c.success : c.textFaint))),
       const SizedBox(width: 6),
-      Text(warm ? 'BRAIN WARM · FREES MEMORY IN ${b.idleMinutes} MIN' : 'BRAIN ASLEEP · WAKES WHEN YOU ASK', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
+      Flexible(child: Text(warm ? 'AI model ready · frees memory in ${b.idleMinutes} min' : 'AI model off · loads when needed', style: t.micro.copyWith(color: c.textFaint))),
     ]);
   }
 
@@ -208,7 +235,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(border: Border.all(color: c.signal), color: c.surface),
+      decoration: BoxDecoration(border: Border.all(color: c.violet), color: c.surface, borderRadius: BorderRadius.circular(KRadius.card)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
         Text('Microphone needed to talk to $kAssistantName', style: t.rowTitle),
         const SizedBox(height: 4),
@@ -233,9 +260,9 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Text('$kAssistantName · ANSWERING', style: t.label.copyWith(color: c.signal)),
+          Text('$kAssistantName · answering', style: t.label.copyWith(color: c.violet)),
           const SizedBox(height: 4),
-          Semantics(liveRegion: true, child: Text('$_stream▍', style: t.body.copyWith(color: VigilPalette.textMuted))),
+          Semantics(liveRegion: true, child: Text('$_stream▍', style: t.body.copyWith(color: c.textMuted))),
           const SizedBox(height: 6),
           Row(children: <Widget>[const _SourceTag(ReplySource.model), const Spacer(), cancel]),
         ]),
@@ -262,7 +289,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(children: <Widget>[
-        Expanded(child: Text('$kAssistantName · THINKING…', style: t.label.copyWith(color: c.signal))),
+        Expanded(child: Text('$kAssistantName · thinking…', style: t.label.copyWith(color: c.violet))),
         if (b.status == BrainStatus.busy) cancel,
       ]),
     );
@@ -281,14 +308,14 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
     Widget row(String tag, String text) => Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            SizedBox(width: 96, child: Text(tag, style: t.micro.copyWith(color: c.signal, fontSize: 10))),
+            SizedBox(width: 110, child: Text(tag, style: t.label.copyWith(color: c.violet))),
             Expanded(child: Text(text, style: t.caption.copyWith(color: c.textMuted))),
           ]),
         );
     return SingleChildScrollView(
       child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
         const SizedBox(height: 10),
-        Text('STANDING BY', style: t.micro.copyWith(color: c.signal)),
+        Text('Standing by', style: t.label.copyWith(color: c.violet)),
         const SizedBox(height: 4),
         Text('I\'m $kAssistantName.', style: t.h2),
         const SizedBox(height: 6),
@@ -304,9 +331,9 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
             SizedBox(width: (MediaQuery.sizeOf(context).width - 48 - 8) / 2, child: VigilFilterChip(label: chip.key, selected: false, onTap: chip.value)),
         ]),
         const SizedBox(height: 14),
-        row('INSTANT', 'Clear commands, under 50 ms'),
-        row('YOUR DATA', 'Water, sleep, spend, calendar'),
-        row('ON-DEVICE', 'Open chat, 10–20 s'),
+        row('Done instantly', 'Clear commands, under 50 ms'),
+        row('From your data', 'Water, sleep, spend, calendar'),
+        row('AI answer', 'Open chat, 10–20 s'),
       ]),
     );
   }
@@ -315,21 +342,38 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
         if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: VigilMotion.sheet, curve: VigilMotion.curve);
       });
 
+  void _fill(String text) => setState(() {
+        _ctl.text = text;
+        _ctl.selection = TextSelection.collapsed(offset: text.length);
+      });
+
   @override
   Widget build(BuildContext context) {
     final c = context.vigil;
     final VigilStore s = ref.watch(storeProvider);
     final bool cloudOn = s.toggles['cloudAi'] == true && Env.hasCloudAi;
-    final List<String> chips = <String>[
-      'Plan my day',
-      if (s.overdueCount > 0) 'What\'s overdue?' else 'Sleep tonight',
-      'Week report',
+    // Text handed over by the quick-add bar on Today.
+    final String? pending = ref.watch(pendingPromptProvider);
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(pendingPromptProvider.notifier).state = null;
+        _send(pending);
+      });
+    }
+    // Suggestions that fit what is on this phone now: questions are sent, commands are put in the box to finish.
+    final Block? firstEvent = s.todayBlocks.where((Block b) => b.kind == BlockKind.event && b.src == null).firstOrNull;
+    final List<(String, bool)> chips = <(String, bool)>[
+      (s.overdueCount > 0 ? 'What\'s overdue?' : 'What\'s on today?', true),
+      if (s.effectiveBudgetPaise > 0) ('How much budget is left?', true) else ('Spent 200 on ', false),
+      if (firstEvent != null) ('Move ${firstEvent.title.toLowerCase()} to ', false) else ('Remind me to ', false),
+      if (s.healthOn) ('Log a glass of water', true),
     ];
 
     return VigilScaffold(
       title: kAssistantName,
-      subtitle: _local ? '● LOCAL · ${(_model ?? 'MINICPM5-1B').toUpperCase()}' : (_cloud ? '● CLOUD${_model == null ? '' : ' · ${_model!.toUpperCase()}'}' : (cloudOn ? '● ONLINE · CLOUD READY' : (LocalBrain.instance.usable ? '● LOCAL · READY' : '● ON-DEVICE RULES'))),
-      leading: const VigilEmblem(size: 30),
+      subtitle: _local ? 'On this phone · ${_model ?? 'MiniCPM5-1B'}' : (_cloud ? 'Cloud${_model == null ? '' : ' · $_model'}' : (cloudOn ? 'Cloud ready' : (LocalBrain.instance.usable ? 'On this phone · ready' : 'Instant commands and your data'))),
+      mark: true,
       actions: <Widget>[VigilIconButton(icon: VigilIcons.history, semanticLabel: 'History', onPressed: () => showVigilSnack(context, '${s.chat.length} messages this session'))],
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         _orbHeader(context, s),
@@ -349,21 +393,15 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
         if (s.chat.isNotEmpty)
           SizedBox(
             height: 44,
-            child: ListView(scrollDirection: Axis.horizontal, children: <Widget>[for (final String x in chips) Padding(padding: const EdgeInsets.only(right: 8), child: VigilFilterChip(label: x, selected: false, onTap: () => _send(x)))]),
+            child: ListView(scrollDirection: Axis.horizontal, children: <Widget>[for (final (String, bool) x in chips) Padding(padding: const EdgeInsets.only(right: 8), child: VigilFilterChip(label: x.$1.trim(), selected: false, onTap: () => x.$2 ? _send(x.$1) : _fill(x.$1)))]),
           ),
         const SizedBox(height: 8),
         Padding(
           padding: EdgeInsets.only(bottom: tabBottomPad(context) - 12),
           child: Row(children: <Widget>[
-            SizedBox(
-              width: 44,
-              height: 52,
-              child: Semantics(button: true, label: 'Attach', child: InkWell(onTap: () => showVigilSnack(context, 'Attachments are not supported yet'), child: Container(decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.lineStrong)), child: Center(child: VigilIcon(VigilIcons.plus, size: 18, color: c.textMuted))))),
-            ),
-            const SizedBox(width: 8),
             Expanded(child: VigilField(controller: _ctl, hint: 'Ask $kAssistantName or give a command…', semanticLabel: 'Command $kAssistantName', height: 52, onSubmitted: _send, onChanged: (_) => setState(() {}))),
             const SizedBox(width: 8),
-            OctagonButton(size: 52, semanticLabel: _ctl.text.trim().isEmpty ? (_voice.state == VoiceState.listening ? 'Stop listening' : 'Speak') : 'Send', onPressed: () => _ctl.text.trim().isEmpty ? _listen() : _send(_ctl.text), child: VigilIcon(_ctl.text.trim().isEmpty ? VigilIcons.voice : VigilIcons.arrowRight, color: c.onSignal)),
+            CircleButton(size: 52, semanticLabel: _ctl.text.trim().isEmpty ? (_voice.state == VoiceState.listening ? 'Stop listening' : 'Speak') : 'Send', onPressed: () => _ctl.text.trim().isEmpty ? _listen() : _send(_ctl.text), child: VigilIcon(_ctl.text.trim().isEmpty ? VigilIcons.voice : VigilIcons.arrowRight, color: c.onSignal)),
           ]),
         ),
       ]),
@@ -381,7 +419,11 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
           margin: const EdgeInsets.only(bottom: 12),
           constraints: BoxConstraints(maxWidth: w * 0.82),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: c.surfaceHigh, border: Border.all(color: c.lineStrong)),
+          decoration: BoxDecoration(
+            color: c.surface,
+            border: Border.all(color: c.line),
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(18), topRight: Radius.circular(18), bottomLeft: Radius.circular(18), bottomRight: Radius.circular(6)),
+          ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[Text(m.text, style: t.body), const SizedBox(height: 4), Text(Fmt.time(m.at), style: t.micro.copyWith(color: c.textFaint))]),
         ),
       );
@@ -394,31 +436,40 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
           margin: const EdgeInsets.only(bottom: 12),
           constraints: BoxConstraints(maxWidth: w * 0.92),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text('$kAssistantName · ${Fmt.time(m.at)}', style: t.label.copyWith(color: m.alert ? c.critical : c.signal)),
+            Text('$kAssistantName · ${Fmt.time(m.at)}', style: t.label.copyWith(color: m.alert ? c.critical : c.violet)),
             if (m.source != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Row(children: <Widget>[
                   _SourceTag(m.source!),
-                  if (m.ms != null && (m.source == ReplySource.instant || m.source == ReplySource.data)) Padding(padding: const EdgeInsets.only(left: 8), child: Text('${m.ms} ms', style: t.micro.copyWith(color: c.textFaint, fontSize: 10))),
+                  if (m.ms != null && (m.source == ReplySource.instant || m.source == ReplySource.data)) Padding(padding: const EdgeInsets.only(left: 8), child: Text('${m.ms} ms', style: t.meta.copyWith(color: c.textFaint))),
                 ]),
               ),
             const SizedBox(height: 4),
             Text(m.text, style: t.body),
             if (m.diff != null) ...<Widget>[
               const SizedBox(height: 8),
-              CornerBrackets(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.line)),
-                  child: Column(children: <Widget>[
-                    for (final (String, String) r in m.diff!)
-                      Row(children: <Widget>[SizedBox(width: 84, child: Text(r.$1, style: t.micro.copyWith(color: c.signal))), Expanded(child: Text(m.undone ? 'UNDONE' : r.$2, style: t.meta.copyWith(color: c.text)))]),
-                    if (m.undoable && !m.undone)
-                      Align(alignment: Alignment.centerRight, child: VigilButton(label: 'Undo', variant: VigilButtonVariant.secondary, onPressed: () => _undo(m))),
-                  ]),
-                ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: c.raised, border: Border.all(color: c.line), borderRadius: BorderRadius.circular(16), boxShadow: c.cardShadow),
+                child: Column(children: <Widget>[
+                  for (final (String, String) r in m.diff!)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[SizedBox(width: 90, child: Text(r.$1, style: t.label.copyWith(color: c.violet))), Expanded(child: Text(m.undone ? 'Undone' : r.$2, style: t.meta.copyWith(color: c.text)))]),
+                    ),
+                  if (m.undoable && !m.undone)
+                    Align(alignment: Alignment.centerRight, child: VigilButton(label: 'Undo', size: VigilButtonSize.small, variant: VigilButtonVariant.secondary, onPressed: () => _undo(m))),
+                ]),
               ),
+            ],
+            if (m.confirm && !_busy && s.chat.isNotEmpty && identical(s.chat.last, m)) ...<Widget>[
+              const SizedBox(height: 10),
+              Row(children: <Widget>[
+                VigilButton(label: 'Confirm', variant: VigilButtonVariant.critical, size: VigilButtonSize.small, onPressed: () => _send('yes')),
+                const SizedBox(width: 8),
+                VigilButton(label: 'Cancel', variant: VigilButtonVariant.secondary, size: VigilButtonSize.small, onPressed: () => _send('no')),
+              ]),
             ],
             if (m.route != null) ...<Widget>[
               const SizedBox(height: 8),
@@ -426,13 +477,13 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
             ],
             if (m.note != null) ...<Widget>[
               const SizedBox(height: 6),
-              Text(m.note!, style: t.micro.copyWith(color: m.note!.contains('failed') ? c.critical : c.textFaint, fontSize: 10)),
+              Text(m.note!, style: t.caption.copyWith(color: m.note!.contains('failed') ? c.critical : c.textFaint)),
             ],
             if (m.chart != null) ...<Widget>[
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.line)),
+                decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.line), borderRadius: BorderRadius.circular(16)),
                 child: Column(children: <Widget>[
                   MiniBars(values: m.chart!, colors: <Color>[for (int i = 0; i < m.chart!.length; i++) i == m.chart!.length - 1 ? c.signal : c.steel], height: 48, gap: 6, semanticLabel: 'Seven day chart'),
                   const SizedBox(height: 4),
@@ -466,18 +517,18 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
       builder: (BuildContext ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
           ListTile(
-            title: const Text('COPY'),
+            title: const Text('Copy'),
             onTap: () {
               Clipboard.setData(ClipboardData(text: m.text));
               Navigator.pop(ctx);
             },
           ),
           ListTile(
-            title: const Text('WHY?'),
+            title: const Text('Why this answer?'),
             subtitle: Text(_why(m), style: ctx.vtype.caption),
             onTap: () => Navigator.pop(ctx),
           ),
-          ListTile(title: const Text('REPORT'), onTap: () => Navigator.pop(ctx)),
+          ListTile(title: const Text('Report'), onTap: () => Navigator.pop(ctx)),
         ]),
       ),
     );
@@ -493,22 +544,23 @@ class _SourceTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.vtype;
+    final c = context.vigil;
     final (IconData icon, String label, Color color) = switch (source) {
-      ReplySource.instant => (Icons.bolt, 'INSTANT', VigilPalette.signal),
-      ReplySource.data => (Icons.dataset_outlined, 'FROM YOUR DATA', VigilPalette.success),
-      ReplySource.model => (Icons.memory, 'ON-DEVICE AI', VigilPalette.steel),
-      ReplySource.cloud => (Icons.cloud_outlined, 'CLOUD', VigilPalette.warning),
+      ReplySource.instant => (Icons.bolt, 'Done instantly', c.signal2),
+      ReplySource.data => (Icons.dataset_outlined, 'From your data', c.success),
+      ReplySource.model => (Icons.memory, 'AI answer', c.violet),
+      ReplySource.cloud => (Icons.cloud_outlined, 'Cloud', c.warning),
     };
     return Semantics(
       label: 'Answered by: $label',
       excludeSemantics: true,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(border: Border.all(color: color.withValues(alpha: 0.6))),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(border: Border.all(color: color.withValues(alpha: 0.5)), color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(KRadius.pill)),
         child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 13, color: color),
           const SizedBox(width: 4),
-          Text(label, style: t.micro.copyWith(color: color, fontSize: 9.5)),
+          Text(label, style: t.micro.copyWith(color: color, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
