@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/vigil_colors.dart';
 import '../theme/vigil_tokens.dart';
 import 'hud.dart';
+import 'press.dart';
 
 /// Base card: card fill, 1 dp line border, radius 18, soft violet shadow in light.
 /// [brackets] makes it the screen's one "hot card" (gradient edge and bolt watermark).
@@ -43,6 +44,7 @@ class VigilCard extends StatelessWidget {
         ),
       ),
     );
+    if (onTap != null) card = PressScale(child: card);
     if (brackets) card = CornerBrackets(color: bracketColor, child: card);
     if (semanticLabel != null || onTap != null) {
       card = Semantics(container: true, button: onTap != null, label: semanticLabel, child: card);

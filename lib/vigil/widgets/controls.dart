@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/vigil_colors.dart';
 import '../theme/vigil_tokens.dart';
+import 'thunder.dart';
 import 'vigil_icon.dart';
 import '../../services/haptics.dart';
 
@@ -74,8 +75,10 @@ class VigilCheckbox extends StatelessWidget {
         onTap: onChanged == null
             ? null
             : () {
+                ThunderFx.noteTap(context);
                 Haptics.tick();
                 onChanged!(!value);
+                if (!value) ThunderFx.spark(context);
               },
         child: SizedBox.square(
           dimension: VigilSize.touch,

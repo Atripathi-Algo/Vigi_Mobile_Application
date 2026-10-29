@@ -93,11 +93,11 @@ void main() {
 
     test('settings switch from chat, undo restores them, and security settings are refused', () async {
       final ChatMsg m = await say('turn off haptics');
-      expect(store.toggles['haptics'], isFalse);
+      expect(store.effectsLevel, 0);
       m.onUndo!();
-      expect(store.toggles['haptics'], isTrue);
+      expect(store.effectsLevel, 2);
       await say('disable thunder effects');
-      expect(store.toggles['effects'], isFalse);
+      expect(store.effectsLevel, 0);
       final ChatMsg refused = await say('turn off vault lock');
       expect(store.toggles['vaultLock'], isTrue);
       expect(refused.text, contains('Settings'));

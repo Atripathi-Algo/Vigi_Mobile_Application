@@ -15,6 +15,7 @@ import '../services/google_accounts.dart';
 import '../services/health.dart';
 import '../services/local_brain.dart';
 import '../services/notifications.dart';
+import '../services/haptics.dart';
 import '../services/sfx.dart';
 import '../services/steps.dart';
 import '../vigil/vigil.dart';
@@ -161,8 +162,25 @@ class LoadoutScreen extends ConsumerWidget {
         head('Sounds'),
         RowList(children: <Widget>[
           toggleRow('sfx', 'Sound effects', 'Thunder cues · original audio'),
-          toggleRow('haptics', 'Haptics', 'Ticks and taps that mirror the sounds'),
-          toggleRow('effects', 'Thunder effects', 'Lightning flashes and storm glow'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+              Text('Effects', style: t.label.copyWith(color: c.textMuted)),
+              const SizedBox(height: 6),
+              VigilSegmented<int>(
+                segments: const <(int, String)>[(0, 'Off'), (1, 'Subtle'), (2, 'Full')],
+                selected: s.effectsLevel,
+                onSelected: (int v) {
+                  s.setEffects(v);
+                  ThunderFx.level = v;
+                  Haptics.level = v;
+                  Haptics.tap();
+                },
+              ),
+              const SizedBox(height: 6),
+              Text('Subtle keeps sparks, transitions, rolling numbers and haptic ticks. Full adds lightning and the storm glow. Off turns all of it, and haptics, off.', style: t.caption.copyWith(color: c.textFaint)),
+            ]),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
@@ -188,7 +206,7 @@ class LoadoutScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
                 for (final Sfx e in Sfx.values)
-                  VigilButton(label: e.name, variant: VigilButtonVariant.secondary, onPressed: () => _preview(context, 'sfx_${e.name}', volume: SfxService.volume)),
+                  VigilButton(label: '${e.name[0].toUpperCase()}${e.name.substring(1)}', variant: VigilButtonVariant.secondary, onPressed: () => _preview(context, 'sfx_${e.name}', volume: SfxService.volume)),
               ]),
             ]),
           ),
@@ -198,7 +216,7 @@ class LoadoutScreen extends ConsumerWidget {
               Text('Preview alert sounds', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-                for (final (String, String) a in const <(String, String)>[('k_critical', 'critical'), ('k_ops', 'ops'), ('k_sleep', 'sleep'), ('k_brief', 'briefing'), ('k_soft', 'soft')])
+                for (final (String, String) a in const <(String, String)>[('k_critical', 'Critical'), ('k_ops', 'Task'), ('k_sleep', 'Sleep'), ('k_brief', 'Briefing'), ('k_soft', 'Soft')])
                   VigilButton(label: a.$2, variant: VigilButtonVariant.accent, onPressed: () => _preview(context, a.$1)),
               ]),
             ]),

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/vigil_colors.dart';
 import '../theme/vigil_tokens.dart';
 import 'hud.dart';
+import 'press.dart';
+import 'thunder.dart';
 import 'vigil_icon.dart';
 import '../../services/haptics.dart';
 
@@ -102,6 +104,7 @@ class VigilButton extends StatelessWidget {
         child: InkWell(
         onTap: enabled
             ? () {
+                ThunderFx.noteTap(context);
                 Haptics.tick();
                 onPressed!();
               }
@@ -121,6 +124,7 @@ class VigilButton extends StatelessWidget {
       ),
     );
 
+    button = PressScale(enabled: enabled, child: button);
     if (expand) button = SizedBox(width: double.infinity, child: button);
 
     return Semantics(
@@ -248,7 +252,8 @@ class CircleButton extends StatelessWidget {
       button: true,
       label: semanticLabel,
       excludeSemantics: true,
-      child: Material(
+      child: PressScale(
+        child: Material(
         color: Colors.transparent,
         shape: const CircleBorder(),
         clipBehavior: Clip.antiAlias,
@@ -265,6 +270,7 @@ class CircleButton extends StatelessWidget {
             child: SizedBox.square(dimension: size, child: Center(child: child)),
           ),
         ),
+      ),
       ),
     );
   }

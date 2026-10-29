@@ -3,9 +3,31 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../theme/vigil_tokens.dart';
+import 'thunder.dart';
 
 /// Ops readiness ring (Command, widgets): 7 px arc from 12 o'clock,
 /// four 5 px compass ticks, value + caption in the middle.
+/// A number that counts up to its value (and from the old value to a new one) in 600 ms. With Effects off, or reduced
+/// motion, it just shows the value.
+class RollingNumber extends StatelessWidget {
+  const RollingNumber({super.key, required this.value, this.style, this.format});
+
+  final num value;
+  final TextStyle? style;
+  final String Function(num)? format;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool animate = ThunderFx.subtleOn && !MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: value.toDouble()),
+      duration: animate ? const Duration(milliseconds: 600) : Duration.zero,
+      curve: Curves.easeOutCubic,
+      builder: (BuildContext _, double v, Widget? __) => Text(format?.call(v) ?? v.round().toString(), style: style),
+    );
+  }
+}
+
 class ReadinessRing extends StatelessWidget {
   const ReadinessRing({
     super.key,
@@ -44,7 +66,7 @@ class ReadinessRing extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text('$value', style: t.metric.copyWith(fontSize: size * 0.31, height: 1)),
+                RollingNumber(value: value, style: t.metric.copyWith(fontSize: size * 0.31, height: 1)),
                 if (caption.isNotEmpty)
                   Text(caption, style: t.micro.copyWith(fontSize: 9, color: c.textMuted, letterSpacing: 1.4)),
               ],

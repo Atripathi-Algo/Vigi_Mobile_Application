@@ -49,8 +49,8 @@ const Set<String> kConfirmActions = <String>{'delete_objective', 'delete_event',
 /// purpose: those stay in Loadout, behind the user's own hand.
 const Map<String, String> kToggleLabels = <String, String>{
   'sfx': 'Sound effects',
-  'haptics': 'Haptics',
-  'effects': 'Thunder effects',
+  'haptics': 'Effects',
+  'effects': 'Effects',
   'spoken': 'Spoken replies',
   'dawn': 'Dawn briefing',
   'debrief': 'Night debrief',
@@ -400,6 +400,13 @@ AgentResult applyAgentPlan(VigilStore store, AgentPlan plan, {DateTime? now}) {
         final bool? on = g['on'] is bool ? g['on'] as bool : null;
         if (key == null || !kToggleLabels.containsKey(key) || on == null) {
           failed.add('That setting cannot be changed from chat.');
+          break;
+        }
+        if (key == 'haptics' || key == 'effects') {
+          // One control now: Effects, full or off.
+          final int was = store.effectsLevel;
+          store.setEffects(on ? 2 : 0);
+          done('SETTING', 'Effects ${on ? 'full' : 'off'}', () => store.setEffects(was));
           break;
         }
         final bool before = store.toggles[key] ?? false;

@@ -337,7 +337,7 @@ AgentPlan? _open(String q) {
 const Map<String, String> _toggleWords = <String, String>{
   'sound effects': 'sfx', 'sound': 'sfx', 'sounds': 'sfx', 'sfx': 'sfx',
   'haptics': 'haptics', 'haptic': 'haptics', 'vibration': 'haptics', 'vibrations': 'haptics',
-  'thunder effects': 'effects', 'effects': 'effects', 'lightning': 'effects', 'animations': 'effects',
+  'thunder effects': 'effects', 'effects': 'effects', 'lightning': 'effects', 'animations': 'effects', 'motion': 'effects',
   'spoken replies': 'spoken', 'voice replies': 'spoken', 'spoken': 'spoken', 'voice': 'spoken',
   'dawn briefing': 'dawn', 'morning briefing': 'dawn', 'briefing': 'dawn',
   'night debrief': 'debrief', 'evening debrief': 'debrief', 'debrief': 'debrief',

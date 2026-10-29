@@ -8,8 +8,8 @@ import 'package:vigil/vigil/vigil.dart';
 
 void main() {
   setUp(() {
-    ThunderFx.enabled = true;
-    Haptics.enabled = true;
+    ThunderFx.level = ThunderFx.full;
+    Haptics.level = 2;
   });
 
   Widget host({required Widget Function(BuildContext) body, bool reduceMotion = false}) => MaterialApp(
@@ -40,7 +40,7 @@ void main() {
     });
 
     testWidgets('is skipped when the user switched thunder effects off', (WidgetTester tester) async {
-      ThunderFx.enabled = false;
+      ThunderFx.level = ThunderFx.subtle;
       await tester.pumpWidget(host(body: (BuildContext context) => Center(child: ElevatedButton(onPressed: () => ThunderFx.strike(context), child: const Text('go')))));
       await tester.tap(find.text('go'));
       await tester.pump();
@@ -73,7 +73,7 @@ void main() {
     });
 
     testWidgets('stays dark when effects are off, and never takes a tap', (WidgetTester tester) async {
-      ThunderFx.enabled = false;
+      ThunderFx.level = ThunderFx.subtle;
       await tester.pumpWidget(flicker());
       await tester.pump(const Duration(milliseconds: 1050));
       await tester.pump(const Duration(milliseconds: 100));
@@ -107,7 +107,7 @@ void main() {
     });
 
     testWidgets('nothing buzzes when haptics are switched off', (WidgetTester tester) async {
-      Haptics.enabled = false;
+      Haptics.level = 0;
       Haptics.tick();
       Haptics.tap();
       Haptics.strike();
@@ -117,12 +117,19 @@ void main() {
     });
   });
 
-  test('haptics and thunder effects are on by default, and are saved', () async {
+  test('effects are full by default, and the level is saved', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final VigilStore s = await VigilStore.load();
-    expect((s.toggles['haptics'], s.toggles['effects']), (true, true));
-    s.setToggle('haptics', false);
+    expect(s.effectsLevel, 2);
+    s.setEffects(1);
     await s.reloadFromDisk();
-    expect(s.toggles['haptics'], isFalse);
+    expect(s.effectsLevel, 1);
+  });
+
+  test('older switches carry over: thunder off means Off, haptics off means Subtle', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{'toggles': '{"effects":false,"haptics":true}'});
+    expect((await VigilStore.load()).effectsLevel, 0);
+    SharedPreferences.setMockInitialValues(<String, Object>{'toggles': '{"effects":true,"haptics":false}'});
+    expect((await VigilStore.load()).effectsLevel, 1);
   });
 }

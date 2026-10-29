@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
+import '../vigil/theme/vigil_colors.dart';
+
 import '../app/brand.dart';
 import '../services/voice.dart';
 
@@ -202,7 +204,7 @@ class _OrbPainter extends CustomPainter {
     // Core
     final double coreR = r * (0.22 + 0.03 * breathe + 0.05 * e);
     canvas.drawCircle(c, coreR, Paint()..color = col.withValues(alpha: 0.18 + 0.12 * e));
-    canvas.drawCircle(c, coreR * 0.78, Paint()..shader = RadialGradient(colors: <Color>[Colors.white.withValues(alpha: 0.95), col, col.withValues(alpha: 0.6)], stops: const <double>[0, 0.45, 1]).createShader(Rect.fromCircle(center: c, radius: coreR * 0.78)));
+    canvas.drawCircle(c, coreR * 0.78, Paint()..shader = KGradients.plasma.createShader(Rect.fromCircle(center: c, radius: coreR * 0.78)));
     canvas.drawCircle(c, coreR, Paint()..style = PaintingStyle.stroke..strokeWidth = r * 0.012..color = col);
   }
 

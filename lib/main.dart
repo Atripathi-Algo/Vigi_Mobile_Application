@@ -37,8 +37,8 @@ Future<void> main() async {
   final VigilStore store = await VigilStore.load();
   void applySensory() {
     SfxService.configure(on: store.toggles['sfx'] ?? true, level: store.sfxLevel);
-    Haptics.enabled = store.toggles['haptics'] ?? true;
-    ThunderFx.enabled = store.toggles['effects'] ?? true;
+    Haptics.level = store.effectsLevel;
+    ThunderFx.level = store.effectsLevel;
   }
 
   applySensory();

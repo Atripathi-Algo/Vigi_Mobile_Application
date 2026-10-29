@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../theme/vigil_tokens.dart';
@@ -47,12 +49,17 @@ class VigilNavBar extends StatelessWidget {
             height: barHeight,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: c.navBar,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                border: Border(top: BorderSide(color: c.line)),
                 boxShadow: <BoxShadow>[BoxShadow(color: c.shadow.withValues(alpha: c.isDark ? 0.4 : 0.18), blurRadius: 30, offset: const Offset(0, -10), spreadRadius: -12)],
               ),
-              child: Padding(
+              // Glass: the one floating layer that blurs what scrolls under it (blur is costly, so only here).
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: c.navBar.withValues(alpha: c.isDark ? 0.78 : 0.86), border: Border(top: BorderSide(color: c.line))),
+                    child: Padding(
                 padding: EdgeInsets.only(left: 6, right: 6, bottom: bottom),
                 child: Row(
                   children: <Widget>[
@@ -68,6 +75,9 @@ class VigilNavBar extends StatelessWidget {
                               ),
                       ),
                   ],
+                ),
+              ),
+                  ),
                 ),
               ),
             ),

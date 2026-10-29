@@ -143,7 +143,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
           ]),
           const SizedBox(height: 10),
           Text.rich(TextSpan(children: <InlineSpan>[
-            TextSpan(text: Fmt.money(spent), style: t.hero.copyWith(fontSize: 34)),
+            WidgetSpan(alignment: PlaceholderAlignment.baseline, baseline: TextBaseline.alphabetic, child: RollingNumber(value: spent / 100, format: (num v) => Fmt.money((v * 100).round()), style: t.hero.copyWith(fontSize: 34))),
             if (hasBudget) TextSpan(text: ' / ${Fmt.money(s.effectiveBudgetPaise)}', style: t.metric.copyWith(color: c.textMuted, fontSize: 16)),
           ])),
           const SizedBox(height: 10),

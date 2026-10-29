@@ -48,6 +48,9 @@ class VigilStore extends ChangeNotifier {
 
   /// Theme: 0 light (default), 1 dark, 2 follow the system.
   int appearance = 0;
+
+  /// Effects: 0 off, 1 subtle (sparks, transitions, ticks), 2 full (adds lightning and the storm flicker).
+  int effectsLevel = 2;
   Verbosity verbosity = Verbosity.terse;
   /// The optional parts of the app the user switched on in setup: [kModuleHealth] (Health and Screen time) and
   /// [kModuleGarage]. Tasks, habits and money are always on.
@@ -74,8 +77,6 @@ class VigilStore extends ChangeNotifier {
     'notifyOps': true,
     'notifyProtocols': true,
     'sfx': true,
-    'haptics': true,
-    'effects': true,
   };
   final Map<String, bool> toggles = <String, bool>{..._defaultToggles};
   static const List<String> linkKeys = <String>['Calendar link', 'Health Connect', 'Notifications', 'Step sensor', 'Usage access', 'Exact alarms', 'Voice uplink'];
@@ -252,6 +253,8 @@ class VigilStore extends ChangeNotifier {
     if (tg != null) {
       (jsonDecode(tg) as Map<String, dynamic>).forEach((String k, dynamic v) => toggles[k] = v as bool);
     }
+    // Older builds had separate Haptics and Thunder effects switches.
+    effectsLevel = (_prefs.getInt('effectsLevel') ?? (toggles['effects'] == false ? 0 : (toggles['haptics'] == false ? 1 : 2))).clamp(0, 2);
     final String? ls = _prefs.getString('links');
     if (ls != null) {
       (jsonDecode(ls) as Map<String, dynamic>).forEach((String k, dynamic v) => linkStatus[k] = v as String);
@@ -389,6 +392,7 @@ class VigilStore extends ChangeNotifier {
       ..setInt('needMin', needMin)
       ..setInt('sfxLevel', sfxLevel)
       ..setInt('appearance', appearance)
+      ..setInt('effectsLevel', effectsLevel)
       ..setStringList('modules', modules.toList())
       ..setBool('modulesChosen', true)
       ..setString('toggles', jsonEncode(toggles))
@@ -486,6 +490,11 @@ class VigilStore extends ChangeNotifier {
 
   void setPersona(Persona p) {
     persona = p;
+    changed();
+  }
+
+  void setEffects(int i) {
+    effectsLevel = i.clamp(0, 2);
     changed();
   }
 
