@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,7 +23,16 @@ import 'shell.dart';
 
 final GlobalKey<NavigatorState> rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
-Page<void> _noAnim(Widget child, GoRouterState s) => NoTransitionPage<void>(key: s.pageKey, child: child);
+/// Sub-tab pages (Tasks / Timeline / Garage, Habits / Health) fade through in 260 ms. With the system's reduce-motion
+/// setting they switch with no animation.
+Page<void> _noAnim(Widget child, GoRouterState s) => CustomTransitionPage<void>(
+      key: s.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 260),
+      reverseTransitionDuration: const Duration(milliseconds: 200),
+      transitionsBuilder: (BuildContext context, Animation<double> a, Animation<double> b, Widget c) =>
+          MediaQuery.disableAnimationsOf(context) ? c : FadeThroughTransition(animation: a, secondaryAnimation: b, fillColor: Colors.transparent, child: c),
+    );
 
 GoRouter buildRouter(VigilStore store) {
   return GoRouter(

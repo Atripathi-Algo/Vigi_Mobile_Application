@@ -27,25 +27,25 @@ class ProtocolsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.vigil;
     final VigilStore s = ref.watch(storeProvider);
-    final DateTime now = ref.now;
     final (String, String) head = switch (view) {
-      ProtocolsView.habits => ('Protocols', '${s.protocolsDone} / ${s.protocols.length} TODAY'),
-      ProtocolsView.vitals => ('Vitals', s.healthSyncedAt == null ? 'STEPS · PHONE SENSOR' : 'HEALTH CONNECT · SYNCED ${Fmt.time(s.healthSyncedAt!)}'),
-      ProtocolsView.screen => ('Screen', 'USAGE ACCESS · DATA STAYS ON-DEVICE'),
+      ProtocolsView.habits => ('Habits', '${s.protocolsDone} of ${s.protocols.length} today'),
+      ProtocolsView.vitals => ('Health', s.healthSyncedAt == null ? 'Steps from the phone sensor' : 'Health Connect, synced ${Fmt.time(s.healthSyncedAt!)}'),
+      ProtocolsView.screen => ('Screen time', 'Usage access, data stays on this phone'),
     };
     return VigilScaffold(
       title: head.$1,
+      mark: true,
       subtitle: head.$2,
       actions: <Widget>[
         switch (view) {
-          ProtocolsView.habits => VigilIconButton(icon: VigilIcons.plus, semanticLabel: 'Add protocol', onPressed: () => showAddProtocolSheet(context, s)),
-          ProtocolsView.vitals => VigilIconButton(icon: VigilIcons.sync, semanticLabel: 'Sync vitals', onPressed: () => _syncVitals(context, s)),
+          ProtocolsView.habits => VigilIconButton(icon: VigilIcons.plus, semanticLabel: 'Add habit', onPressed: () => showAddProtocolSheet(context, s)),
+          ProtocolsView.vitals => VigilIconButton(icon: VigilIcons.sync, semanticLabel: 'Sync health', onPressed: () => _syncVitals(context, s)),
           ProtocolsView.screen => const SizedBox.shrink(),
         },
       ],
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<ProtocolsView>(
-          segments: const <(ProtocolsView, String)>[(ProtocolsView.habits, 'PROTOCOLS'), (ProtocolsView.vitals, 'VITALS'), (ProtocolsView.screen, 'SCREEN')],
+          segments: const <(ProtocolsView, String)>[(ProtocolsView.habits, 'Habits'), (ProtocolsView.vitals, 'Health'), (ProtocolsView.screen, 'Screen time')],
           selected: view,
           onSelected: (ProtocolsView v) => context.go('/protocols/${v.name == 'habits' ? 'habits' : v.name}'),
         ),
@@ -113,14 +113,14 @@ class ProtocolsScreen extends ConsumerWidget {
       ]),
       const SizedBox(height: 8),
       if (s.protocols.isEmpty)
-        const EmptyState(message: 'No protocols yet. Tap + to add one.')
+        const EmptyState(message: 'No habits yet. Tap + to add one.')
       else
         RowList(children: <Widget>[
           for (final Protocol p in s.protocols)
             InkWell(
               onTap: () => showAddProtocolSheet(context, s, edit: p),
               onLongPress: () async {
-                if (await confirmDelete(context, title: 'DELETE PROTOCOL?', message: '${p.name} and its streak are removed.')) s.removeProtocol(p.id);
+                if (await confirmDelete(context, title: 'Delete habit?', message: '${p.name} and its streak are removed.')) s.removeProtocol(p.id);
               },
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 58),

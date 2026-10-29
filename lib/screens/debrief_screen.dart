@@ -85,11 +85,11 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
               if (s.weekLevels.isNotEmpty)
                 SizedBox(
                   width: 110,
-                  child: MiniBars(values: <double>[for (final int l in s.weekLevels) l.toDouble()], colors: <Color>[for (int i = 0; i < 7; i++) i == 6 ? c.signal : c.lineStrong], height: 44, gap: 4, semanticLabel: 'Protocols done each of the last seven days'),
+                  child: MiniBars(values: <double>[for (final int l in s.weekLevels) l.toDouble()], colors: <Color>[for (int i = 0; i < 7; i++) i == 6 ? c.signal : c.lineStrong], height: 44, gap: 4, semanticLabel: 'Habits done each of the last seven days'),
                 ),
             ]),
             const SizedBox(height: 6),
-            Text(s.weekLevels.isNotEmpty ? 'PROTOCOLS · LAST 7 DAYS' : 'FROM OBJECTIVES, PROTOCOLS, FOCUS AND WATER', style: t.meta.copyWith(color: c.textMuted)),
+            Text(s.weekLevels.isNotEmpty ? 'Habits, last 7 days' : 'From tasks, habits, focus and water', style: t.meta.copyWith(color: c.textMuted)),
           ]),
         ),
         const SizedBox(height: 12),
@@ -104,13 +104,13 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
         ),
         const SizedBox(height: 12),
         Row(children: <Widget>[
-          Expanded(child: _metric(context, 'Objectives', '${s.cleared.length}/${s.objectivesToday}', obj / 100)),
+          Expanded(child: _metric(context, 'Tasks', '${s.cleared.length}/${s.objectivesToday}', obj / 100)),
           const SizedBox(width: 8),
-          Expanded(child: _metric(context, 'Protocols', '${s.protocolsDone}/${s.protocols.length}', prot / 100)),
+          Expanded(child: _metric(context, 'Habits', '${s.protocolsDone}/${s.protocols.length}', prot / 100)),
         ]),
         const SizedBox(height: 8),
         Row(children: <Widget>[
-          Expanded(child: _metric(context, 'Deep ops', Fmt.durCompact(s.focusTodayMin), focus / 100)),
+          Expanded(child: _metric(context, 'Focus', Fmt.durCompact(s.focusTodayMin), focus / 100)),
           const SizedBox(width: 8),
           Expanded(child: _metric(context, 'Hydration', '${Fmt.litres(s.waterMl)} L', water / 100, color: c.steel)),
         ]),
@@ -142,7 +142,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
               ),
           ]),
         const SizedBox(height: 16),
-        Text('TOMORROW · FIRST OBJECTIVE', style: t.label.copyWith(color: c.textFaint)),
+        Text('Tomorrow, first task', style: t.label.copyWith(color: c.textFaint)),
         const SizedBox(height: 8),
         VigilCard(
           onTap: candidates.isEmpty ? null : () => _pickFirst(context, candidates),
@@ -151,7 +151,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
             height: 52,
             child: Row(children: <Widget>[
               if (first != null) ...<Widget>[ThreatTag(first.threat, width: 54), const SizedBox(width: 12)],
-              Expanded(child: Text(first?.title ?? 'No open objectives', style: t.rowTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(child: Text(first?.title ?? 'No open tasks', style: t.rowTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
               VigilIcon(VigilIcons.chevronDown, size: 18, color: c.textMuted),
             ]),
           ),

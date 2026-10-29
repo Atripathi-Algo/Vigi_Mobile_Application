@@ -41,7 +41,7 @@ const List<_Group> _groups = <_Group>[
   _Group(
     'ai',
     'Cloud AI',
-    'Lets Uplink answer open-ended questions. Used only when Cloud AI is switched on in Loadout. Sends only your question, and earlier cloud answers, to the provider. Your tasks, sleep and spending are never sent.',
+    'Lets K answer open-ended questions. Used only when Cloud AI is switched on in Settings. Sends only your question, and earlier cloud answers, to the provider. Your tasks, sleep and spending are never sent.',
     <_KeyField>[
       _KeyField('CLOUD_AI_API_KEY', 'API key', hint: 'paste your key', secret: true),
       _KeyField('CLOUD_AI_MODEL', 'Model', hint: 'blank = provider default'),
@@ -53,7 +53,7 @@ const List<_Group> _groups = <_Group>[
   _Group(
     'cal',
     'Google Calendar',
-    'A public calendar only: an API key cannot read a private one. For private calendars link your Google accounts in Loadout instead. Use the full calendar id, for example you@gmail.com.',
+    'A public calendar only: an API key cannot read a private one. For private calendars link your Google accounts in Settings instead. Use the full calendar id, for example you@gmail.com.',
     <_KeyField>[
       _KeyField('GOOGLE_CALENDAR_API_KEY', 'API key', secret: true),
       _KeyField('GOOGLE_CALENDAR_ID', 'Calendar id', hint: 'you@gmail.com'),
@@ -294,7 +294,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
           await PushService.init();
           final String st = PushService.status.value;
           out = switch (st) {
-            'LINKED' => 'Connected. Copy the device token from Loadout.',
+            'LINKED' => 'Connected. Copy the device token from Settings.',
             'RESTART' => 'Saved. Restart the app to switch Firebase projects.',
             'OFF' => 'Fill in API key, app id, sender id and project id.',
             _ => 'Status: $st. Check the values against the Firebase console.',

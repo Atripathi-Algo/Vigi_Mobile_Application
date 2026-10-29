@@ -360,7 +360,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       const SizedBox(height: 8),
       Text('Welcome to $kAssistantName.', style: t.h1, textAlign: TextAlign.center),
       const SizedBox(height: 10),
-      Text('Personal ops, under your command. I run on this phone: free, offline, private.', style: t.body.copyWith(color: c.textMuted), textAlign: TextAlign.center),
+      Text('Your day, handled. I run on this phone: free, offline, private.', style: t.body.copyWith(color: c.textMuted), textAlign: TextAlign.center),
       const SizedBox(height: 18),
       Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: <Widget>[_chip('On-device'), _chip('No server'), _chip('Private')]),
       const SizedBox(height: 32),
@@ -466,7 +466,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           const SizedBox(height: 6),
           Text(f == null ? '' : '${Fmt.dayStamp(f.modified)} · ${Fmt.time(f.modified)}', style: t.title),
           const SizedBox(height: 6),
-          Text('Includes your objectives, notes, protocols, water, expenses, bills, budget, settings and the $kAssistantName chat log. API keys are never in a backup.', style: t.caption.copyWith(color: c.textMuted)),
+          Text('Includes your tasks, notes, habits, water, expenses, bills, budget, settings and the $kAssistantName chat log. API keys are never in a backup.', style: t.caption.copyWith(color: c.textMuted)),
         ]),
       ),
       const SizedBox(height: 10),
@@ -686,7 +686,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       const SizedBox(height: 22),
       VigilButton(label: 'Open $kAssistantName', size: VigilButtonSize.large, expand: true, icon: VigilIcons.arrowRight, onPressed: _finish),
       const SizedBox(height: 10),
-      Center(child: Text('Re-open this guide any time: Loadout › Run $kAssistantName setup again.', style: t.micro.copyWith(color: c.textFaint), textAlign: TextAlign.center)),
+      Center(child: Text('Re-open this guide any time: Settings › Run $kAssistantName setup again.', style: t.micro.copyWith(color: c.textFaint), textAlign: TextAlign.center)),
     ]);
   }
 }

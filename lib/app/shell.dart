@@ -22,7 +22,7 @@ class AppShell extends StatelessWidget {
       child: Scaffold(
         extendBody: true,
         backgroundColor: context.vigil.ground,
-        body: StormFlicker(child: shell),
+        body: StormFlicker(child: _TabSwitch(index: shell.currentIndex, child: shell)),
         bottomNavigationBar: VigilNavBar(
           current: VigilTab.values[shell.currentIndex],
           onSelected: (VigilTab t) {
@@ -31,6 +31,54 @@ class AppShell extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// A short shared-axis feel when the tab changes: the incoming tab fades in while sliding 4 % from the side it
+/// is on. The tabs stay mounted (they are an indexed stack), so only the wrapper animates. Skipped with
+/// reduce-motion.
+class _TabSwitch extends StatefulWidget {
+  const _TabSwitch({required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  State<_TabSwitch> createState() => _TabSwitchState();
+}
+
+class _TabSwitchState extends State<_TabSwitch> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 240), value: 1);
+  int _dir = 1;
+
+  @override
+  void didUpdateWidget(_TabSwitch old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index && !MediaQuery.disableAnimationsOf(context)) {
+      _dir = widget.index > old.index ? 1 : -1;
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (BuildContext context, Widget? child) {
+        final double t = Curves.easeOutCubic.transform(_c.value);
+        return Opacity(
+          opacity: 0.35 + 0.65 * t,
+          child: Transform.translate(offset: Offset(_dir * (1 - t) * 0.04 * MediaQuery.sizeOf(context).width, 0), child: child),
+        );
+      },
     );
   }
 }

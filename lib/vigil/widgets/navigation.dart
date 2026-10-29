@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/vigil_tokens.dart';
 import 'buttons.dart';
+import 'hud.dart';
 import 'vigil_icon.dart';
 
 /// Primary tabs. Index 2 is the raised core VIGIL button (assistant).
@@ -19,11 +20,11 @@ class VigilNavBar extends StatelessWidget {
   final ValueChanged<VigilTab> onSelected;
 
   static const List<(VigilTab, VigilIcons?, String)> _items = <(VigilTab, VigilIcons?, String)>[
-    (VigilTab.command, VigilIcons.command, 'COMMAND'),
-    (VigilTab.ops, VigilIcons.ops, 'OPS'),
+    (VigilTab.command, VigilIcons.command, 'Today'),
+    (VigilTab.ops, VigilIcons.ops, 'Plan'),
     (VigilTab.vigil, null, 'K'),
-    (VigilTab.protocols, VigilIcons.protocols, 'PROTOCOLS'),
-    (VigilTab.vault, VigilIcons.vault, 'VAULT'),
+    (VigilTab.protocols, VigilIcons.protocols, 'Habits'),
+    (VigilTab.vault, VigilIcons.vault, 'Money'),
   ];
 
   @override
@@ -169,6 +170,7 @@ class VigilScaffold extends StatelessWidget {
     this.onTab,
     this.floatingActionButton,
     this.stealth = false,
+    this.mark = false,
   });
 
   final String title;
@@ -185,6 +187,9 @@ class VigilScaffold extends StatelessWidget {
   /// Deep Ops / immersive screens use the darker stealth ground, no grid.
   final bool stealth;
 
+  /// Tab roots show the K badge before the title.
+  final bool mark;
+
   @override
   Widget build(BuildContext context) {
     final c = context.vigil;
@@ -193,7 +198,7 @@ class VigilScaffold extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: VigilSize.touch),
       child: Row(
         children: <Widget>[
-          if (leading != null) ...<Widget>[leading!, const SizedBox(width: 12)],
+          if (leading != null) ...<Widget>[leading!, const SizedBox(width: 12)] else if (mark) ...<Widget>[const KBadge(), const SizedBox(width: 12)],
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

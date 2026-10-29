@@ -92,7 +92,7 @@ class GarageView extends ConsumerWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
               Text('${longMonths[now.month - 1].toUpperCase()} FUEL · ${s.bikes.length == 1 ? s.bikes.first.name.toUpperCase() : 'BOTH BIKES'}', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 2),
-              Text(fuel.litres == 0 ? 'No fill-ups yet this month' : '${_l(fuel.litres)} L · ${_rs(fuel.paise)} · counted in Vault › Transport', style: t.caption.copyWith(color: c.textMuted)),
+              Text(fuel.litres == 0 ? 'No fill-ups yet this month' : '${_l(fuel.litres)} L · ${_rs(fuel.paise)} · counted in Money › Transport', style: t.caption.copyWith(color: c.textMuted)),
             ]),
           ),
           VigilButton(label: 'Fill-up', icon: VigilIcons.plus, onPressed: () => showFillUpSheet(context, s)),
@@ -240,7 +240,7 @@ class BikeScreen extends ConsumerWidget {
                 child: Row(children: <Widget>[
                   Icon(Icons.warning_amber_rounded, size: 22, color: c.critical),
                   const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('${overdue.r.title} overdue', style: t.rowTitle), Text('It is in Ops as a critical objective', style: t.caption.copyWith(color: c.textFaint))])),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('${overdue.r.title} overdue', style: t.rowTitle), Text('It is in Plan as an urgent task', style: t.caption.copyWith(color: c.textFaint))])),
                   VigilButton(label: overdue.r.kind.isPaper ? 'Renew' : 'Done', variant: VigilButtonVariant.critical, onPressed: () => overdue.r.kind.isPaper ? showReminderSheet(context, s, bike, reminder: overdue.r) : s.markReminderDone(bike.id, overdue.r.id)),
                 ]),
               ),
@@ -323,7 +323,7 @@ class BikeScreen extends ConsumerWidget {
                 for (final FillUp f in fills.take(8))
                   InkWell(
                     onLongPress: () async {
-                      if (await confirmDelete(context, title: 'DELETE FILL-UP?', message: 'Removes this fill-up and its ₹ from Vault › Transport.')) s.removeFillUp(f.id);
+                      if (await confirmDelete(context, title: 'DELETE FILL-UP?', message: 'Removes this fill-up and its ₹ from Money › Transport.')) s.removeFillUp(f.id);
                     },
                     child: SizedBox(
                       height: 44,
@@ -354,7 +354,7 @@ class BikeScreen extends ConsumerWidget {
                 label: 'Delete this bike',
                 variant: VigilButtonVariant.ghost,
                 onPressed: () async {
-                  if (!await confirmDelete(context, title: 'DELETE ${bike.name.toUpperCase()}?', message: 'Removes the bike, its reminders and its fill-ups, including their ₹ in Vault › Transport. This cannot be undone.')) return;
+                  if (!await confirmDelete(context, title: 'DELETE ${bike.name.toUpperCase()}?', message: 'Removes the bike, its reminders and its fill-ups, including their ₹ in Money › Transport. This cannot be undone.')) return;
                   s.removeBike(bike.id);
                   if (context.mounted) context.pop();
                 },
@@ -616,7 +616,7 @@ class _FillUpState extends State<_FillUp> {
         ),
       if (paise != null) ...<Widget>[
         const SizedBox(height: 8),
-        Text('Adds ${_rs(paise)} to Vault › Transport${budget > 0 ? ' · budget ${(((widget.store.monthSpentPaise + paise) / budget) * 100).round()} %' : ''}', style: t.caption.copyWith(color: c.textMuted)),
+        Text('Adds ${_rs(paise)} to Money › Transport${budget > 0 ? ' · budget ${(((widget.store.monthSpentPaise + paise) / budget) * 100).round()} %' : ''}', style: t.caption.copyWith(color: c.textMuted)),
       ],
       const SizedBox(height: 14),
       VigilButton(label: 'Save fill-up', size: VigilButtonSize.large, expand: true, onPressed: _ok ? _save : null),
@@ -733,7 +733,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
         VigilSegmented<int>(segments: const <(int, String)>[(100, '100 KM'), (300, '300 KM'), (500, '500 KM')], selected: _headsUp, onSelected: (int v) => setState(() => _headsUp = v)),
       ],
       const SizedBox(height: 8),
-      Text('When it is due it lands in Ops as an objective, and clearing it there marks the job done.', style: t.caption.copyWith(color: c.textMuted)),
+      Text('When it is due it lands in Plan as a task, and clearing it there marks the job done.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),
       Row(children: <Widget>[
         if (old != null && !_paper) VigilButton(label: 'Mark done', variant: VigilButtonVariant.secondary, onPressed: () {

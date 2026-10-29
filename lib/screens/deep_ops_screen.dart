@@ -204,12 +204,12 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
       },
       child: VigilScaffold(
         stealth: true,
-        title: widget.workout ? 'Workout' : 'Deep ops',
-        subtitle: 'STEALTH MODE · $status',
+        title: widget.workout ? 'Workout' : 'Focus',
+        subtitle: 'Focus mode, $status',
         actions: <Widget>[
           VigilIconButton(
             icon: VigilIcons.close,
-            semanticLabel: 'Exit deep ops',
+            semanticLabel: 'Exit focus',
             onPressed: () async {
               if (await _confirmAbort() && context.mounted) {
                 _tick?.cancel();

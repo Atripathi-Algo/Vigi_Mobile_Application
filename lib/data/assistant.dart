@@ -276,6 +276,6 @@ class Assistant {
       final ChatMsg? m = await askModel();
       if (m != null) return m;
     }
-    return tag(msg('No handler for that on-device. Try: plan my day, what\'s overdue, week report, sleep, steps, or turn on Cloud AI in Loadout.'), null);
+    return tag(msg('No handler for that on-device. Try: plan my day, what\'s overdue, week report, sleep, steps, or turn on Cloud AI in Settings.'), null);
   }
 }

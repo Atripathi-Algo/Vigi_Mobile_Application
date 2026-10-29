@@ -81,11 +81,12 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
     final String subtitle = widget.garage
         ? '${s.bikes.length} ${s.bikes.length == 1 ? 'BIKE' : 'BIKES'} · $garageDue OVERDUE'
         : widget.timeline
-            ? '${Fmt.dayStamp(selDay)} · ${dayBlocks.length} OPS · ${Fmt.durCompact(focus)} FOCUS'
-            : '${s.open.length} OPEN · ${s.cleared.length} CLEARED · ${s.overdueCount} OVERDUE';
+            ? '${Fmt.dayStamp(selDay)} · ${dayBlocks.length} events · ${Fmt.durCompact(focus)} focus'
+            : '${s.open.length} open · ${s.cleared.length} done · ${s.overdueCount} overdue';
 
     return VigilScaffold(
-      title: 'Ops',
+      title: 'Plan',
+      mark: true,
       subtitle: subtitle,
       actions: <Widget>[
         if (!widget.garage)
@@ -107,7 +108,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
       floatingActionButton: widget.timeline || widget.garage ? null : const CaptureFab(type: 'objective'),
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<String>(
-          segments: const <(String, String)>[('o', 'OBJECTIVES'), ('t', 'TIMELINE'), ('g', 'GARAGE')],
+          segments: const <(String, String)>[('o', 'Tasks'), ('t', 'Timeline'), ('g', 'Garage')],
           selected: widget.garage ? 'g' : (widget.timeline ? 't' : 'o'),
           onSelected: (String v) => context.go(v == 'o' ? '/ops/objectives' : (v == 't' ? '/ops/timeline' : '/ops/garage')),
         ),
@@ -149,7 +150,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
       padding: EdgeInsets.only(bottom: tabBottomPad(context) + 60),
       children: <Widget>[
         if (_search) ...<Widget>[
-          VigilField(controller: _q, hint: 'Search objectives', semanticLabel: 'Search objectives', onChanged: (_) => setState(() {}), prefix: Padding(padding: const EdgeInsets.all(14), child: VigilIcon(VigilIcons.search, size: 18, color: c.textFaint))),
+          VigilField(controller: _q, hint: 'Search tasks', semanticLabel: 'Search tasks', onChanged: (_) => setState(() {}), prefix: Padding(padding: const EdgeInsets.all(14), child: VigilIcon(VigilIcons.search, size: 18, color: c.textFaint))),
           const SizedBox(height: 12),
         ],
         SingleChildScrollView(
@@ -163,7 +164,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
         ),
         const SizedBox(height: 14),
         if (open.isEmpty && cleared.isEmpty)
-          EmptyState(message: 'No objectives. Clear skies.', action: 'Capture', onAction: () => showCaptureSheet(context, type: 'objective'))
+          EmptyState(message: 'No tasks. Clear skies.', action: 'Capture', onAction: () => showCaptureSheet(context, type: 'objective'))
         else ...<Widget>[
           group(Threat.crit, 'CRITICAL', c.critical),
           group(Threat.high, 'HIGH', c.signal),
@@ -234,7 +235,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
               ]),
             ),
             if (o.estimate != null && !o.done)
-              VigilIconButton(icon: VigilIcons.deepOps, size: 44, semanticLabel: 'Deep ops on ${o.title}', onPressed: () => context.push('/deep-ops?objective=${o.id}'))
+              VigilIconButton(icon: VigilIcons.deepOps, size: 44, semanticLabel: 'Focus on ${o.title}', onPressed: () => context.push('/deep-ops?objective=${o.id}'))
             else
               const SizedBox(width: 10),
           ]),

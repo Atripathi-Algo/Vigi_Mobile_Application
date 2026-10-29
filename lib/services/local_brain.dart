@@ -206,7 +206,7 @@ class LocalBrain extends ChangeNotifier {
   /// Runs the model on [messages] and returns its reply text, or why there is none.
   Future<CloudReply> run(List<BrainTurn> messages, {BrainSampling sampling = const BrainSampling(), Duration timeout = const Duration(seconds: 240), bool constrained = true, Map<String, dynamic>? schema, void Function(String raw)? onPartial}) {
     if (!usable) {
-      return Future<CloudReply>.value(CloudReply.fail(_path == null ? 'K\'s brain is not downloaded yet. Get it in Loadout, K brain.' : 'K\'s brain is switched off.'));
+      return Future<CloudReply>.value(CloudReply.fail(_path == null ? 'K\'s brain is not downloaded yet. Get it in Settings, K brain.' : 'K\'s brain is switched off.'));
     }
     return _serial(() async {
       _idle?.cancel();

@@ -20,12 +20,12 @@ class ThreatTag extends StatelessWidget {
     final c = context.vigil;
     final t = context.vtype;
     final (Color bg, Color fg, Color bd, String label, String spoken) = switch (threat) {
-      Threat.crit => (c.critical.withValues(alpha: 0.12), c.critical, c.critical.withValues(alpha: 0.4), 'CRIT', 'critical'),
-      Threat.high => (c.warning.withValues(alpha: 0.12), c.warning, c.warning.withValues(alpha: 0.4), 'HIGH', 'high'),
-      Threat.routine => (Colors.transparent, c.textMuted, c.lineStrong, 'ROUTINE', 'routine'),
+      Threat.crit => (c.critical.withValues(alpha: 0.12), c.critical, c.critical.withValues(alpha: 0.4), 'Urgent', 'urgent'),
+      Threat.high => (c.warning.withValues(alpha: 0.12), c.warning, c.warning.withValues(alpha: 0.4), 'High', 'high'),
+      Threat.routine => (Colors.transparent, c.textMuted, c.lineStrong, 'Normal', 'normal'),
     };
     return Semantics(
-      label: 'Threat level $spoken',
+      label: 'Priority $spoken',
       excludeSemantics: true,
       child: Container(
         height: 22,

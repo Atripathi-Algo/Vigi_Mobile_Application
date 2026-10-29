@@ -100,7 +100,7 @@ void main() {
       expect(store.toggles['effects'], isFalse);
       final ChatMsg refused = await say('turn off vault lock');
       expect(store.toggles['vaultLock'], isTrue);
-      expect(refused.text, contains('Loadout'));
+      expect(refused.text, contains('Settings'));
       await say('turn on cloud ai');
       expect(store.toggles['cloudAi'], isFalse);
     });

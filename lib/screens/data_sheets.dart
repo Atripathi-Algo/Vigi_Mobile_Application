@@ -102,7 +102,7 @@ class _AddProtocolState extends State<_AddProtocol> {
 
   String get _summary {
     final List<String> p = <String>[
-      _name.text.trim().isEmpty ? 'Your protocol' : _name.text.trim(),
+      _name.text.trim().isEmpty ? 'Your habit' : _name.text.trim(),
       if (_unit != null && _targetValue != null) '$_targetValue ${_unit!.toLowerCase()}',
       _days.isEmpty || _days.length == 7 ? 'every day' : (_days.toList()..sort()).map((int d) => const <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d - 1]).join(' '),
       if (_remind) 'reminder ${Fmt.hm(_remindMin)}',
@@ -115,7 +115,7 @@ class _AddProtocolState extends State<_AddProtocol> {
     final c = context.vigil;
     final t = context.vtype;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text(widget.edit == null ? 'NEW PROTOCOL' : 'EDIT PROTOCOL', style: t.h2),
+      Text(widget.edit == null ? 'New habit' : 'Edit habit', style: t.h2),
       const SizedBox(height: 6),
       Text(widget.edit == null ? 'A habit you want to check off. Streaks start from today.' : 'Your streak and this week stay as they are.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),
@@ -173,7 +173,7 @@ class _AddProtocolState extends State<_AddProtocol> {
       const SizedBox(height: 12),
       Text(_summary, style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 12),
-      Align(alignment: Alignment.centerLeft, child: VigilButton(label: widget.edit == null ? 'Add protocol' : 'Save changes', onPressed: _name.text.trim().isEmpty ? null : _save)),
+      Align(alignment: Alignment.centerLeft, child: VigilButton(label: widget.edit == null ? 'Add habit' : 'Save changes', onPressed: _name.text.trim().isEmpty ? null : _save)),
     ]);
   }
 }
@@ -271,7 +271,7 @@ class _BudgetState extends State<_Budget> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
       Text('MONTHLY BUDGET', style: t.h2),
       const SizedBox(height: 6),
-      Text('Your own limit for this month\'s spending. The Ledger measures pace against it. Bills count toward it when you log them as expenses.', style: t.caption.copyWith(color: c.textMuted)),
+      Text('Your own limit for this month\'s spending. Money measures pace against it. Bills count toward it when you log them as expenses.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),
       VigilField(
         controller: _amount,

@@ -57,7 +57,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final VaultAuthResult r = await ref.read(vaultAuthProvider).unlock();
     if (!mounted) return;
     if (r == VaultAuthResult.ok || r == VaultAuthResult.unavailable) ref.read(vaultUnlocked.notifier).state = true;
-    if (r == VaultAuthResult.unavailable) showVigilSnack(context, 'No screen lock is set on this phone, so the Vault opened without a check. Set one in Android settings to protect it');
+    if (r == VaultAuthResult.unavailable) showVigilSnack(context, 'No screen lock is set on this phone, so Money opened without a check. Set one in Android settings to protect it');
     if (r == VaultAuthResult.failed) showVigilSnack(context, 'Not unlocked');
   }
 
@@ -81,7 +81,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     }
     final bool unlocked = ref.watch(vaultUnlocked) || s.toggles['vaultLock'] != true;
     return VigilScaffold(
-      title: 'Vault',
+      title: 'Money',
+      mark: true,
       subtitle: widget.log ? 'STORED ON THIS PHONE' : 'BIOMETRIC · LOCKS ON EXIT',
       actions: <Widget>[
         VigilIconButton(
@@ -93,7 +94,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       floatingActionButton: unlocked && widget.log ? const CaptureFab(type: 'note', icon: VigilIcons.edit, label: 'New note') : null,
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<bool>(
-          segments: const <(bool, String)>[(false, 'LEDGER'), (true, 'FIELD LOG')],
+          segments: const <(bool, String)>[(false, 'Budget'), (true, 'Journal')],
           selected: widget.log,
           onSelected: (bool v) => context.go(v ? '/vault/log' : '/vault/ledger'),
         ),
@@ -105,11 +106,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                   child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
                     VigilIcon(VigilIcons.vault, size: 40, color: c.textFaint),
                     const SizedBox(height: 14),
-                    Text('Vault locked.', style: t.body.copyWith(color: c.textMuted)),
+                    Text('Money is locked.', style: t.body.copyWith(color: c.textMuted)),
                     const SizedBox(height: 16),
                     VigilButton(label: 'Unlock', onPressed: _unlock),
                     const SizedBox(height: 8),
-                    Text("Uses this phone's screen lock · Loadout › Data & privacy", style: t.micro.copyWith(color: c.textFaint)),
+                    Text("Uses this phone's screen lock · Settings › Data & privacy", style: t.micro.copyWith(color: c.textFaint)),
                   ]),
                 ),
         ),
@@ -210,7 +211,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         ]),
       const SizedBox(height: 14),
       if (recent.isEmpty)
-        const EmptyState(message: 'Ledger clean. Log the first spend.')
+        const EmptyState(message: 'Nothing spent yet. Log the first expense.')
       else ...<Widget>[
         Text('RECENT', style: t.label.copyWith(color: c.textFaint)),
         const SizedBox(height: 8),

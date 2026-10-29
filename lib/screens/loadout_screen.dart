@@ -75,7 +75,7 @@ class LoadoutScreen extends ConsumerWidget {
         );
 
     return VigilScaffold(
-      title: 'Loadout',
+      title: 'Settings',
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
       body: ListView(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 28), children: <Widget>[
         VigilCard(
@@ -132,8 +132,8 @@ class LoadoutScreen extends ConsumerWidget {
             s.setLink('Notifications', ok ? 'OK' : 'DENIED');
             if (!ok && context.mounted) showVigilSnack(context, 'Allow notifications for K in system settings');
           }),
-          toggleRow('notifyOps', 'Ops reminders', 'Due in 30 min · next op in 15 min'),
-          toggleRow('notifyProtocols', 'Protocol nudges', 'Streak at risk · 20:00'),
+          toggleRow('notifyOps', 'Task reminders', 'Due in 30 min · next op in 15 min'),
+          toggleRow('notifyProtocols', 'Habit nudges', 'Streak at risk · 20:00'),
           linkRow('Send a test notification', 'Checks the critical channel', 'TEST', onTap: () async {
             await NotificationService.show('K // TEST', s.nickname.isEmpty ? 'Systems nominal.' : 'Systems nominal, ${s.nickname}.', channel: 'critical', payload: '/');
           }),
@@ -242,11 +242,11 @@ class LoadoutScreen extends ConsumerWidget {
         ]),
         head('Home screen'),
         VigilCard(
-          child: Text('Long-press the home screen, open Widgets, and add K · Objectives (4×2) or K · Readiness (2×2). Tap an objective to check it off, or +250 ML to log water, without opening the app.', style: t.caption.copyWith(color: c.textMuted)),
+          child: Text('Long-press the home screen, open Widgets, and add K · Tasks (4×2) or K · Readiness (2×2). Tap a task to check it off, or +250 ML to log water, without opening the app.', style: t.caption.copyWith(color: c.textMuted)),
         ),
         head('Data & privacy'),
         RowList(children: <Widget>[
-          toggleRow('vaultLock', 'Vault lock', 'Locks when you leave the tab'),
+          toggleRow('vaultLock', 'Money lock', 'Locks when you leave the tab'),
           SizedBox(
             height: 60,
             child: Padding(

@@ -126,6 +126,26 @@ class _GridPainter extends CustomPainter {
   bool shouldRepaint(_GridPainter old) => old.color != color || old.spacing != spacing || old.diagonal != diagonal;
 }
 
+/// The K badge for top bars: a dark octagon with a violet edge and a white K, dark on light screens too.
+class KBadge extends StatelessWidget {
+  const KBadge({super.key, this.size = 30});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: ShapeDecoration(color: const Color(0xFF1B1658), shape: VigilShapes.octagon(size, const BorderSide(color: Color(0xFF9C8CFF), width: 1.4))),
+        child: VigilEmblem(size: size * 0.72, outline: Colors.white, visor: const Color(0xFF9C8CFF), showPupil: false, semanticLabel: null),
+      ),
+    );
+  }
+}
+
 /// The K mark: octagon, a K, and a lightning bolt cut through its diagonal.
 /// Drawn in code (32 x 32 design box) so it scales crisply at any size.
 class VigilEmblem extends StatelessWidget {

@@ -119,7 +119,7 @@ class _DriveSheetState extends State<_DriveSheet> {
             Text('Your data is saved on this phone first, then copied to a hidden folder in your own Google Drive. $kAssistantName has no server.', style: t.caption.copyWith(color: c.textMuted)),
             const SizedBox(height: 14),
             if (accounts.isEmpty) ...<Widget>[
-              Text('Link a Google account first (Loadout, Google accounts).', style: t.caption.copyWith(color: c.critical)),
+              Text('Link a Google account first (Settings, Google accounts).', style: t.caption.copyWith(color: c.critical)),
             ] else if (chosen == null) ...<Widget>[
               Text('CHOOSE THE ACCOUNT FOR THE BACKUP', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),

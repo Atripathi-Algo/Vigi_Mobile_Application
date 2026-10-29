@@ -61,17 +61,17 @@ const Map<String, String> kToggleLabels = <String, String>{
 /// Screens K can take the user to: key -> (route, name).
 const Map<String, (String, String)> kScreens = <String, (String, String)>{
   'garage': ('/ops/garage', 'Garage'),
-  'objectives': ('/ops/objectives', 'Objectives'),
+  'objectives': ('/ops/objectives', 'Tasks'),
   'timeline': ('/ops/timeline', 'Timeline'),
-  'protocols': ('/protocols/habits', 'Protocols'),
-  'vitals': ('/protocols/vitals', 'Vitals'),
+  'protocols': ('/protocols/habits', 'Habits'),
+  'vitals': ('/protocols/vitals', 'Health'),
   'sleep': ('/protocols/vitals/sleep', 'Sleep'),
-  'ledger': ('/vault/ledger', 'Ledger'),
-  'notes': ('/vault/log', 'Field log'),
-  'loadout': ('/loadout', 'Loadout'),
+  'ledger': ('/vault/ledger', 'Money'),
+  'notes': ('/vault/log', 'Journal'),
+  'loadout': ('/loadout', 'Settings'),
   'inbox': ('/notifications', 'Notifications'),
-  'briefing': ('/briefing', 'Dawn briefing'),
-  'debrief': ('/debrief', 'Night debrief'),
+  'briefing': ('/briefing', 'Morning briefing'),
+  'debrief': ('/debrief', 'Evening debrief'),
   'brain': ('/loadout/brain', 'K brain'),
 };
 

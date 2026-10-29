@@ -156,20 +156,20 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
               ParsedChip(keyLabel: 'TAG', value: _draft.tag ?? 'WORK', uncertain: _draft.tag == null),
             ]),
           const SizedBox(height: 14),
-          Text('THREAT LEVEL', style: t.label.copyWith(color: c.textFaint)),
+          Text('Priority', style: t.label.copyWith(color: c.textFaint)),
           const SizedBox(height: 6),
           Row(children: <Widget>[
             for (final (Threat th, String label, Color col) in <(Threat, String, Color)>[
-              (Threat.crit, 'CRIT', c.critical),
-              (Threat.high, 'HIGH', c.signal),
-              (Threat.routine, 'ROUTINE', c.neutral),
+              (Threat.crit, 'Urgent', c.critical),
+              (Threat.high, 'High', c.warning),
+              (Threat.routine, 'Normal', c.neutral),
             ]) ...<Widget>[
               if (th != Threat.crit) const SizedBox(width: 8),
               Expanded(
                 child: Semantics(
                   button: true,
                   selected: _threat == th,
-                  label: 'Threat $label',
+                  label: 'Priority $label',
                   excludeSemantics: true,
                   child: InkWell(
                     onTap: () => setState(() => _threat = th),

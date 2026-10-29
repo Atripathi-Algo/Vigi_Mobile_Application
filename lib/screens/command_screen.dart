@@ -71,7 +71,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                     onPressed: () => context.push('/notifications'),
                   ),
                   const SizedBox(width: 8),
-                  VigilIconButton(icon: VigilIcons.loadout, semanticLabel: 'Loadout settings', onPressed: () => context.push('/loadout')),
+                  VigilIconButton(icon: VigilIcons.loadout, semanticLabel: 'Settings', onPressed: () => context.push('/loadout')),
                 ]),
               ),
               const SizedBox(height: 18),
@@ -80,10 +80,10 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
               Text(s.nickname.isEmpty ? '${Fmt.greeting(now)}.' : '${Fmt.greeting(now)}, ${s.nickname}.', style: t.h1),
               const SizedBox(height: 6),
               Text.rich(TextSpan(style: t.body.copyWith(color: c.textMuted), children: <InlineSpan>[
-                TextSpan(text: '$open objectives open. '),
+                TextSpan(text: '$open tasks open. '),
                 if (crit > 0) TextSpan(text: '$crit critical', style: TextStyle(color: c.critical)),
                 if (crit > 0) const TextSpan(text: '. '),
-                TextSpan(text: next == null ? 'No more ops today.' : 'Next op in ${next.startMin - (now.hour * 60 + now.minute)} min.'),
+                TextSpan(text: next == null ? 'Nothing else scheduled today.' : 'Next op in ${next.startMin - (now.hour * 60 + now.minute)} min.'),
               ])),
               const SizedBox(height: 18),
               if (showBriefing) ...<Widget>[
@@ -105,13 +105,13 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                     listenable: DriveSync.instance,
                     builder: (BuildContext ctx, Widget? _) {
                       final DriveSync d = DriveSync.instance;
-                      if (!d.configured) return SectionLabel('Ops readiness', trailing: 'UPD ${Fmt.time(now)}');
+                      if (!d.configured) return SectionLabel('Today\'s readiness', trailing: 'UPD ${Fmt.time(now)}');
                       return InkWell(
                         onTap: () => openSyncStatus(context, s),
                         child: Semantics(
                           button: true,
                           label: 'Drive backup: ${d.statusText()}',
-                          child: SectionLabel('Ops readiness', trailing: d.statusText(), trailingColor: syncColor(context, d.state)),
+                          child: SectionLabel('Today\'s readiness', trailing: d.statusText(), trailingColor: syncColor(context, d.state)),
                         ),
                       );
                     },
@@ -122,11 +122,11 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                     const SizedBox(width: 18),
                     Expanded(
                       child: Column(children: <Widget>[
-                        StatBar(label: 'Objectives', value: '${s.cleared.length} / ${s.objectivesToday}', fraction: s.objectivesToday == 0 ? 0 : s.cleared.length / s.objectivesToday),
+                        StatBar(label: 'Tasks', value: '${s.cleared.length} / ${s.objectivesToday}', fraction: s.objectivesToday == 0 ? 0 : s.cleared.length / s.objectivesToday),
                         const SizedBox(height: 10),
-                        StatBar(label: 'Protocols', value: '${s.protocolsDone} / ${s.protocols.length}', fraction: s.protocols.isEmpty ? 0 : s.protocolsDone / s.protocols.length),
+                        StatBar(label: 'Habits', value: '${s.protocolsDone} / ${s.protocols.length}', fraction: s.protocols.isEmpty ? 0 : s.protocolsDone / s.protocols.length),
                         const SizedBox(height: 10),
-                        StatBar(label: 'Deep ops', value: '${Fmt.durCompact(s.focusTodayMin)} / ${Fmt.durCompact(s.focusTargetMin).replaceAll('h00', 'h')}', fraction: s.focusTodayMin / s.focusTargetMin, color: c.steel),
+                        StatBar(label: 'Focus', value: '${Fmt.durCompact(s.focusTodayMin)} / ${Fmt.durCompact(s.focusTargetMin).replaceAll('h00', 'h')}', fraction: s.focusTodayMin / s.focusTargetMin, color: c.steel),
                       ]),
                     ),
                   ]),
@@ -139,12 +139,12 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
               const SizedBox(height: 12),
               Row(children: <Widget>[
                 for (final (VigilIcons icon, String label, Color? tint, VoidCallback action, VoidCallback? long) in <(VigilIcons, String, Color?, VoidCallback, VoidCallback?)>[
-                  (VigilIcons.deepOps, 'DEEP OPS', c.signal, () => context.push('/deep-ops'), null),
-                  (VigilIcons.plus, 'CAPTURE', null, () => showCaptureSheet(context), null),
-                  (VigilIcons.water, 'WATER', c.steel, () => _water(250), () => _water(500)),
-                  (VigilIcons.vault, 'EXPENSE', null, () => showCaptureSheet(context, type: 'spend'), null),
+                  (VigilIcons.deepOps, 'Focus', c.signal, () => context.push('/deep-ops'), null),
+                  (VigilIcons.plus, 'Capture', null, () => showCaptureSheet(context), null),
+                  (VigilIcons.water, 'Water', c.steel, () => _water(250), () => _water(500)),
+                  (VigilIcons.vault, 'Expense', null, () => showCaptureSheet(context, type: 'spend'), null),
                 ]) ...<Widget>[
-                  if (label != 'DEEP OPS') const SizedBox(width: 8),
+                  if (label != 'Focus') const SizedBox(width: 8),
                   Expanded(
                     child: GestureDetector(
                       onLongPress: long == null

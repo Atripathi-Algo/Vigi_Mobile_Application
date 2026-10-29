@@ -369,7 +369,7 @@ AgentPlan? _toggle(String q) {
   final String? key = _toggleWords[n];
   if (key == null) {
     if (RegExp(r'\b(vault|cloud|drive|backup|lock|key|password|biometric|fingerprint)\b').hasMatch(n)) {
-      return _plan('That is a security or data setting, so it stays in Loadout, in your hands.', const <Map<String, dynamic>>[]);
+      return _plan('That is a security or data setting, so it stays in Settings, in your hands.', const <Map<String, dynamic>>[]);
     }
     return null;
   }
