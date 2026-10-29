@@ -15,6 +15,7 @@
     <uses-permission android:name="android.permission.health.READ_WEIGHT"/>
     <uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE"/>
     <application
+        android:allowBackup="false"
         android:label="K"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

@@ -82,7 +82,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     final bool unlocked = ref.watch(vaultUnlocked) || s.toggles['vaultLock'] != true;
     return VigilScaffold(
       title: 'Vault',
-      subtitle: widget.log ? 'ENCRYPTED · ON-DEVICE' : 'BIOMETRIC · LOCKS ON EXIT',
+      subtitle: widget.log ? 'STORED ON THIS PHONE' : 'BIOMETRIC · LOCKS ON EXIT',
       actions: <Widget>[
         VigilIconButton(
           icon: widget.log ? VigilIcons.tag : VigilIcons.plus,

@@ -182,7 +182,9 @@ void main() {
         ..add(ChatMsg(fromUser: true, text: 'how much water today?', at: DateTime.now()))
         ..add(ChatMsg(fromUser: false, text: 'Hydration 0.5 of 3.0 L.', at: DateTime.now(), source: ReplySource.data))
         ..add(ChatMsg(fromUser: true, text: 'earlier open question', at: DateTime.now()))
-        ..add(ChatMsg(fromUser: false, text: 'earlier open answer', at: DateTime.now(), source: ReplySource.model))
+        ..add(ChatMsg(fromUser: false, text: 'earlier open answer', at: DateTime.now(), source: ReplySource.cloud))
+        ..add(ChatMsg(fromUser: true, text: 'on-device question', at: DateTime.now()))
+        ..add(ChatMsg(fromUser: false, text: 'on-device answer 0.5 L', at: DateTime.now(), source: ReplySource.model))
         ..add(ChatMsg(fromUser: true, text: 'what is the capital of France?', at: DateTime.now()));
       final Assistant a = Assistant(store, client: client);
       final ChatMsg m = await a.reply('what is the capital of France?');
@@ -196,7 +198,7 @@ void main() {
       expect(sys, allOf(contains('plain sentences'), isNot(contains('"actions"'))));
       final List<dynamic> contents = body['contents'] as List<dynamic>;
       expect(contents.map((dynamic c) => c['role']), <String>['user', 'model', 'user']);
-      expect(jsonEncode(body), allOf(isNot(contains('SITREP')), isNot(contains('Hydration')), isNot(contains('0.5'))));
+      expect(jsonEncode(body), allOf(isNot(contains('SITREP')), isNot(contains('Hydration')), isNot(contains('0.5')), isNot(contains('on-device'))));
       expect(contents.last['parts'][0]['text'], 'what is the capital of France?');
       expect(body['generationConfig']?['responseMimeType'], isNull);
     });

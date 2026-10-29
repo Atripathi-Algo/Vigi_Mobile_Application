@@ -24,6 +24,9 @@ String speakable(String text) {
 /// Speech in and out, using the phone's own engines: Android's speech recognition for listening and its
 /// text-to-speech voices for speaking. Both are free; the phone's recogniser may use the network unless an
 /// offline language pack is installed.
+/// Shown when the phone has no offline speech pack. Speech is never sent to the network instead.
+const String kOfflineSpeechHint = 'Offline speech is not installed on this phone. Add it in Android Settings, Google, Speech services, Offline speech recognition, or type to K instead.';
+
 class VoiceService extends ChangeNotifier {
   VoiceService();
 
@@ -78,7 +81,9 @@ class VoiceService extends ChangeNotifier {
   }
 
   /// Listens for one utterance and calls [onFinal] with it. Returns false (with [error] set) if it cannot start.
-  Future<bool> listen(void Function(String text) onFinal, {bool onDevice = false}) async {
+  /// Recognition runs on the phone ([onDevice]); it never falls back to the network recogniser, because K promises
+  /// that speech stays on the phone.
+  Future<bool> listen(void Function(String text) onFinal, {bool onDevice = true}) async {
     error = null;
     if (_state == VoiceState.listening) return true;
     await stopSpeaking();
@@ -118,7 +123,11 @@ class VoiceService extends ChangeNotifier {
   void _onError(SpeechRecognitionError e) {
     if (_state != VoiceState.listening) return;
     final bool silent = e.errorMsg == 'error_no_match' || e.errorMsg == 'error_speech_timeout';
-    if (!silent) error = 'Speech recognition error: ${e.errorMsg}';
+    if (e.errorMsg == 'error_language_not_supported' || e.errorMsg == 'error_language_unavailable') {
+      error = kOfflineSpeechHint;
+    } else if (!silent) {
+      error = 'Speech recognition error: ${e.errorMsg}';
+    }
     _deliver();
   }
 

@@ -1,0 +1,670 @@
+
+=== PAGE 1 ===
+K app audit: usability, feature map and visual
+design
+Oct 28, 2026  · ​@AAClaude4
+Summary
+K's best idea, an assistant that actually changes your data and lets you undo it, is buried
+under a control-room layout and a military vocabulary. The fix is less, not more: make the
+privacy claims true, cut 13 navigation destinations to 4 tabs plus a K button, use plain
+names, then add motion that answers what the user just did.
+The five changes that matter most, in order:
+1. Make the privacy story true. Turn off Android auto-backup, run speech recognition on
+the phone, and remove the false "Encrypted" label. These block any public release.
+2. Collapse the navigation. Four tabs (Today, Plan, Track, Money) and K as a floating
+button on every screen. Garage, journal and screen time become optional modules.
+3. Rename for humans. Objectives become Tasks, Protocols become Habits, Vault
+becomes Money, Loadout becomes Settings. Keep the Thor feel in visuals and sound,
+not in words people must learn.
+4. Make K the hero. A smaller orb, context-aware suggestion chips, a Confirm button
+instead of typing "yes", and visible on-device AI answers.
+5. Give it a motion system. Every tab and sub-tab currently switches with no transition.
+Add shared-axis transitions, glass on floating layers only, spark bursts on completion
+and a shader-lit 3D emblem.
+Keep what already works: the rules-first brain with Undo and delete confirmation, the
+colour tokens, Chakra Petch and IBM Plex type, short lightning tied to actions, and the
+respect for reduced-motion settings.
+What was reviewed
+The audit covers the repo Vigi_Mobile_Application at commit 5d8ccbe , 11 screenshots
+with demo data, and a 40-second emulator recording of K handling four commands.
+K app audit: usability, feature map and visual design
+Page 1 of 14
+
+=== PAGE 2 ===
+The app was not built or run on a phone. Flutter is not installed in this environment, so the
+tests were not run and nothing here measures real-phone speed.
+Feature inventory
+The app has 16 features spread over 5 tabs, 8 sub-tabs and 12 extra screens, so a new user
+meets 13 places to go before opening Settings. Most features are worth keeping; the
+problem is where they sit.
+Source
+Size
+Dart code in lib/
+22,357 lines, 23 screen files, 17 services
+Tests
+18 files
+Screenshots
+11 at 1080×2400
+Screen recording
+40 s, Android emulator
+Feature
+Where it lives today
+Verdict
+Tasks ("Objectives")
+Ops › Objectives
+Keep. Rename to Tasks
+Calendar and day timeline
+Ops › Timeline
+Keep. Merge with tasks into one
+Plan view with a List / Day toggle
+Bike garage
+Ops › Garage, plus a bike
+detail screen
+Keep as an optional module
+under Track
+Habits ("Protocols")
+Protocols › Protocols
+Keep. Rename to Habits
+Water, sleep, steps, weight
+Protocols › Vitals
+Keep. Collapse empty cards into
+one "Connect Health" card
+Screen time
+Protocols › Screen
+Hide. The README says usage
+stats are not built, so it always
+shows "No data"
+Budget and spending
+("Ledger")
+Vault › Ledger
+Keep as the Money tab
+K app audit: usability, feature map and visual design
+Page 2 of 14
+
+=== PAGE 3 ===
+Signs of over-engineering
+A dictionary to learn. Ops, Objectives, Threat, Protocols, Vitals, Vault, Ledger, Field log,
+Loadout, Uplink, Deep ops and Sitrep all name ordinary things.
+Shouting labels. The screens hard-code about 166 different all-caps strings in tracked
+monospace, so every card and row reads with the same weight.
+Three primary buttons at once. The K tab, the add button and the mic are all bright
+blue octagons on the chat and Ops screens.
+A score nobody can read. Readiness mixes tasks, habits, focus, water and sleep
+( store.dart:1211 ), but the Home card shows only three of those inputs. In the
+screenshot, water alone produces the 10.
+An 8-step first run. Welcome, profile, Google, restore, brain, permissions, voice and
+ready, before the user has done anything useful.
+Feature
+Where it lives today
+Verdict
+Journal and notes ("Field
+log")
+Vault › Field log
+Move. Notes go to Plan, the
+night log goes to the evening
+debrief
+Focus timer ("Deep ops")
+and workout
+Separate screen from
+Home
+Merge into Plan as a Focus
+action on a task
+Dawn briefing, night
+debrief
+Full screens plus
+notifications
+Keep. Show as cards on Today
+Notifications inbox
+Bell on Home
+Keep
+K chat and voice
+Centre tab
+Promote to a floating button on
+every screen
+Settings ("Loadout")
+9 switches, 13 links, 3 sub-
+screens
+Regroup into 5 sections, move
+developer items to Advanced
+Bank SMS parser
+Settings row "Sideload
+build only · OFF"
+Cut from the UI. Google Play
+restricts SMS permissions
+API keys, model picker,
+assistant log
+Settings sub-screens
+Move under Advanced
+Home-screen widgets
+Android launcher
+Keep. Add a voice capture
+widget
+K app audit: usability, feature map and visual design
+Page 3 of 14
+
+=== PAGE 4 ===
+28 settings rows on one Loadout screen, including OEM-specific advice ("ColorOS:
+allow auto-start") shown to every phone.
+Proposed navigation
+Four tabs and a floating K button cover every feature worth keeping. Each tab answers
+one everyday question: what's happening today, what's planned, how am I doing, and
+where's my money.
+Grey items are new or optional. Modules the user unticks in setup (bike, journal, money)
+disappear from their tab, so a student who only wants tasks and habits sees two short
+tabs, not thirteen screens.
+Ease of use
+A new user should be able to add a task by voice within 60 seconds of installing. Today the
+first run has 8 steps and every screen speaks in code names.
+proposed navigation · 4 tabs, K button, settings
+K app audit: usability, feature map and visual design
+Page 4 of 14
+
+=== PAGE 5 ===
+First run: 8 steps down to 4
+1. Name. One field, used in greetings.
+2. What should K help with? Tick modules: tasks, habits, money, health, bike. Unticked
+modules stay hidden, which removes most of the clutter for most people.
+3. One guided command. "Try saying: remind me to call Mom at 6 pm." The user sees K
+act, with Undo, in the first minute.
+4. Done. Land on Today.
+Ask for permissions when a feature first needs them: the mic on the first mic tap, Health
+Connect when Health is first opened, exact alarms when the first timed reminder is set.
+Offer the AI model download at the first open question, showing its size.
+Plain names
+The theme can keep its voice in small places, such as the "K // INTEL" card header and K's
+dry replies. Navigation labels and buttons should use words people already know.
+Today
+Proposed
+Command
+Today
+Ops
+Plan
+Objectives
+Tasks
+Threat: Critical / High / Routine
+Priority: Urgent / High / Normal
+Protocols
+Habits
+Vitals
+Health
+Vault, Ledger
+Money, Budget
+Field log
+Journal
+Deep ops
+Focus
+Loadout
+Settings
+Brain asleep · wakes when you ask
+AI model off · loads when needed
+K app audit: usability, feature map and visual design
+Page 5 of 14
+
+=== PAGE 6 ===
+K chat
+Shrink the orb. It takes about 30% of the chat screen and clips messages. Show it full
+size only when the chat is empty, then collapse it to a header pill.
+Context chips. On Money, suggest "spent 200 on lunch" and "how much is left?". On
+Plan, suggest "move standup to 7". The chips teach what K can do.
+Confirm with a button. "Say yes to confirm" should show Confirm and Cancel buttons.
+Typing or saying yes still works.
+Plain source tags. INSTANT, DATA and MODEL mean little to users. Use "Done
+instantly", "From your data" and "AI answer", with the detail on tap.
+K everywhere. Long-press the K button on any screen to talk, and release to send.
+Screen-by-screen fixes
+Screen
+Problem
+Fix
+Today
+"146 min" appears three times; the
+bottom 30% is empty
+Say the next event once; fill the space
+with today's tasks
+Today
+Readiness shows 10 with every
+visible input at zero
+Show every input that feeds the score, or
+drop the score
+Tasks
+"Send the quarterly report
+important"
+Strip priority words from titles
+( brain_pipeline.dart:78 )
+Tasks
+Filter chips run off the screen
+("NO…")
+Fewer filters, or a single filter button
+Plan
+Tasks with due times don't appear
+on the timeline
+Show them as markers on the day view
+Habits
+5% consistency on the first day
+Count only days since each habit was
+created
+Health
+Three of four cards say "No data"
+Replace them with one Connect Health
+card
+Money
+"PACE 90%" is unclear; the empty
+bills block is tall
+"Day 28 of 31"; a one-line empty state
+Money
+Reply says "30000 rupees"
+Format as ₹30,000
+( brain_pipeline.dart:438 )
+K app audit: usability, feature map and visual design
+Page 6 of 14
+
+=== PAGE 7 ===
+Trust and privacy blockers
+Three of the app's own privacy statements are false in the code, and the onboarding
+repeats one of them. A privacy-first app cannot ship with these, so they come before any
+design work.
+Screen
+Problem
+Fix
+Chat
+The diff label wraps as "OBJECTIV
+E"
+Widen the 62 px label column
+( uplink_screen.dart:416 )
+Journal
+A note repeats its title as its body;
+"0H" is unclear
+Hide a body that equals the title; write
+"just now"
+Settings
+"ColorOS" advice appears on every
+phone
+Show it only on Oppo, Realme and
+OnePlus
+Issue
+Where
+Fix
+Severity
+Android auto-backup
+is on, so all app data
+can be copied to
+Google's backup
+servers
+AndroidManifest.xml  has no
+allowBackup
+Set
+android:allowBackup="false"
+Blocker
+Speech goes to the
+network recogniser,
+yet onboarding says
+"Speech is turned
+into text on this
+phone"
+uplink_screen.dart:126 ,
+setup_screen.dart:45
+Pass onDevice: true ; if the
+offline pack is missing, prompt to
+download it
+Blocker
+Journal screen says
+"ENCRYPTED", but
+notes, journal and
+money are plain
+SharedPreferences
+vault_screen.dart:85
+Change the label now; encrypt
+the store with a key in secure
+storage later
+Blocker
+The cloud "test
+connection" sends
+the full sitrep (task
+titles, sleep, name)
+api_keys_screen.dart:284
+Send an empty sitrep
+High
+K app audit: usability, feature map and visual design
+Page 7 of 14
+
+=== PAGE 8 ===
+Once these ship, the honest claim is: "Your data stays on your phone. Cloud AI and Drive
+backup are optional and off until you turn them on."
+Features to add, and features to cut
+New features should make the core loop (say it, K does it, see it) faster, rather than add
+new places to go. Each one below lives inside an existing tab or inside K.
+Issue
+Where
+Fix
+Severity
+Cloud chat history
+includes on-device AI
+replies, which can
+contain app data
+assistant.dart ,
+_openChatHistory
+Send only earlier cloud turns
+High
+Settings says cloud
+chat "SENDS SITREP
++ QUESTION"; it now
+sends the question
+only
+loadout_screen.dart:240
+Correct the copy
+Medium
+.env  is bundled into
+the APK, so any API
+key in it ships to
+every user
+pubspec.yaml  assets
+Ship an empty .env ; users add
+their own keys
+High for
+distribution
+Release builds use
+the debug signing
+key
+README
+Create a release keystore before
+any store upload
+High for
+distribution
+Weather defaults to
+New Delhi
+coordinates
+.env.example
+Ask for a city, or use coarse
+location with permission
+Low
+Feature
+Why it helps
+Where it lives
+Effort
+One quick-add bar
+on Today
+Type or speak anything; the
+existing parser files it as a task,
+spend, note or water
+Today, top
+Small
+Search everything
+"What did I spend on fuel in
+October?" or "find the note about
+Ravi" across tasks, notes and
+spends
+K, plus a search
+icon
+Medium
+K app audit: usability, feature map and visual design
+Page 8 of 14
+
+=== PAGE 9 ===
+Cut or hide:
+Bank SMS parser. Google Play restricts SMS permissions, and the row only says
+"Sideload build only · OFF".
+Screen time tab. Hide it until usage stats are built.
+Workout mode inside Deep ops. It duplicates habits; a "Workout" habit with a timer
+covers it.
+Persona and verbosity settings. Move them to Advanced; most people never need
+them.
+Visual design
+The current design is consistent and distinctive, but flat: everything sits on one depth, at
+one weight, so nothing leads the eye. It needs hierarchy and depth more than new
+decoration.
+Feature
+Why it helps
+Where it lives
+Effort
+Weekly review card
+Each Sunday: tasks done, habit
+streaks, spend against budget,
+fuel cost, built on the phone
+Today
+Medium
+Recurring tasks and
+bills
+"Pay rent every 1st" creates a
+repeating task and a bill reminder
+Plan, Money
+Medium
+Receipt capture
+Photograph a bill; on-device text
+recognition fills amount and shop
+Money, via K
+Medium
+Spending trend
+A six-month bar chart and per-
+category budgets
+Money
+Small
+Habit templates
+One-tap starters such as "Read 20
+min" or "Walk 6,000 steps"
+Track
+Small
+Voice widget
+A home-screen button that opens
+K listening
+Launcher
+Small
+Restore from
+backup
+A clear restore flow, not only
+export
+Settings › Privacy &
+backup
+Small
+K app audit: usability, feature map and visual design
+Page 9 of 14
+
+=== PAGE 10 ===
+What works
+A real token system. Colours, type and shapes live in lib/vigil/theme , and screens
+use them consistently.
+A recognisable identity. Square cards with corner brackets, chamfered buttons, the
+octagon and signal blue on deep navy read as one product.
+Readable colour contrast. Even the faintest text colour ( #7A8FB0 ) reaches 5.6:1 on
+cards, above the 4.5:1 accessibility minimum.
+Good type pairing. Chakra Petch for headings and IBM Plex for body text suit the
+theme.
+Responsible effects. Lightning is short, tied to actions, and skipped when the phone
+asks for reduced motion.
+What holds it back
+No depth. Card surface #0C1424  is only 1.07:1 against the background #060B16 , and
+the raised surface is 1.08:1 against the card. Layers are told apart by thin borders alone,
+which is why screens feel flat.
+Tiny, shouting labels. Labels are 10–11 px uppercase monospace with wide tracking.
+They are readable in contrast but slow to scan, and there are dozens per screen.
+Every card looks equally important. The readiness card, an empty bills block and a
+settings row share the same border, bracket and caps header.
+Status colour goes unused. "Tyre · 14 days" and "Chain · 142 km" get the same grey
+whether they are due tomorrow or next year. Warning amber and critical red exist in
+the tokens but rarely appear.
+Competing bright shapes. Two or three filled blue octagons on one screen pull the eye
+away from content.
+Grid everywhere. The HUD grid behind every screen adds texture but also noise
+behind text. Keep it on Today and K, and remove it from lists and forms.
+Changes to the design system
+Area
+Today
+Proposed
+Elevation
+2 surfaces, nearly
+identical
+3 levels: background, card (+4% lightness,
+soft shadow), floating glass layer
+Smallest text
+10 px mono caps
+12 px; caps only for labels of 1–2 words
+K app audit: usability, feature map and visual design
+Page 10 of 14
+
+=== PAGE 11 ===
+Motion, 3D, sparks, lightning and glass
+Yes, the design can feel much more alive, and the gap is mostly motion, not effects. Every
+tab and sub-tab switches with NoTransitionPage  ( router.dart:25 ), only three implicit
+animations exist (all in controls.dart ), and the lightning strike is used on five screens.
+Between strikes the app is static.
+Principles
+Motion answers an action. A tap, a completed task or a K reply earns movement.
+Nothing animates on a loop except the K orb.
+One ambient effect at a time. The orb or the dawn-briefing storm, never both on
+screen.
+Glass only where things float. Blur costs GPU time per frame, so use it on the nav bar,
+sheets and dialogs, never on list items.
+Lightning is a reward. Big strikes for streak milestones and a cleared day; small sparks
+for single ticks.
+Safe by default. Flashes stay under 300 ms and never exceed three per second (the
+WCAG 2.3.1 seizure threshold). Everything respects the system reduce-motion setting.
+Frame budget. 16.7 ms per frame at 60 Hz and 8.3 ms at 120 Hz on the target phone (an
+Oppo Reno 8). Profile every effect in release mode with the Flutter DevTools
+performance view.
+Area
+Today
+Proposed
+Section
+headers
+Mono caps on every
+card
+Sentence case in Plex Sans 15 px semibold;
+mono reserved for numbers and tags
+Emphasis
+Brackets on most cards
+Brackets only on the one hero card per screen
+Status
+Mostly grey
+Amber within 7 days or 100 km, red when
+overdue
+Primary action
+Up to 3 blue octagons
+One filled octagon (K); other actions outlined
+K app audit: usability, feature map and visual design
+Page 11 of 14
+
+=== PAGE 12 ===
+The effects
+Replace the three switches (sound effects, haptics, thunder effects) with one Effects:
+Full / Subtle / Off control, plus a separate sound switch. Subtle keeps transitions and
+sparks and drops strikes and ambience.
+Effect
+Where
+How in Flutter
+Cost
+Fade-through and
+shared-axis
+transitions
+Tabs, sub-tabs, Today
+→ detail
+animations  package inside a
+go_router
+CustomTransitionPage
+Low
+Hero transitions
+Bike card → bike
+screen, task → edit
+sheet
+Hero  widgets with matching
+tags
+Low
+Glass layers
+Bottom nav, K sheet,
+capture sheet, dialogs
+BackdropFilter  blur 18–24, 6%
+ice tint, 1 px top highlight
+Medium
+Spark burst
+Task or habit ticked,
+water logged, spend
+saved
+CustomPainter , 14–20 particles,
+350 ms, gravity,
+BlendMode.plus
+Low
+Lightning v2
+Streak milestones,
+budget set, last task
+of the day
+Existing
+ThunderFx.strike(to:)  aimed
+at the element, with branching
+and a shader glow
+Low
+3D emblem and orb
+K button, chat orb,
+splash
+Fragment shader for a plasma
+core; Matrix4  perspective tilt
+of ±6° from the gyroscope
+( sensors_plus )
+Medium
+Press depth
+Cards and buttons
+3° tilt toward the finger, scale to
+0.98, 120 ms
+Low
+Rolling numbers
+Readiness, budget,
+water
+TweenAnimationBuilder
+counting up
+Low
+Storm ambience
+Dawn briefing screen
+only
+Slow cloud-noise shader capped
+at 30 fps
+Medium
+Paired haptics
+Every effect above
+The existing haptics service
+Low
+K app audit: usability, feature map and visual design
+Page 12 of 14
+
+=== PAGE 13 ===
+Starting code
+A transition for every tab route, replacing _noAnim :
+import 'package:animations/animations.dart';
+Page<void> _fade(Widget child, GoRouterState s) => CustomTransitionPage<void>
+(
+      key: s.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 260),
+      transitionsBuilder: (_, a, b, c) => FadeThroughTransition(animation: a, 
+secondaryAnimation: b, child: c),
+    );
+A glass panel for floating layers only:
+import 'dart:ui' show ImageFilter;
+class GlassPanel extends StatelessWidget {
+  const GlassPanel({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFFCFE8FF).withValues(alpha: 0.06),
+              border: Border(top: BorderSide(color: const 
+Color(0xFFCFE8FF).withValues(alpha: 0.18))),
+            ),
+            child: child,
+          ),
+        ),
+      );
+}
+For the plasma core, add a .frag  file under shaders:  in pubspec.yaml , load it with
+FragmentProgram.fromAsset , and pass time and tilt as uniforms. A shader keeps the 3D
+look at a fraction of the cost of a real 3D model.
+K app audit: usability, feature map and visual design
+Page 13 of 14
+
+=== PAGE 14 ===
+Roadmap
+Fix trust in week 1, simplify over the next three weeks, and only then add the new feel and
+features. Animation on top of a confusing layout makes the confusion louder.
+Each green diamond is a gate: the next phase starts only when its check passes. Phase 2
+needs a profiling pass on the Oppo Reno 8 in release mode before the effects ship.
+roadmap · 4 phases, 3 gates
+K app audit: usability, feature map and visual design
+Page 14 of 14

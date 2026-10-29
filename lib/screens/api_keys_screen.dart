@@ -41,7 +41,7 @@ const List<_Group> _groups = <_Group>[
   _Group(
     'ai',
     'Cloud AI',
-    'Lets Uplink answer open-ended questions. Used only when Cloud AI is switched on in Loadout. Sends your SITREP (objectives, sleep, spending totals) and the question to the provider.',
+    'Lets Uplink answer open-ended questions. Used only when Cloud AI is switched on in Loadout. Sends only your question, and earlier cloud answers, to the provider. Your tasks, sleep and spending are never sent.',
     <_KeyField>[
       _KeyField('CLOUD_AI_API_KEY', 'API key', hint: 'paste your key', secret: true),
       _KeyField('CLOUD_AI_MODEL', 'Model', hint: 'blank = provider default'),
@@ -281,7 +281,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
           if (!Env.hasCloudAi) {
             out = 'No API key set.';
           } else {
-            final CloudReply a = await askCloudDetailed('Reply with the single word: ready.', s.sitrep(DateTime.now()));
+            final CloudReply a = await askCloudDetailed('Reply with the single word: ready.', '');
             final String? text = a.text;
             out = text == null ? 'Failed. ${a.error}' : 'OK. Reply: ${text.length > 80 ? '${text.substring(0, 80)}…' : text}${a.note == null ? '' : ' Note: ${a.note}'}';
           }

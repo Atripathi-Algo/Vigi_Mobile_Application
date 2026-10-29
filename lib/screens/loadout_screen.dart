@@ -237,7 +237,7 @@ class LoadoutScreen extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.only(left: 14, right: 8),
               child: Row(children: <Widget>[
-                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Cloud AI for hard requests', style: t.rowTitle), Text(Env.hasCloudAi ? 'SENDS SITREP + QUESTION · ${Env.cloudAiProvider.toUpperCase()}' : 'ADD CLOUD_AI_API_KEY TO .ENV', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Cloud AI for hard requests', style: t.rowTitle), Text(Env.hasCloudAi ? 'SENDS ONLY YOUR QUESTION · ${Env.cloudAiProvider.toUpperCase()}' : 'ADD CLOUD_AI_API_KEY TO .ENV', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
                 VigilSwitch(
                   value: s.toggles['cloudAi'] ?? false,
                   semanticLabel: 'Cloud AI for hard requests',

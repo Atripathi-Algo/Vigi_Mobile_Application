@@ -42,7 +42,7 @@ class _Perm {
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
   static const List<_Perm> _perms = <_Perm>[
-    _Perm('mic', 'Microphone', 'So you can talk to K. Speech is turned into text on this phone.'),
+    _Perm('mic', 'Microphone', 'So you can talk to K. Speech is turned into text on this phone (offline speech pack).'),
     _Perm('notif', 'Notifications', 'Reminders, briefings and streak nudges. Critical alerts ring even in Do Not Disturb only if you allow it.'),
     _Perm('steps', 'Steps & activity', 'Counts your steps with the phone\'s own sensor. Nothing leaves the phone.'),
     _Perm('health', 'Health Connect', 'Sleep, weight and resting heart rate, read only. K never writes to it.', optional: true),

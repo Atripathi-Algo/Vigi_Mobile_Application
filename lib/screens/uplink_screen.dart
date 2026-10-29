@@ -212,7 +212,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
         Text('Microphone needed to talk to $kAssistantName', style: t.rowTitle),
         const SizedBox(height: 4),
-        Text('$kAssistantName listens only while the mic is lit. Speech is turned into text on this phone and never stored.', style: t.caption.copyWith(color: c.textMuted)),
+        Text('$kAssistantName listens only while the mic is lit. Speech is turned into text on this phone, needs the offline speech pack, and is never stored.', style: t.caption.copyWith(color: c.textMuted)),
         const SizedBox(height: 8),
         Row(children: <Widget>[
           VigilButton(label: 'Allow', onPressed: _allowMic),

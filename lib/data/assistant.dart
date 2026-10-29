@@ -53,14 +53,14 @@ class Assistant {
     return <(bool, String)>[for (final ChatMsg m in prior.skip(prior.length > 10 ? prior.length - 10 : 0)) (m.fromUser, m.text)];
   }
 
-  /// Earlier open-chat turns only (questions answered by a model), so nothing from the user's own data is sent to the cloud.
+  /// Earlier turns answered by the cloud model only. Replies from the on-device model can quote the user's own data, so they are never sent.
   List<ChatTurn> _openChatHistory(String current) {
     final List<ChatMsg> chat = store.chat;
     final List<ChatMsg> prior = chat.isNotEmpty && chat.last.fromUser && chat.last.text == current ? chat.sublist(0, chat.length - 1) : chat;
     final List<ChatTurn> out = <ChatTurn>[];
     for (int i = 0; i + 1 < prior.length; i++) {
       final ChatMsg r = prior[i + 1];
-      if (prior[i].fromUser && !r.fromUser && (r.source == ReplySource.model || r.source == ReplySource.cloud)) {
+      if (prior[i].fromUser && !r.fromUser && r.source == ReplySource.cloud) {
         out
           ..add(ChatTurn(true, prior[i].text))
           ..add(ChatTurn(false, r.text));
