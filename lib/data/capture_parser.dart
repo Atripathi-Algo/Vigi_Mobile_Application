@@ -108,7 +108,7 @@ abstract final class CaptureParser {
   }
 
   static String typeLabel(CaptureType t) => switch (t) {
-        CaptureType.obj => 'OBJECTIVE',
+        CaptureType.obj => 'TASK',
         CaptureType.event => 'EVENT',
         CaptureType.note => 'NOTE',
         CaptureType.spend => 'SPEND',

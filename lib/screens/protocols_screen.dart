@@ -45,7 +45,7 @@ class ProtocolsScreen extends ConsumerWidget {
       ],
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<ProtocolsView>(
-          segments: const <(ProtocolsView, String)>[(ProtocolsView.habits, 'Habits'), (ProtocolsView.vitals, 'Health'), (ProtocolsView.screen, 'Screen time')],
+          segments: <(ProtocolsView, String)>[(ProtocolsView.habits, 'Habits'), if (s.healthOn) ...<(ProtocolsView, String)>[(ProtocolsView.vitals, 'Health'), (ProtocolsView.screen, 'Screen time')]],
           selected: view,
           onSelected: (ProtocolsView v) => context.go('/protocols/${v.name == 'habits' ? 'habits' : v.name}'),
         ),

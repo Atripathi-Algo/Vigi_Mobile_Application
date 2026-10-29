@@ -197,7 +197,7 @@ AgentResult applyAgentPlan(VigilStore store, AgentPlan plan, {DateTime? now}) {
           _ => Threat.routine,
         };
         final VoidCallback? undo = store.commitCapture(CaptureDraft(type: CaptureType.obj, raw: title, title: title, when: due, whenLabel: _dayLabel(g['day'])), threat);
-        done('OBJECTIVE', due == null ? title : '$title · ${Fmt.hm(due)}', undo);
+        done('TASK', due == null ? title : '$title · ${Fmt.hm(due)}', undo);
       case 'add_event':
         final String? title = _str(g['title']);
         final int? start = _hm(g['start']);

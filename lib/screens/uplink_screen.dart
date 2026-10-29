@@ -413,7 +413,7 @@ class _UplinkScreenState extends ConsumerState<UplinkScreen> with WidgetsBinding
                   decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.line)),
                   child: Column(children: <Widget>[
                     for (final (String, String) r in m.diff!)
-                      Row(children: <Widget>[SizedBox(width: 62, child: Text(r.$1, style: t.micro.copyWith(color: c.signal))), Expanded(child: Text(m.undone ? 'UNDONE' : r.$2, style: t.meta.copyWith(color: c.text)))]),
+                      Row(children: <Widget>[SizedBox(width: 84, child: Text(r.$1, style: t.micro.copyWith(color: c.signal))), Expanded(child: Text(m.undone ? 'UNDONE' : r.$2, style: t.meta.copyWith(color: c.text)))]),
                     if (m.undoable && !m.undone)
                       Align(alignment: Alignment.centerRight, child: VigilButton(label: 'Undo', variant: VigilButtonVariant.secondary, onPressed: () => _undo(m))),
                   ]),

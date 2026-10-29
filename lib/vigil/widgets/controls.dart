@@ -268,22 +268,18 @@ class VigilFilterChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(KRadius.pill),
-        child: SizedBox(
-          height: VigilSize.touch,
-          child: Center(
-            widthFactor: 1,
-            child: Container(
-              height: 32,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: selected ? c.softGradient : null,
-                color: selected ? null : c.surface,
-                border: Border.all(color: selected ? c.violet : c.lineStrong),
-                borderRadius: BorderRadius.circular(KRadius.pill),
-              ),
-              child: Text(label, style: t.button.copyWith(fontSize: 12.5, fontWeight: FontWeight.w500, color: selected ? c.text : c.textMuted)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              gradient: selected ? c.softGradient : null,
+              color: selected ? null : c.surface,
+              border: Border.all(color: selected ? c.violet : c.lineStrong),
+              borderRadius: BorderRadius.circular(KRadius.pill),
             ),
+            child: Center(widthFactor: 1, child: Text(label, style: t.button.copyWith(fontSize: 12.5, fontWeight: FontWeight.w500, color: selected ? c.text : c.textMuted))),
           ),
         ),
       ),

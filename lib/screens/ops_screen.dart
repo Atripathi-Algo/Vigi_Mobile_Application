@@ -108,7 +108,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
       floatingActionButton: widget.timeline || widget.garage ? null : const CaptureFab(type: 'objective'),
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<String>(
-          segments: const <(String, String)>[('o', 'Tasks'), ('t', 'Timeline'), ('g', 'Garage')],
+          segments: <(String, String)>[('o', 'Tasks'), ('t', 'Timeline'), if (s.garageOn) ('g', 'Garage')],
           selected: widget.garage ? 'g' : (widget.timeline ? 't' : 'o'),
           onSelected: (String v) => context.go(v == 'o' ? '/ops/objectives' : (v == 't' ? '/ops/timeline' : '/ops/garage')),
         ),

@@ -295,7 +295,7 @@ class LoadoutScreen extends ConsumerWidget {
         const SizedBox(height: 22),
         head('Setup'),
         RowList(children: <Widget>[
-          linkRow('Run $kAssistantName setup again', 'Name, Google, $kAssistantName\'s brain, permissions, voice', 'OPEN', onTap: () => context.push('/boot')),
+          linkRow('Run $kAssistantName setup again', 'Name, what $kAssistantName helps with, a first command', 'OPEN', onTap: () => context.push('/boot')),
         ]),
         Center(child: Text('K v1.0 · BUILD 0002', style: t.micro.copyWith(color: c.textFaint))),
       ]),

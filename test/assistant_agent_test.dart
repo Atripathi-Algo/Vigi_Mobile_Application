@@ -79,7 +79,7 @@ void main() {
       expect(o.title, 'Call the plumber');
       expect(o.dueMin, 17 * 60 + 30);
       expect(o.threat, Threat.high);
-      expect(r.diff.single.$1, 'OBJECTIVE');
+      expect(r.diff.single.$1, 'TASK');
       r.undo!();
       expect(store.objectives, isEmpty);
     });

@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../app/brand.dart';
 import '../app/common.dart';
 import '../app/fmt.dart';
 import '../app/providers.dart';
+import '../data/assistant.dart';
+import '../data/models.dart';
 import '../data/store.dart';
 import '../services/drive_backup.dart';
 import '../services/drive_sync.dart';
 import '../services/google_accounts.dart';
-import '../services/health.dart';
-import '../services/local_brain.dart';
+import '../services/haptics.dart';
 import '../services/notifications.dart';
 import '../services/sfx.dart';
-import '../services/steps.dart';
-import '../services/voice.dart';
 import '../vigil/vigil.dart';
-import '../services/haptics.dart';
+import 'rationale_sheet.dart';
 
-/// First-run setup guide: seven steps, each one idea. Shown on the first launch after a fresh install, and again
-/// from Loadout, "Run K setup again" (then it only changes the profile and settings, never wipes anything).
+/// First-run setup guide, four steps: your name, what K should help with, one guided command, done. Everything
+/// else (microphone, notifications, Health Connect, the AI model) is asked for the first time a feature needs it, with a
+/// short "Before Android asks" sheet. Restoring from Google Drive is a side path from step 1.
+///
+/// Shown on the first launch after a fresh install, and again from Settings, "Run K setup again" (then it only
+/// changes the name and the modules, never wipes anything).
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
 
@@ -29,61 +31,44 @@ class SetupScreen extends ConsumerStatefulWidget {
   ConsumerState<SetupScreen> createState() => _SetupScreenState();
 }
 
-enum _Step { welcome, profile, google, restore, brain, permissions, voice, ready }
-
-class _Perm {
-  const _Perm(this.key, this.title, this.reason, {this.optional = false});
-
-  final String key;
-  final String title;
-  final String reason;
-  final bool optional;
-}
+enum _Step { welcome, google, restore, modules, tryit, ready }
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
-  static const List<_Perm> _perms = <_Perm>[
-    _Perm('mic', 'Microphone', 'So you can talk to K. Speech is turned into text on this phone (offline speech pack).'),
-    _Perm('notif', 'Notifications', 'Reminders, briefings and streak nudges. Critical alerts ring even in Do Not Disturb only if you allow it.'),
-    _Perm('steps', 'Steps & activity', 'Counts your steps with the phone\'s own sensor. Nothing leaves the phone.'),
-    _Perm('health', 'Health Connect', 'Sleep, weight and resting heart rate, read only. K never writes to it.', optional: true),
-    _Perm('battery', 'Background & battery', 'Lets reminders arrive on time. In Android settings, allow auto-start and choose "No restrictions".'),
-  ];
-
   final TextEditingController _nick = TextEditingController();
-  final TextEditingController _full = TextEditingController();
-  final Map<String, String> _permState = <String, String>{}; // key -> OK / DENIED / SKIPPED
+  final TextEditingController _cmd = TextEditingController();
   _Step _step = _Step.welcome;
-  int _permIndex = 0;
   bool _working = false;
   String? _error;
   DriveFile? _backup;
   String? _driveNote;
-  String? _brainError;
+  late Set<String> _modules;
+  ChatMsg? _result;
+  bool _notifAsked = false;
+  bool _notifOn = false;
+
+  static const List<String> _examples = <String>['remind me to call Mom at 6 pm', 'log 250 ml water', 'spent 200 on lunch'];
 
   @override
   void initState() {
     super.initState();
     final VigilStore s = ref.read(storeProvider);
     _nick.text = s.callsign;
-    _full.text = s.fullName;
+    _modules = <String>{...s.modules};
     _nick.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _nick.dispose();
-    _full.dispose();
+    _cmd.dispose();
     super.dispose();
   }
 
   int get _number => switch (_step) {
-        _Step.welcome => 1,
-        _Step.profile => 2,
-        _Step.google || _Step.restore => 3,
-        _Step.brain => 4,
-        _Step.permissions => 5,
-        _Step.voice => 6,
-        _Step.ready => 7,
+        _Step.welcome || _Step.google || _Step.restore => 1,
+        _Step.modules => 2,
+        _Step.tryit => 3,
+        _Step.ready => 4,
       };
 
   void _go(_Step s) => setState(() {
@@ -96,28 +81,20 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     switch (_step) {
       case _Step.welcome:
         if (context.canPop()) context.pop();
-      case _Step.profile:
-        _go(_Step.welcome);
       case _Step.google:
-        _go(_Step.profile);
+        _go(_Step.welcome);
       case _Step.restore:
         _go(_Step.google);
-      case _Step.brain:
-        _go(_Step.google);
-      case _Step.permissions:
-        if (_permIndex > 0) {
-          setState(() => _permIndex--);
-        } else {
-          _go(_Step.brain);
-        }
-      case _Step.voice:
-        _go(_Step.permissions);
+      case _Step.modules:
+        _go(_Step.welcome);
+      case _Step.tryit:
+        _go(_Step.modules);
       case _Step.ready:
-        _go(_Step.voice);
+        _go(_Step.tryit);
     }
   }
 
-  // ---------------------------------------------------------------- step 3: Google and Drive
+  // ---------------------------------------------------------------- Google and Drive (side path from step 1)
 
   Future<void> _continueWithGoogle() async {
     setState(() {
@@ -153,13 +130,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     } on DriveException catch (e) {
       _driveNote = e.message;
     }
-    if (mounted) _go(_Step.brain);
+    if (mounted) _go(_Step.modules);
   }
 
   Future<void> _startFresh() async {
     final DriveFile? f = _backup;
     if (f != null) await DriveSync.instance.startFreshOver(f);
-    if (mounted) _go(_Step.brain);
+    if (mounted) _go(_Step.modules);
   }
 
   Future<void> _restore() async {
@@ -186,58 +163,49 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     if (s.booted) {
       context.go('/');
     } else {
-      _go(_Step.brain);
+      _nick.text = s.callsign;
+      _modules = <String>{...s.modules};
+      _go(_Step.modules);
     }
   }
 
-  // ---------------------------------------------------------------- step 4: K's brain
+  // ---------------------------------------------------------------- step 3: one guided command
 
-  Future<void> _downloadBrain() async {
-    setState(() => _brainError = null);
-    final String? err = await ref.read(brainProvider).download();
-    if (mounted && err != null) setState(() => _brainError = err);
-  }
-
-  // ---------------------------------------------------------------- step 5: permissions
-
-  Future<void> _allow(_Perm p) async {
-    final VigilStore s = ref.read(storeProvider);
+  Future<void> _tryCommand(String text) async {
+    final String q = text.trim();
+    if (q.isEmpty || _working) return;
     setState(() => _working = true);
-    bool ok = false;
-    switch (p.key) {
-      case 'mic':
-        ok = (await Permission.microphone.request()).isGranted;
-        s.setLink('Voice uplink', ok ? 'OK' : 'DENIED');
-      case 'notif':
-        ok = await NotificationService.requestPermission();
-        s.setLink('Notifications', ok ? 'OK' : 'DENIED');
-      case 'steps':
-        ok = await StepService.start(s, request: true);
-        s.setLink('Step sensor', ok ? 'OK' : 'DENIED');
-      case 'health':
-        ok = await HealthService.connect(s);
-      case 'battery':
-        await openAppSettings();
-        ok = true; // Android does not say whether the user changed it
-    }
+    final VigilStore s = ref.read(storeProvider);
+    final ChatMsg m = await Assistant(s).reply(q);
     if (!mounted) return;
+    Haptics.strike();
+    SfxService.play(m.diff != null ? Sfx.clear : Sfx.deny);
     setState(() {
+      _result = m;
       _working = false;
-      _permState[p.key] = ok ? 'OK' : 'DENIED';
     });
-    if (ok) _nextPermission();
   }
 
-  void _skipPermission(_Perm p) {
-    _permState.putIfAbsent(p.key, () => 'SKIPPED');
-    _nextPermission();
-  }
-
-  void _nextPermission() {
-    if (_permIndex < _perms.length - 1) {
-      setState(() => _permIndex++);
-    } else {
-      _go(_Step.voice);
+  Future<void> _askNotifications() async {
+    final bool ok = await showRationaleSheet(
+      context,
+      title: 'Let K nudge you',
+      why: 'K can remind you when a task is due, send a short morning briefing and warn you when a habit streak is at risk.',
+      note: 'Only on this phone. Nothing is sent anywhere.',
+      icon: VigilIcons.alert,
+      allowLabel: 'Allow notifications',
+    );
+    if (!ok || !mounted) {
+      if (mounted) setState(() => _notifAsked = true);
+      return;
+    }
+    final bool granted = await NotificationService.requestPermission();
+    ref.read(storeProvider).setLink('Notifications', granted ? 'OK' : 'DENIED');
+    if (mounted) {
+      setState(() {
+        _notifAsked = true;
+        _notifOn = granted;
+      });
     }
   }
 
@@ -248,14 +216,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     Haptics.tap();
     SfxService.play(Sfx.boot);
     if (s.booted) {
-      s.setProfile(fullName: _full.text, nickname: _nick.text);
+      s.setProfile(fullName: s.fullName, nickname: _nick.text);
+      s.setModules(_modules);
       if (context.canPop()) {
         context.pop();
       } else {
         context.go('/');
       }
     } else {
-      s.completeBoot(name: _full.text, call: _nick.text, wake: s.wakeMin, bed: s.bedMin, armed: s.modules);
+      s.completeBoot(name: s.fullName, call: _nick.text, wake: s.wakeMin, bed: s.bedMin, armed: _modules);
       context.go('/');
     }
   }
@@ -269,71 +238,51 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final bool first = _step == _Step.welcome;
     return Scaffold(
       backgroundColor: c.ground,
-      body: GridBackground(
-        child: SafeArea(
-          child: Column(children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Row(children: <Widget>[
-                if (!first || context.canPop())
-                  InkWell(
-                    onTap: _back,
-                    child: SizedBox(width: VigilSize.touch, height: VigilSize.touch, child: Center(child: VigilIcon(VigilIcons.chevronLeft, size: 20, color: c.textMuted))),
+      body: SafeArea(
+        child: Column(children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(children: <Widget>[
+              if (!first || context.canPop())
+                InkWell(
+                  onTap: _back,
+                  customBorder: const CircleBorder(),
+                  child: SizedBox(width: VigilSize.touch, height: VigilSize.touch, child: Center(child: VigilIcon(VigilIcons.chevronLeft, size: 20, color: c.textMuted))),
+                )
+              else
+                const SizedBox(width: 8),
+              Expanded(child: Text('Step $_number of 4', style: t.label.copyWith(color: c.textMuted))),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+            child: Row(children: <Widget>[
+              for (int i = 1; i <= 4; i++) ...<Widget>[
+                if (i > 1) const SizedBox(width: 6),
+                Expanded(
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(gradient: i <= _number ? KGradients.primary : null, color: i <= _number ? null : c.surfaceHigh, borderRadius: BorderRadius.circular(4)),
                   ),
-                Expanded(child: Text('SETUP · STEP $_number OF 7', style: t.micro.copyWith(color: c.textFaint))),
-                if (_step == _Step.google || _step == _Step.brain || _step == _Step.voice) TextButton(onPressed: _skip, child: Text('SKIP', style: t.button.copyWith(fontSize: 11, color: c.textMuted))),
-              ]),
+                ),
+              ],
+            ]),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.viewInsetsOf(context).bottom),
+              child: switch (_step) {
+                _Step.welcome => _welcome(context),
+                _Step.google => _google(context),
+                _Step.restore => _restoreStep(context),
+                _Step.modules => _modulesStep(context),
+                _Step.tryit => _tryStep(context),
+                _Step.ready => _ready(context),
+              },
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-              child: Row(children: <Widget>[
-                for (int i = 1; i <= 7; i++) ...<Widget>[
-                  if (i > 1) const SizedBox(width: 4),
-                  Expanded(child: Container(height: 3, color: i <= _number ? c.signal : c.line)),
-                ],
-              ]),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-                child: switch (_step) {
-                  _Step.welcome => _welcome(context),
-                  _Step.profile => _profile(context),
-                  _Step.google => _google(context),
-                  _Step.restore => _restoreStep(context),
-                  _Step.brain => _brain(context),
-                  _Step.permissions => _permissions(context),
-                  _Step.voice => _voice(context),
-                  _Step.ready => _ready(context),
-                },
-              ),
-            ),
-          ]),
-        ),
+          ),
+        ]),
       ),
-    );
-  }
-
-  void _skip() {
-    switch (_step) {
-      case _Step.google:
-        _go(_Step.brain);
-      case _Step.brain:
-        _go(_Step.permissions);
-      case _Step.voice:
-        _go(_Step.ready);
-      default:
-        break;
-    }
-  }
-
-  Widget _chip(String text) {
-    final c = context.vigil;
-    final t = context.vtype;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(border: Border.all(color: c.lineStrong)),
-      child: Text(text.toUpperCase(), style: t.micro.copyWith(color: c.textMuted)),
     );
   }
 
@@ -343,8 +292,18 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     return Container(
       margin: const EdgeInsets.only(top: 14),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(border: Border.all(color: c.critical), color: c.critical.withValues(alpha: 0.06)),
+      decoration: BoxDecoration(border: Border.all(color: c.critical), color: c.critical.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(KRadius.field)),
       child: Semantics(liveRegion: true, child: Text(message, style: t.caption.copyWith(color: c.critical))),
+    );
+  }
+
+  Widget _tag(String text) {
+    final c = context.vigil;
+    final t = context.vtype;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(border: Border.all(color: c.lineStrong), borderRadius: BorderRadius.circular(KRadius.pill), color: c.surface),
+      child: Text(text, style: t.meta.copyWith(color: c.textMuted)),
     );
   }
 
@@ -352,89 +311,46 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   Widget _welcome(BuildContext context) {
     final c = context.vigil;
     final t = context.vtype;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      const SizedBox(height: 12),
-      Center(child: SizedBox(width: 132, height: 132, child: CornerBrackets(allCorners: true, length: 18, child: const Center(child: VigilEmblem(size: 84))))),
-      const SizedBox(height: 22),
-      Center(child: Text('I AM $kAssistantName', style: t.micro.copyWith(color: c.signal))),
-      const SizedBox(height: 8),
-      Text('Welcome to $kAssistantName.', style: t.h1, textAlign: TextAlign.center),
-      const SizedBox(height: 10),
-      Text('Your day, handled. I run on this phone: free, offline, private.', style: t.body.copyWith(color: c.textMuted), textAlign: TextAlign.center),
-      const SizedBox(height: 18),
-      Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: <Widget>[_chip('On-device'), _chip('No server'), _chip('Private')]),
-      const SizedBox(height: 32),
-      VigilButton(label: 'Begin setup', size: VigilButtonSize.large, expand: true, icon: VigilIcons.arrowRight, onPressed: () => _go(_Step.profile)),
-      const SizedBox(height: 8),
-      Center(child: Text('Takes about 3 minutes', style: t.micro.copyWith(color: c.textFaint))),
-    ]);
-  }
-
-  // 2 -------------------------------------------------------------------
-  Widget _profile(BuildContext context) {
-    final c = context.vigil;
-    final t = context.vtype;
-    final VigilStore s = ref.watch(storeProvider);
     final bool ok = _nick.text.trim().isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('PROFILE', style: t.label.copyWith(color: c.signal)),
-      const SizedBox(height: 6),
-      Text('What should $kAssistantName call you?', style: t.h2),
       const SizedBox(height: 8),
-      Text('Your nickname is for greetings and briefings; your full name is for formal moments. Both stay on this phone and in your own backup.', style: t.caption.copyWith(color: c.textMuted)),
-      const SizedBox(height: 18),
-      VigilField(controller: _nick, label: 'Nickname', hint: 'Shown as "Evening, nickname."'),
-      const SizedBox(height: 12),
-      VigilField(controller: _full, label: 'Full name', hint: 'Used by the Butler persona and on exports'),
-      const SizedBox(height: 18),
-      Text('CLOCK', style: t.micro.copyWith(color: c.textFaint)),
-      const SizedBox(height: 6),
-      VigilSegmented<bool>(
-        segments: const <(bool, String)>[(true, '24 H · 19:42'), (false, '12 H · 7:42 PM')],
-        selected: s.clock24,
-        onSelected: s.setClock24,
-      ),
-      const SizedBox(height: 18),
-      Text('CURRENCY', style: t.micro.copyWith(color: c.textFaint)),
-      const SizedBox(height: 6),
-      Container(
-        height: VigilSize.input,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.lineStrong)),
-        child: Row(children: <Widget>[
-          Expanded(child: Text('₹ INR · Indian grouping ₹1,24,500', style: t.body)),
-          Text('FIXED', style: t.micro.copyWith(color: c.textFaint)),
-        ]),
-      ),
+      const Center(child: KBadge(size: 84)),
+      const SizedBox(height: 20),
+      Text('Welcome to $kAssistantName.', style: t.h1, textAlign: TextAlign.center),
+      const SizedBox(height: 8),
+      Text('Your day, handled. I run on this phone: free, offline, private.', style: t.body.copyWith(color: c.textMuted), textAlign: TextAlign.center),
+      const SizedBox(height: 14),
+      Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: <Widget>[_tag('On this phone'), _tag('No account needed'), _tag('Private')]),
       const SizedBox(height: 28),
+      VigilField(controller: _nick, label: 'What should I call you?', hint: 'A nickname is fine', autofocus: false, onSubmitted: (_) => ok ? _go(_Step.modules) : null),
+      const SizedBox(height: 18),
       VigilButton(
-        label: ok ? 'Next' : 'Add a nickname',
+        label: ok ? 'Continue' : 'Add a name',
         size: VigilButtonSize.large,
         expand: true,
-        onPressed: ok ? () => _go(_Step.google) : null,
+        onPressed: ok ? () => _go(_Step.modules) : null,
       ),
+      const SizedBox(height: 6),
+      Center(child: VigilButton(label: 'Restore from Google Drive', variant: VigilButtonVariant.ghost, onPressed: () => _go(_Step.google))),
     ]);
   }
 
-  // 3 -------------------------------------------------------------------
   Widget _google(BuildContext context) {
     final c = context.vigil;
     final t = context.vtype;
-    const List<String> stored = <String>['Objectives', 'Notes', 'Protocols', 'Water', 'Expenses', 'Bills', 'Budget', 'Settings', 'Chat log'];
+    const List<String> stored = <String>['Tasks', 'Notes', 'Habits', 'Water', 'Expenses', 'Bills', 'Budget', 'Garage', 'Settings', 'Chat log'];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('RECOMMENDED', style: t.label.copyWith(color: c.signal)),
-      const SizedBox(height: 6),
+      Text('Optional', style: t.label.copyWith(color: c.violet)),
+      const SizedBox(height: 4),
       Text('Back up to your own Google Drive', style: t.h2),
       const SizedBox(height: 8),
-      Text('$kAssistantName keeps a copy in a hidden app folder in your Drive. Reinstall, or move to a new phone, and everything comes back. No server of ours sits in between.', style: t.caption.copyWith(color: c.textMuted)),
+      Text('$kAssistantName keeps a copy in a hidden app folder in your Drive. Reinstall, or move to a new phone, and everything comes back. No server of ours sits in between. If a backup already exists, you can restore it.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 16),
-      Text('WHAT IS BACKED UP', style: t.micro.copyWith(color: c.textFaint)),
+      Text('What is backed up', style: t.label.copyWith(color: c.textMuted)),
       const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 8, children: <Widget>[for (final String x in stored) _chip(x)]),
+      Wrap(spacing: 8, runSpacing: 8, children: <Widget>[for (final String x in stored) _tag(x)]),
       const SizedBox(height: 14),
       Text('Not backed up: API keys and Google sign-in tokens. They never leave this phone. Re-enter keys after a restore.', style: t.caption.copyWith(color: c.textMuted)),
-      const SizedBox(height: 8),
-      Text('Stored in your own Drive, visible only to $kAssistantName.', style: t.micro.copyWith(color: c.textFaint)),
       if (_error != null) _errorBox('Google sign-in did not finish. $_error'),
       const SizedBox(height: 24),
       VigilButton(
@@ -443,8 +359,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         expand: true,
         onPressed: _working ? null : _continueWithGoogle,
       ),
-      const SizedBox(height: 8),
-      Center(child: VigilButton(label: 'Skip, keep data on this phone only', variant: VigilButtonVariant.ghost, onPressed: _working ? null : () => _go(_Step.brain))),
+      const SizedBox(height: 6),
+      Center(child: VigilButton(label: 'Not now, keep data on this phone only', variant: VigilButtonVariant.ghost, onPressed: _working ? null : () => _go(_Step.welcome))),
     ]);
   }
 
@@ -454,23 +370,23 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final DriveFile? f = _backup;
     final String account = GoogleAccounts.instance.hasAny ? GoogleAccounts.instance.accounts.first.email : '';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('SIGNED IN · $account'.toUpperCase(), style: t.micro.copyWith(color: c.signal)),
-      const SizedBox(height: 6),
+      Text('Signed in as $account', style: t.label.copyWith(color: c.violet)),
+      const SizedBox(height: 4),
       Text('Restore your data?', style: t.h2),
       const SizedBox(height: 8),
       Text('We found a $kAssistantName backup in this account\'s Drive. Bring it onto this phone, or start with a clean slate.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 16),
       VigilCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Text('BACKUP FOUND', style: t.micro.copyWith(color: c.textFaint)),
+          Text('Backup found', style: t.label.copyWith(color: c.textMuted)),
           const SizedBox(height: 6),
           Text(f == null ? '' : '${Fmt.dayStamp(f.modified)} · ${Fmt.time(f.modified)}', style: t.title),
           const SizedBox(height: 6),
-          Text('Includes your tasks, notes, habits, water, expenses, bills, budget, settings and the $kAssistantName chat log. API keys are never in a backup.', style: t.caption.copyWith(color: c.textMuted)),
+          Text('Includes your tasks, notes, habits, water, expenses, bills, budget, garage, settings and the $kAssistantName chat log. API keys are never in a backup.', style: t.caption.copyWith(color: c.textMuted)),
         ]),
       ),
       const SizedBox(height: 10),
-      Text('Start fresh replaces this backup with the data on this phone at the first sync.', style: t.micro.copyWith(color: c.textFaint)),
+      Text('Start fresh replaces this backup with the data on this phone at the first sync.', style: t.caption.copyWith(color: c.textFaint)),
       if (_error != null) _errorBox(_error!),
       const SizedBox(height: 24),
       Row(children: <Widget>[
@@ -481,203 +397,158 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     ]);
   }
 
-  // 4 -------------------------------------------------------------------
-  Widget _brain(BuildContext context) {
+  // 2 -------------------------------------------------------------------
+  Widget _modulesStep(BuildContext context) {
     final c = context.vigil;
     final t = context.vtype;
-    final LocalBrain brain = ref.watch(brainProvider);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('$kAssistantName\'S BRAIN', style: t.label.copyWith(color: c.signal)),
-      const SizedBox(height: 6),
-      Text('Download $kAssistantName\'s brain', style: t.h2),
-      const SizedBox(height: 8),
-      Text('A one-time ${brain.variant.sizeText} download. After this, $kAssistantName thinks on this phone: free, offline, private.', style: t.caption.copyWith(color: c.textMuted)),
-      const SizedBox(height: 16),
-      AnimatedBuilder(
-        animation: Listenable.merge(<Listenable>[brain, brain.progress]),
-        builder: (BuildContext ctx, Widget? _) {
-          final BrainStatus st = brain.status;
-          return VigilCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text('MINICPM5-1B · ${brain.variant.label}', style: t.micro.copyWith(color: c.textFaint)),
-              const SizedBox(height: 8),
-              if (st == BrainStatus.downloading) ...<Widget>[
-                Text('Downloading ${(brain.progress.value * 100).round()} %', style: t.title),
-                const SizedBox(height: 10),
-                LinearProgressIndicator(value: brain.progress.value, minHeight: 4),
-                const SizedBox(height: 10),
-                Text('Keep Wi-Fi on. If it is interrupted, it resumes where it stopped.', style: t.caption.copyWith(color: c.textMuted)),
-                const SizedBox(height: 12),
-                VigilButton(label: 'Pause', variant: VigilButtonVariant.secondary, onPressed: brain.cancelDownload),
-              ] else if (st == BrainStatus.notInstalled) ...<Widget>[
-                Text('On Wi-Fi advised', style: t.title),
-                const SizedBox(height: 12),
-                VigilButton(label: _brainError != null ? 'Retry download' : 'Download', onPressed: _downloadBrain),
-              ] else ...<Widget>[
-                Text('Installed. Ready when you ask.', style: t.title.copyWith(color: c.signal)),
-              ],
-            ]),
-          );
-        },
-      ),
-      if (_brainError != null) _errorBox('The download stopped: $_brainError. Check the connection and retry; it resumes where it stopped.'),
-      const SizedBox(height: 14),
-      Text('$kAssistantName still answers instant commands and questions about your data without it.', style: t.caption.copyWith(color: c.textMuted)),
-      const SizedBox(height: 24),
-      VigilButton(label: 'Next', size: VigilButtonSize.large, expand: true, onPressed: () => _go(_Step.permissions)),
-    ]);
-  }
-
-  // 5 -------------------------------------------------------------------
-  Widget _permissions(BuildContext context) {
-    final c = context.vigil;
-    final t = context.vtype;
-    final _Perm p = _perms[_permIndex];
-    final String? st = _permState[p.key];
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('PERMISSION ${_permIndex + 1} OF ${_perms.length}${p.optional ? ' · OPTIONAL' : ''}', style: t.label.copyWith(color: c.signal)),
-      const SizedBox(height: 6),
-      Text(p.title, style: t.h2),
-      const SizedBox(height: 8),
-      Text(p.reason, style: t.caption.copyWith(color: c.textMuted)),
-      const SizedBox(height: 16),
-      RowList(children: <Widget>[
-        for (int i = 0; i < _perms.length; i++)
-          SizedBox(
-            height: 46,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(children: <Widget>[
-                Expanded(child: Text(_perms[i].title.toUpperCase(), style: t.button.copyWith(fontWeight: FontWeight.w400, color: i == _permIndex ? c.text : c.textMuted))),
-                Text(
-                  switch (_permState[_perms[i].key]) { 'OK' => 'ON', 'DENIED' => 'DENIED', 'SKIPPED' => 'LATER', _ => i == _permIndex ? 'NOW' : '' },
-                  style: t.meta.copyWith(color: _permState[_perms[i].key] == 'OK' ? c.signal : c.textFaint),
-                ),
-              ]),
+    Widget row(KTile tile, VigilIcons icon, String title, String sub, {String? module, bool locked = false}) {
+      final bool on = locked || _modules.contains(module);
+      return SizedBox(
+        height: 68,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 14, right: 6),
+          child: Row(children: <Widget>[
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(gradient: tile.gradient, borderRadius: BorderRadius.circular(KRadius.iconTile)),
+              child: Center(child: VigilIcon(icon, size: 20, color: Colors.white)),
             ),
-          ),
-      ]),
-      if (st == 'DENIED') _errorBox('${p.title} is off. You can turn it on in Android settings, or carry on without it.'),
-      const SizedBox(height: 24),
-      VigilButton(
-        label: _working ? 'Waiting…' : (st == 'DENIED' ? 'Try again' : 'Allow ${p.title.toLowerCase()}'),
-        size: VigilButtonSize.large,
-        expand: true,
-        onPressed: _working ? null : () => _allow(p),
-      ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub, style: t.caption.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+            VigilSwitch(
+              value: on,
+              semanticLabel: title,
+              onChanged: locked ? null : (bool v) => setState(() => v ? _modules.add(module!) : _modules.remove(module)),
+            ),
+          ]),
+        ),
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+      Text('What should $kAssistantName help with?', style: t.h2),
       const SizedBox(height: 8),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-        if (st == 'DENIED') VigilButton(label: 'Open settings', variant: VigilButtonVariant.ghost, onPressed: openAppSettings),
-        VigilButton(label: st == 'DENIED' ? 'Continue' : 'Not now', variant: VigilButtonVariant.ghost, onPressed: _working ? null : () => _skipPermission(p)),
+      Text('Tasks, habits and money are always here. Turn off what you do not need; you can bring it back any time in Settings.', style: t.caption.copyWith(color: c.textMuted)),
+      const SizedBox(height: 18),
+      RowList(children: <Widget>[
+        row(KTile.blue, VigilIcons.ops, 'Tasks and calendar', 'Always on', locked: true),
+        row(KTile.cyan, VigilIcons.protocols, 'Habits', 'Always on', locked: true),
+        row(KTile.orange, VigilIcons.vault, 'Money', 'Budget and spending. Always on', locked: true),
+        row(KTile.green, VigilIcons.sleep, 'Health and sleep', 'Steps, sleep, weight, screen time', module: kModuleHealth),
+        row(KTile.violet, VigilIcons.deepOps, 'Bike garage', 'Fuel, mileage, service reminders', module: kModuleGarage),
       ]),
+      const SizedBox(height: 26),
+      VigilButton(label: 'Continue', size: VigilButtonSize.large, expand: true, onPressed: () => _go(_Step.tryit)),
     ]);
   }
 
-  // 6 -------------------------------------------------------------------
-  Widget _voice(BuildContext context) {
+  // 3 -------------------------------------------------------------------
+  Widget _tryStep(BuildContext context) {
     final c = context.vigil;
     final t = context.vtype;
-    final VigilStore s = ref.watch(storeProvider);
-    final String sample = switch (s.persona) {
-      Persona.tactical => 'Water logged. 2,000 of 3,000. Keep moving.',
-      Persona.butler => 'Two litres so far, which is rather good. Shall we make it three?',
-      Persona.quiet => '2.0 / 3.0 L',
-    };
-    final bool sfxOn = s.toggles['sfx'] ?? true;
+    final ChatMsg? m = _result;
+    final bool done = m?.diff != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('VOICE & SOUND', style: t.label.copyWith(color: c.signal)),
-      const SizedBox(height: 6),
-      Text('How should $kAssistantName sound?', style: t.h2),
-      const SizedBox(height: 18),
-      Text('PERSONA', style: t.micro.copyWith(color: c.textFaint)),
-      const SizedBox(height: 6),
-      VigilSegmented<Persona>(segments: const <(Persona, String)>[(Persona.tactical, 'TACTICAL'), (Persona.butler, 'BUTLER'), (Persona.quiet, 'QUIET')], selected: s.persona, onSelected: s.setPersona),
-      const SizedBox(height: 10),
-      Text('"$sample"', style: t.caption.copyWith(color: c.textMuted)),
-      const SizedBox(height: 10),
-      VigilButton(label: 'Test $kAssistantName\'s voice', variant: VigilButtonVariant.secondary, onPressed: () => VoiceService.instance.speak(sample)),
-      const SizedBox(height: 18),
-      RowList(children: <Widget>[
-        SizedBox(
-          height: 64,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 8),
-            child: Row(children: <Widget>[
-              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Spoken replies', style: t.rowTitle), Text('READS ANSWERS ALOUD', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
-              VigilSwitch(value: s.toggles['spoken'] ?? false, onChanged: (bool v) => s.setToggle('spoken', v), semanticLabel: 'Spoken replies'),
-            ]),
-          ),
-        ),
+      Text('Try it', style: t.label.copyWith(color: c.violet)),
+      const SizedBox(height: 4),
+      Text('Tell $kAssistantName something', style: t.h2),
+      const SizedBox(height: 8),
+      Text('Type a command and watch it happen. Every change comes with Undo.', style: t.caption.copyWith(color: c.textMuted)),
+      const SizedBox(height: 16),
+      Wrap(spacing: 8, runSpacing: 0, children: <Widget>[
+        for (final String e in _examples) VigilFilterChip(label: e, selected: _cmd.text == e, onTap: () => setState(() => _cmd.text = e)),
       ]),
       const SizedBox(height: 8),
-      RowList(children: <Widget>[
-        SizedBox(
-          height: 64,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 8),
-            child: Row(children: <Widget>[
-              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Haptics', style: t.rowTitle), Text('TICKS AND TAPS THAT MIRROR THE SOUNDS', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
-              VigilSwitch(value: s.toggles['haptics'] ?? true, onChanged: (bool v) => s.setToggle('haptics', v), semanticLabel: 'Haptics'),
+      VigilField(controller: _cmd, label: 'Your command', hint: _examples.first, onChanged: (_) => setState(() {}), onSubmitted: _tryCommand),
+      const SizedBox(height: 14),
+      VigilButton(label: _working ? 'Working…' : 'Send', variant: done ? VigilButtonVariant.secondary : VigilButtonVariant.primary, onPressed: _working || _cmd.text.trim().isEmpty ? null : () => _tryCommand(_cmd.text)),
+      if (m != null) ...<Widget>[
+        const SizedBox(height: 16),
+        VigilCard(
+          brackets: done,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Row(children: <Widget>[
+              Text(kAssistantName, style: t.label.copyWith(color: m.alert ? c.critical : c.violet)),
+              const SizedBox(width: 8),
+              if (m.source == ReplySource.instant) Text('Done instantly · ${m.ms ?? 0} ms', style: t.meta.copyWith(color: c.success)),
             ]),
-          ),
+            const SizedBox(height: 6),
+            Text(m.text, style: t.body),
+            if (m.diff != null) ...<Widget>[
+              const SizedBox(height: 10),
+              for (final (String, String) r in m.diff!)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                    SizedBox(width: 84, child: Text(r.$1, style: t.label.copyWith(color: c.violet))),
+                    Expanded(child: Text(r.$2, style: t.meta.copyWith(color: c.text))),
+                  ]),
+                ),
+              if (m.undoable)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: VigilButton(
+                    label: 'Undo',
+                    size: VigilButtonSize.small,
+                    variant: VigilButtonVariant.secondary,
+                    onPressed: () {
+                      m.onUndo?.call();
+                      setState(() => _result = null);
+                    },
+                  ),
+                ),
+            ] else
+              Padding(padding: const EdgeInsets.only(top: 6), child: Text('That did not change anything. Try one of the examples above.', style: t.caption.copyWith(color: c.textFaint))),
+          ]),
         ),
-      ]),
-      const SizedBox(height: 18),
-      Text('SOUND EFFECTS', style: t.micro.copyWith(color: c.textFaint)),
-      const SizedBox(height: 6),
-      VigilSegmented<int>(
-        segments: const <(int, String)>[(-1, 'OFF'), (0, 'LOW'), (1, 'MEDIUM'), (2, 'HIGH')],
-        selected: sfxOn ? s.sfxLevel : -1,
-        onSelected: (int v) {
-          if (v < 0) {
-            s.setToggle('sfx', false);
-          } else {
-            s.setToggle('sfx', true);
-            s.setSfxLevel(v);
-          }
-          SfxService.configure(on: v >= 0, level: v < 0 ? s.sfxLevel : v);
-          if (v >= 0) SfxService.play(Sfx.tick);
-        },
-      ),
-      const SizedBox(height: 6),
-      Text('Effects follow media volume; alerts follow notification volume.', style: t.micro.copyWith(color: c.textFaint)),
+        if (done) ...<Widget>[
+          const SizedBox(height: 12),
+          if (!_notifAsked)
+            VigilCard(
+              onTap: _askNotifications,
+              child: Row(children: <Widget>[
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Get a nudge when it is due?', style: t.rowTitle), Text('Optional. Notifications stay on this phone.', style: t.caption.copyWith(color: c.textFaint))])),
+                VigilIcon(VigilIcons.chevronRight, size: 18, color: c.textMuted),
+              ]),
+            )
+          else
+            Text(_notifOn ? 'Notifications are on.' : 'Notifications are off. You can turn them on in Settings.', style: t.caption.copyWith(color: c.textMuted)),
+        ],
+      ],
       const SizedBox(height: 24),
-      VigilButton(label: 'Next', size: VigilButtonSize.large, expand: true, onPressed: () => _go(_Step.ready)),
+      VigilButton(label: done ? 'Continue' : 'Skip for now', size: VigilButtonSize.large, variant: done ? VigilButtonVariant.primary : VigilButtonVariant.secondary, expand: true, onPressed: () => _go(_Step.ready)),
     ]);
   }
 
-  // 7 -------------------------------------------------------------------
+  // 4 -------------------------------------------------------------------
   Widget _ready(BuildContext context) {
     final c = context.vigil;
     final t = context.vtype;
-    final VigilStore s = ref.watch(storeProvider);
-    final LocalBrain brain = ref.watch(brainProvider);
     final GoogleAccounts g = GoogleAccounts.instance;
-    String perm(String key) => switch (_permState[key]) { 'OK' => 'ON', _ => 'SET UP LATER' };
-    final List<(String, String)> rows = <(String, String)>[
-      ('Name & ${s.clock24 ? '24 h' : '12 h'} clock', 'ON'),
-      (g.hasAny ? 'Drive backup · ${g.accounts.first.label.toLowerCase()}' : 'Drive backup', g.hasAny ? 'ON' : 'SET UP LATER'),
-      ('$kAssistantName\'s brain', brain.status == BrainStatus.downloading ? '${(brain.progress.value * 100).round()} %' : (brain.status == BrainStatus.notInstalled ? 'SET UP LATER' : 'ON')),
-      ('Microphone', perm('mic')),
-      ('Notifications', perm('notif')),
-      ('Steps & activity', perm('steps')),
-      ('Health Connect', perm('health')),
-      ('Background & battery', perm('battery')),
+    final List<(String, String, bool)> rows = <(String, String, bool)>[
+      ('Name', _nick.text.trim(), true),
+      ('Health and sleep', _modules.contains(kModuleHealth) ? 'On' : 'Off', _modules.contains(kModuleHealth)),
+      ('Bike garage', _modules.contains(kModuleGarage) ? 'On' : 'Off', _modules.contains(kModuleGarage)),
+      ('Drive backup', g.hasAny ? g.accounts.first.label : 'Later, in Settings', g.hasAny),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('READY', style: t.label.copyWith(color: c.signal)),
-      const SizedBox(height: 6),
-      Text(_nick.text.trim().isEmpty ? '${Fmt.greeting(DateTime.now())}.' : '${Fmt.greeting(DateTime.now())}, ${_nick.text.trim()}.', style: t.h1),
-      const SizedBox(height: 14),
+      const SizedBox(height: 8),
+      const Center(child: KBadge(size: 64)),
+      const SizedBox(height: 16),
+      Text(_nick.text.trim().isEmpty ? '${Fmt.greeting(DateTime.now())}.' : '${Fmt.greeting(DateTime.now())}, ${_nick.text.trim()}.', style: t.h1, textAlign: TextAlign.center),
+      const SizedBox(height: 8),
+      Text('You are set. $kAssistantName will ask for the microphone, Health Connect and its AI model only when you first use them.', style: t.body.copyWith(color: c.textMuted), textAlign: TextAlign.center),
+      const SizedBox(height: 18),
       RowList(children: <Widget>[
-        for (final (String, String) r in rows)
+        for (final (String, String, bool) r in rows)
           SizedBox(
-            height: 46,
+            height: 48,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(children: <Widget>[
-                Expanded(child: Text(r.$1.toUpperCase(), style: t.button.copyWith(fontWeight: FontWeight.w400, color: c.text))),
-                Text(r.$2, style: t.meta.copyWith(color: r.$2 == 'SET UP LATER' ? c.textFaint : c.signal)),
+                Expanded(child: Text(r.$1, style: t.rowTitle)),
+                Text(r.$2, style: t.meta.copyWith(color: r.$3 ? c.success : c.textFaint)),
               ]),
             ),
           ),
@@ -686,7 +557,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       const SizedBox(height: 22),
       VigilButton(label: 'Open $kAssistantName', size: VigilButtonSize.large, expand: true, icon: VigilIcons.arrowRight, onPressed: _finish),
       const SizedBox(height: 10),
-      Center(child: Text('Re-open this guide any time: Settings › Run $kAssistantName setup again.', style: t.micro.copyWith(color: c.textFaint), textAlign: TextAlign.center)),
+      Center(child: Text('Run this guide again any time: Settings, Run $kAssistantName setup again.', style: t.caption.copyWith(color: c.textFaint), textAlign: TextAlign.center)),
     ]);
   }
 }

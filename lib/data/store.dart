@@ -21,6 +21,10 @@ enum Verbosity { terse, standard, detailed }
 /// over this state, as described in the architecture spec. The store only uses
 /// `foundation` and SharedPreferences, so the home-screen widget callback can
 /// load it in a background isolate.
+/// Optional modules chosen in setup.
+const String kModuleHealth = 'health';
+const String kModuleGarage = 'garage';
+
 class VigilStore extends ChangeNotifier {
   VigilStore(this._prefs);
 
@@ -45,8 +49,18 @@ class VigilStore extends ChangeNotifier {
   /// Theme: 0 light (default), 1 dark, 2 follow the system.
   int appearance = 0;
   Verbosity verbosity = Verbosity.terse;
+  /// The optional parts of the app the user switched on in setup: [kModuleHealth] (Health and Screen time) and
+  /// [kModuleGarage]. Tasks, habits and money are always on.
   Set<String> modules = <String>{..._allModules};
-  static const List<String> _allModules = <String>['OBJECTIVES', 'TIMELINE', 'PROTOCOLS', 'VITALS', 'DEEP OPS', 'FIELD LOG', 'LEDGER'];
+  static const List<String> _allModules = <String>[kModuleHealth, kModuleGarage];
+
+  bool get healthOn => modules.contains(kModuleHealth);
+  bool get garageOn => modules.contains(kModuleGarage);
+
+  void setModules(Set<String> m) {
+    modules = m.where(_allModules.contains).toSet();
+    changed();
+  }
   static const Map<String, bool> _defaultToggles = <String, bool>{
     'spoken': true,
     'dawn': true,
@@ -232,7 +246,8 @@ class VigilStore extends ChangeNotifier {
     sfxLevel = (_prefs.getInt('sfxLevel') ?? 1).clamp(0, 2);
     appearance = (_prefs.getInt('appearance') ?? 0).clamp(0, 2);
     final List<String>? mods = _prefs.getStringList('modules');
-    if (mods != null) modules = mods.toSet();
+    // Older builds stored other names here; anything not recognised means "all on".
+    if (mods != null) modules = mods.every(_allModules.contains) && (mods.isNotEmpty || _prefs.getBool('modulesChosen') == true) ? mods.toSet() : <String>{..._allModules};
     final String? tg = _prefs.getString('toggles');
     if (tg != null) {
       (jsonDecode(tg) as Map<String, dynamic>).forEach((String k, dynamic v) => toggles[k] = v as bool);
@@ -375,6 +390,7 @@ class VigilStore extends ChangeNotifier {
       ..setInt('sfxLevel', sfxLevel)
       ..setInt('appearance', appearance)
       ..setStringList('modules', modules.toList())
+      ..setBool('modulesChosen', true)
       ..setString('toggles', jsonEncode(toggles))
       ..setString('links', jsonEncode(linkStatus))
       ..setInt('logStreak', logStreak)

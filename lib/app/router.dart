@@ -38,6 +38,13 @@ GoRouter buildRouter(VigilStore store) {
   return GoRouter(
     navigatorKey: rootNavKey,
     initialLocation: store.booted ? '/' : '/boot',
+    // Parts the user switched off in setup are not reachable (a notification or widget link falls back to the tab).
+    redirect: (BuildContext context, GoRouterState state) {
+      final String p = state.uri.path;
+      if (!store.garageOn && (p == '/ops/garage' || p.startsWith('/garage/'))) return '/ops/objectives';
+      if (!store.healthOn && (p == '/protocols/vitals' || p == '/protocols/screen' || p.startsWith('/protocols/vitals/'))) return '/protocols/habits';
+      return null;
+    },
     routes: <RouteBase>[
       GoRoute(path: '/boot', builder: (BuildContext c, GoRouterState s) => const SetupScreen()),
       GoRoute(path: '/garage/:id', builder: (BuildContext c, GoRouterState s) => BikeScreen(bikeId: s.pathParameters['id'] ?? '')),
