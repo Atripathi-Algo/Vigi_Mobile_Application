@@ -9,6 +9,7 @@ import '../data/inbox.dart';
 import '../data/models.dart';
 import '../data/store.dart';
 import '../data/assistant.dart';
+import '../data/weekly.dart';
 import '../services/drive_sync.dart';
 import '../services/sfx.dart';
 import '../vigil/vigil.dart';
@@ -93,6 +94,8 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                       Text('● Systems nominal', style: t.micro.copyWith(color: c.success)),
                     ]),
                   ),
+                  VigilIconButton(icon: VigilIcons.search, semanticLabel: 'Search', onPressed: () => context.push('/search')),
+                  const SizedBox(width: 8),
                   VigilIconButton(
                     icon: VigilIcons.alert,
                     badge: unreadCount(s, now, lastBackup: lastBackupForInbox()) > 0,
@@ -120,6 +123,10 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                 CircleButton(size: 48, semanticLabel: 'Add', onPressed: _quick.text.trim().isEmpty ? null : () => _quickAdd(_quick.text), child: VigilIcon(VigilIcons.arrowRight, color: c.onSignal)),
               ]),
               const SizedBox(height: 16),
+              if (now.weekday == DateTime.sunday && !s.weeklyDismissed(now)) ...<Widget>[
+                _weekly(context, s, now),
+                const SizedBox(height: 12),
+              ],
               if (showBriefing) ...<Widget>[
                 VigilCard(
                   onTap: () => context.push('/briefing'),
@@ -208,6 +215,32 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Sunday: the week in four lines. Built from what is on the phone.
+  Widget _weekly(BuildContext context, VigilStore s, DateTime now) {
+    final c = context.vigil;
+    final t = context.vtype;
+    final WeeklyReview w = weeklyReview(s, now);
+    if (!w.hasAnything) return const SizedBox.shrink();
+    Widget row(String label, String value) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(children: <Widget>[Expanded(child: Text(label, style: t.body.copyWith(color: c.textMuted))), Text(value, style: t.rowTitle)]),
+        );
+    final int diff = w.spentPaise - w.spentBeforePaise;
+    return VigilCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+        Row(children: <Widget>[
+          Expanded(child: Text('Your week', style: t.title)),
+          VigilButton(label: 'Not now', variant: VigilButtonVariant.ghost, size: VigilButtonSize.small, onPressed: () => s.dismissWeekly(now)),
+        ]),
+        const SizedBox(height: 6),
+        row('Tasks done', '${w.tasksDone}'),
+        if (s.protocols.isNotEmpty) row('Habits', '${w.consistency}% done${w.bestStreak > 1 ? ' · best streak ${w.bestStreak} (${w.bestHabit})' : ''}'),
+        row('Spent', '${Fmt.money(w.spentPaise)}${w.spentBeforePaise > 0 ? (diff == 0 ? ', same as last week' : ', ${Fmt.money(diff.abs())} ${diff > 0 ? 'more' : 'less'} than last week') : ''}'),
+        if (w.fuelPaise > 0) row('Fuel', '${Fmt.money(w.fuelPaise)} · ${w.fuelLitres.toStringAsFixed(1)} L'),
+      ]),
     );
   }
 

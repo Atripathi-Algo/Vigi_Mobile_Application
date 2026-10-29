@@ -10,6 +10,7 @@ import '../vigil/vigil.dart';
 import 'agent.dart';
 import 'brain_pipeline.dart';
 import 'garage.dart';
+import 'search.dart';
 import 'skills.dart';
 import 'brain_prompt.dart';
 import 'capture_parser.dart';
@@ -161,6 +162,22 @@ class Assistant {
     if (waiting != null && fresh) {
       if (RegExp(r'^(yes|yep|yeah|yup|confirm|confirmed|do it|go ahead|sure|ok|okay)\b').hasMatch(q)) return tag(_apply(waiting, null, now), ReplySource.instant);
       if (RegExp(r"^(no|nope|cancel|stop|don't|dont|never mind|nevermind|keep it)\b").hasMatch(q)) return tag(msg('Left as it is.'), ReplySource.instant);
+    }
+
+    // "find the note about Ravi": the search runs on the phone and the full list is one tap away.
+    final RegExpMatch? find = RegExp(r"^(?:please\s+)?(?:find|search(?:\s+for)?|look\s+up)\s+(?:my\s+|the\s+|a\s+)?(.+)$", caseSensitive: false).firstMatch(text.trim());
+    if (find != null) {
+      final String what = find.group(1)!.replaceAll(RegExp(r'^(notes?|tasks?|spends?|expenses?)\s+(about|for|on)\s+', caseSensitive: false), '').trim();
+      final List<SearchHit> hits = searchAll(store, what, limit: 3);
+      final ChatMsg r = hits.isEmpty
+          ? msg('Nothing matches "$what".')
+          : ChatMsg(
+              fromUser: false,
+              text: 'Found ${hits.length == 1 ? 'one match' : 'matches'} for "$what": ${hits.map((SearchHit h) => '${h.kindLabel.toLowerCase()} "${h.title}"').join(', ')}.',
+              at: now,
+              route: '/search?q=${Uri.encodeQueryComponent(what)}',
+            );
+      return tag(r, ReplySource.data);
     }
 
     final BrainFacts facts = factsFromStore(store, now);

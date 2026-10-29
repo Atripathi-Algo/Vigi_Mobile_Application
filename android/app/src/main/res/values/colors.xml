@@ -2,4 +2,11 @@
 <resources>
     <color name="ic_launcher_background">#4A3CF0</color>
     <color name="vigil_ground">#060716</color>
+    <!-- Widgets follow Android's light or dark setting, not the in-app theme. -->
+    <color name="w_bg">#F2FFFFFF</color>
+    <color name="w_text">#14162E</color>
+    <color name="w_muted">#474C6B</color>
+    <color name="w_accent">#2F5FE0</color>
+    <color name="w_violet">#6A3CF0</color>
+    <color name="w_line">#3834388C</color>
 </resources>

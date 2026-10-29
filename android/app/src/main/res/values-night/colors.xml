@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="w_bg">#F20D1029</color>
+    <color name="w_text">#EEF1FF</color>
+    <color name="w_muted">#A9B1D6</color>
+    <color name="w_accent">#4F8BFF</color>
+    <color name="w_violet">#9D6BFF</color>
+    <color name="w_line">#428492FF</color>
+</resources>

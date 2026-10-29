@@ -124,6 +124,15 @@ class _VigilAppState extends ConsumerState<VigilApp> with WidgetsBindingObserver
         _open('/ops/objectives');
       case 'open':
         _open('/');
+      case 'ask':
+      case 'voice':
+        _open('/vigil');
+      case 'garage':
+        _open('/ops/garage');
+      case 'money':
+        _open('/vault/ledger');
+      case 'timeline':
+        _open('/ops/timeline');
     }
   }
 

@@ -7,6 +7,7 @@ import '../screens/accounts_screen.dart';
 import '../screens/api_keys_screen.dart';
 import '../screens/garage_screen.dart';
 import '../screens/notifications_screen.dart';
+import '../screens/search_screen.dart';
 import '../screens/setup_screen.dart';
 import '../screens/brain_screen.dart';
 import '../screens/briefing_screen.dart';
@@ -49,6 +50,7 @@ GoRouter buildRouter(VigilStore store) {
       GoRoute(path: '/boot', builder: (BuildContext c, GoRouterState s) => const SetupScreen()),
       GoRoute(path: '/garage/:id', builder: (BuildContext c, GoRouterState s) => BikeScreen(bikeId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/notifications', builder: (BuildContext c, GoRouterState s) => const NotificationsScreen()),
+      GoRoute(path: '/search', builder: (BuildContext c, GoRouterState s) => SearchScreen(initial: s.uri.queryParameters['q'] ?? '')),
       GoRoute(path: '/briefing', builder: (BuildContext c, GoRouterState s) => const BriefingScreen()),
       GoRoute(path: '/debrief', builder: (BuildContext c, GoRouterState s) => const DebriefScreen()),
       GoRoute(

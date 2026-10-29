@@ -77,6 +77,7 @@ class VigilStore extends ChangeNotifier {
     'notifyOps': true,
     'notifyProtocols': true,
     'sfx': true,
+    'widgetSpend': false,
   };
   final Map<String, bool> toggles = <String, bool>{..._defaultToggles};
   static const List<String> linkKeys = <String>['Calendar link', 'Health Connect', 'Notifications', 'Step sensor', 'Usage access', 'Exact alarms', 'Voice uplink'];
@@ -490,6 +491,14 @@ class VigilStore extends ChangeNotifier {
 
   void setPersona(Persona p) {
     persona = p;
+    changed();
+  }
+
+  /// The Sunday review is shown once a week; "Not now" hides it for that day.
+  bool weeklyDismissed(DateTime now) => _prefs.getString('weeklyDismissed') == dayKey(now);
+
+  void dismissWeekly(DateTime now) {
+    _prefs.setString('weeklyDismissed', dayKey(now));
     changed();
   }
 

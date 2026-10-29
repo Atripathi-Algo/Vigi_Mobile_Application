@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_objectives_desc">Next op, top objectives, steps and water</string>
-    <string name="widget_small_desc">Ops readiness, steps and a water button</string>
+    <string name="widget_objectives_desc">Next event, top tasks, steps and water</string>
+    <string name="widget_small_desc">Today\'s readiness, steps and a water button</string>
+    <string name="widget_water_desc">Today\'s water, with a +250 ml button</string>
+    <string name="widget_nextop_desc">The next event and a countdown</string>
+    <string name="widget_ask_desc">Ask K, by voice or text</string>
+    <string name="widget_spend_desc">This month\'s spending (hidden until you allow it in Settings)</string>
+    <string name="widget_garage_desc">Your bike: odometer, mileage, next reminder, log fuel</string>
 </resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_bg" android:orientation="vertical" android:padding="14dp">
+    <TextView android:id="@+id/w_name" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:fontFamily="sans-serif-medium" android:textColor="@color/w_muted" android:textSize="12sp" android:text="Garage"/>
+    <TextView android:id="@+id/w_odo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:textColor="@color/w_text" android:textSize="26sp" android:textStyle="bold" android:maxLines="1"  android:text=""/>
+    <TextView android:id="@+id/w_stats" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:textColor="@color/w_text" android:textSize="12sp" android:maxLines="1" android:ellipsize="end"  android:text=""/>
+    <TextView android:id="@+id/w_next" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:textColor="@color/w_accent" android:textSize="12sp" android:layout_marginTop="4dp" android:maxLines="1" android:ellipsize="end"  android:text=""/>
+    <TextView android:id="@+id/w_btn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/widget_btn_primary"
+        android:fontFamily="sans-serif-medium" android:paddingStart="14dp" android:paddingTop="7dp" android:paddingEnd="14dp" android:paddingBottom="7dp"
+        android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:text="Log fuel"/>
+</LinearLayout>

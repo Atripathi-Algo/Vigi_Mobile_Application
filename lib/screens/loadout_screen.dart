@@ -260,8 +260,12 @@ class LoadoutScreen extends ConsumerWidget {
         ]),
         head('Home screen'),
         VigilCard(
-          child: Text('Long-press the home screen, open Widgets, and add K · Tasks (4×2) or K · Readiness (2×2). Tap a task to check it off, or +250 ML to log water, without opening the app.', style: t.caption.copyWith(color: c.textMuted)),
+          child: Text('Long-press the home screen, open Widgets, and add any of the seven K widgets: Tasks, Readiness, Water, Next up, Ask, Spend and Garage. Tap a task to check it off, or +250 to log water, without opening the app. Widgets follow Android\'s light or dark setting.', style: t.caption.copyWith(color: c.textMuted)),
         ),
+        const SizedBox(height: 8),
+        RowList(children: <Widget>[
+          toggleRow('widgetSpend', 'Show amounts on the Spend widget', 'Off: the widget shows dots until you open K'),
+        ]),
         head('Data & privacy'),
         RowList(children: <Widget>[
           toggleRow('vaultLock', 'Money lock', 'Locks when you leave the tab'),
