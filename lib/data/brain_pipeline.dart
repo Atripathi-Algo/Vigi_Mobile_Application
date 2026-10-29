@@ -1,3 +1,4 @@
+import '../app/fmt.dart';
 import 'agent.dart';
 import 'brain_prompt.dart';
 import 'capture_parser.dart';
@@ -77,6 +78,8 @@ String _stripWhen(String s) {
   t = t.replaceAll(RegExp(r'\b(tomorrow|tonight|today|this (morning|afternoon|evening)|(in the )?(morning|afternoon|evening))\b', caseSensitive: false), ' ');
   t = t.replaceAll(RegExp(r',?\s*(it is|it\x27s|its)\s+(critical|urgent|important|high priority)\b', caseSensitive: false), ' ');
   t = t.replaceAll(RegExp(r'\b(critical|urgent|asap)\b', caseSensitive: false), ' ');
+  // A trailing priority word is a priority, not part of the title ("report, important").
+  t = t.replaceAll(RegExp(r',?\s*\b(important|high priority)\s*$', caseSensitive: false), ' ');
   return t.replaceAll(RegExp(r'\s+'), ' ').replaceAll(RegExp(r'^[\s,.\-]+|[\s,.\-]+$'), '').trim();
 }
 
@@ -141,8 +144,7 @@ AgentPlan? _spend(String q, String lower) {
       .trim();
   title = title.replaceAll(RegExp(r'^(on|for|to|at|the|a|an)\s+', caseSensitive: false), '').replaceAll(RegExp(r'^(on|for|to|at|the|a|an)\s+', caseSensitive: false), '').trim();
   if (title.isEmpty) title = 'Spend';
-  final String amt = amount == amount.roundToDouble() ? amount.round().toString() : amount.toStringAsFixed(2);
-  return _plan('Logged $amt rupees for ${title.toLowerCase()}.', <Map<String, dynamic>>[
+  return _plan('Logged ${Fmt.money((amount * 100).round())} for ${title.toLowerCase()}.', <Map<String, dynamic>>[
     <String, dynamic>{'type': 'log_expense', 'title': _cap(title), 'amount': amount, 'category': category},
   ]);
 }
@@ -434,8 +436,7 @@ AgentPlan? _budget(String q) {
   double v = double.parse(m.group(1)!.replaceAll(',', ''));
   if (m.group(2) != null) v *= 1000;
   if (v <= 0 || v > 10000000) return _plan('A budget has to be above zero.', const <Map<String, dynamic>>[]);
-  final String amt = v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(2);
-  return _plan('Monthly budget set to $amt rupees.', <Map<String, dynamic>>[
+  return _plan('Monthly budget set to ${Fmt.money((v * 100).round())}.', <Map<String, dynamic>>[
     <String, dynamic>{'type': 'set_budget', 'amount': v},
   ]);
 }

@@ -85,7 +85,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 4, 20, MediaQuery.paddingOf(context).bottom + 20),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-        Text('ADD TO CALENDAR', style: t.h2),
+        Text('Add to calendar', style: t.h2),
         const SizedBox(height: 8),
         Text(b.title, style: t.rowTitle),
         const SizedBox(height: 2),

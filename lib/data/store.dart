@@ -847,10 +847,29 @@ class VigilStore extends ChangeNotifier {
   /// The last 7 days (oldest first) as levels 0-4: the share of protocols done that day. Empty with no protocols.
   List<int> get weekLevels {
     if (protocols.isEmpty) return const <int>[];
+    final DateTime now = DateTime.now();
     return List<int>.generate(7, (int d) {
-      final int done = protocols.where((Protocol p) => p.week[d]).length;
-      return done == 0 ? 0 : (done * 4 / protocols.length).ceil().clamp(1, 4);
+      // Only habits that already existed on that day count (d = 6 is today).
+      final List<Protocol> alive = protocols.where((Protocol p) => p.activeDays(now) > 6 - d).toList();
+      final int done = alive.where((Protocol p) => p.week[d]).length;
+      return done == 0 ? 0 : (done * 4 / alive.length).ceil().clamp(1, 4);
     });
+  }
+
+  /// Share of habit-days done over the last seven days, counting only the days each habit has existed.
+  int get consistencyPercent {
+    if (protocols.isEmpty) return 0;
+    final DateTime now = DateTime.now();
+    int possible = 0;
+    int done = 0;
+    for (final Protocol p in protocols) {
+      final int n = p.activeDays(now);
+      possible += n;
+      for (int d = 7 - n; d < 7; d++) {
+        if (p.week[d]) done++;
+      }
+    }
+    return possible == 0 ? 0 : (done * 100 / possible).round();
   }
 
   void addProtocol(String name, {String? unit, int? target, int? remindMin, List<int> days = const <int>[]}) {
@@ -865,6 +884,7 @@ class VigilStore extends ChangeNotifier {
       unit: (unit ?? '').trim().isEmpty ? null : unit!.trim(),
       target: target != null && target > 0 ? target : null,
       remindMin: remindMin?.clamp(0, 1439),
+      createdAt: DateTime.now().millisecondsSinceEpoch,
       days: picked.length == 7 ? <int>[] : picked,
     ));
     changed();

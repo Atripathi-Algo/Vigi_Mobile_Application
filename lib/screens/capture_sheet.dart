@@ -91,8 +91,8 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
     nav.pop();
     m.hideCurrentSnackBar();
     m.showSnackBar(SnackBar(
-      content: Text('${CaptureParser.typeLabel(_draft.type)} LOGGED${when.isEmpty ? '' : ' · $when'}'.toUpperCase(), style: style),
-      action: SnackBarAction(label: 'UNDO', textColor: signal, onPressed: undo),
+      content: Text('${CaptureParser.typeLabel(_draft.type)} LOGGED${when.isEmpty ? '' : ' · $when'}', style: style),
+      action: SnackBarAction(label: 'Undo', textColor: signal, onPressed: undo),
     ));
   }
 
@@ -111,8 +111,8 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
           Row(children: <Widget>[
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                Text('CAPTURE', style: t.section.copyWith(fontSize: 22)),
-                Text('SAY IT ONCE. K SORTS IT.', style: t.micro.copyWith(color: c.textFaint)),
+                Text('Capture', style: t.section.copyWith(fontSize: 22)),
+                Text('Say it once. K sorts it.', style: t.micro.copyWith(color: c.textFaint)),
               ]),
             ),
             VigilIconButton(icon: VigilIcons.close, semanticLabel: 'Close capture', onPressed: () => Navigator.of(context).pop()),
@@ -120,17 +120,17 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
           const SizedBox(height: 14),
           VigilSegmented<CaptureType>(
             segments: const <(CaptureType, String)>[
-              (CaptureType.obj, 'OBJ'),
-              (CaptureType.event, 'EVENT'),
-              (CaptureType.note, 'NOTE'),
-              (CaptureType.spend, 'SPEND'),
-              (CaptureType.habit, 'HABIT'),
+              (CaptureType.obj, 'Task'),
+              (CaptureType.event, 'Event'),
+              (CaptureType.note, 'Note'),
+              (CaptureType.spend, 'Spend'),
+              (CaptureType.habit, 'Habit'),
             ],
             selected: _type,
             onSelected: (CaptureType v) => setState(() => _override = v),
           ),
           const SizedBox(height: 14),
-          Text('PLAIN WORDS', style: t.label.copyWith(color: c.textFaint)),
+          Text('Plain words', style: t.label.copyWith(color: c.textFaint)),
           const SizedBox(height: 6),
           VigilField(
             controller: _ctl,
@@ -142,7 +142,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             onChanged: _onChanged,
           ),
           const SizedBox(height: 14),
-          Text('K PARSED', style: t.label.copyWith(color: c.textFaint)),
+          Text('K parsed', style: t.label.copyWith(color: c.textFaint)),
           const SizedBox(height: 6),
           if (empty)
             Text('Try: lunch 180 · call home 9pm · read 20 pages daily', style: t.meta.copyWith(color: c.textFaint, fontSize: 12))
@@ -198,7 +198,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             child: SizedBox(
               height: 52,
               child: Row(children: <Widget>[
-                Expanded(child: Text(_remind ? 'REMIND 30 MIN BEFORE' : 'NO REMINDER', style: t.button.copyWith(color: c.textMuted))),
+                Expanded(child: Text(_remind ? 'Remind 30 min before' : 'No reminder', style: t.button.copyWith(color: c.textMuted))),
                 VigilIcon(VigilIcons.chevronRight, size: 18, color: c.textMuted),
               ]),
             ),

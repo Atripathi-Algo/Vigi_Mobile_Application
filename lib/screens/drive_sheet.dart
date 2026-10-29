@@ -114,14 +114,14 @@ class _DriveSheetState extends State<_DriveSheet> {
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(20, 4, 20, MediaQuery.paddingOf(context).bottom + 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-            Text('DRIVE BACKUP', style: t.h2),
+            Text('Drive backup', style: t.h2),
             const SizedBox(height: 6),
             Text('Your data is saved on this phone first, then copied to a hidden folder in your own Google Drive. $kAssistantName has no server.', style: t.caption.copyWith(color: c.textMuted)),
             const SizedBox(height: 14),
             if (accounts.isEmpty) ...<Widget>[
               Text('Link a Google account first (Settings, Google accounts).', style: t.caption.copyWith(color: c.critical)),
             ] else if (chosen == null) ...<Widget>[
-              Text('CHOOSE THE ACCOUNT FOR THE BACKUP', style: t.micro.copyWith(color: c.textFaint)),
+              Text('Choose the account for the backup', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               for (final GoogleAccount a in accounts) ...<Widget>[
                 VigilButton(label: '${a.label} · ${a.email}', variant: VigilButtonVariant.secondary, expand: true, onPressed: () => _run(() async {
@@ -132,7 +132,7 @@ class _DriveSheetState extends State<_DriveSheet> {
               ],
             ] else ...<Widget>[
               Row(children: <Widget>[
-                Expanded(child: Text('BACKING UP TO', style: t.micro.copyWith(color: c.textFaint))),
+                Expanded(child: Text('Backing up to', style: t.micro.copyWith(color: c.textFaint))),
                 if (accounts.length > 1)
                   TextButton(
                     onPressed: () => _run(() async {
@@ -141,14 +141,14 @@ class _DriveSheetState extends State<_DriveSheet> {
                       await _sync.enable(other);
                       return 'Now backing up to ${other.email}.';
                     }),
-                    child: Text('CHANGE', style: t.button.copyWith(fontSize: 11, color: c.signal)),
+                    child: Text('Change', style: t.button.copyWith(fontSize: 11, color: c.signal)),
                   ),
               ]),
               Text('${chosen.label} · ${chosen.email}', style: t.rowTitle),
               const SizedBox(height: 12),
               VigilCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                  Text('STATUS', style: t.micro.copyWith(color: c.textFaint)),
+                  Text('Status', style: t.micro.copyWith(color: c.textFaint)),
                   const SizedBox(height: 4),
                   Row(children: <Widget>[
                     Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: syncColor(context, _sync.state))),
@@ -177,7 +177,7 @@ class _DriveSheetState extends State<_DriveSheet> {
                     }))),
                 const SizedBox(width: 10),
                 Expanded(child: VigilButton(label: 'Restore', variant: VigilButtonVariant.secondary, expand: true, onPressed: busy ? null : () async {
-                      if (!await _confirm('RESTORE BACKUP?', 'Replaces everything on this phone with the backup in Drive. This cannot be undone.', 'Restore')) return;
+                      if (!await _confirm('Restore backup?', 'Replaces everything on this phone with the backup in Drive. This cannot be undone.', 'Restore')) return;
                       await _run(() async {
                         await _sync.restoreNow();
                         return 'Restored from Drive.';
@@ -190,11 +190,11 @@ class _DriveSheetState extends State<_DriveSheet> {
                 _switchRow(context, 'Wi-Fi only', 'Never uses mobile data; waits for Wi-Fi', _sync.wifiOnly, _sync.setWifiOnly),
               ]),
               const SizedBox(height: 14),
-              Text('WHAT IS STORED', style: t.micro.copyWith(color: c.textFaint)),
+              Text('What is stored', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               Wrap(spacing: 6, runSpacing: 6, children: <Widget>[
                 for (final String x in stored)
-                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(border: Border.all(color: c.lineStrong)), child: Text(x.toUpperCase(), style: t.micro.copyWith(color: c.textMuted, fontSize: 9.5))),
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(border: Border.all(color: c.lineStrong)), child: Text(x, style: t.micro.copyWith(color: c.textMuted, fontSize: 9.5))),
               ]),
               const SizedBox(height: 10),
               Text('Not backed up: API keys and Google sign-in tokens. Re-enter them on a new phone. They never leave this one.', style: t.caption.copyWith(color: c.textMuted)),
@@ -208,7 +208,7 @@ class _DriveSheetState extends State<_DriveSheet> {
                     })),
                 const Spacer(),
                 VigilButton(label: 'Delete my Drive backup', variant: VigilButtonVariant.ghost, onPressed: () async {
-                  if (!await _confirm('DELETE THE BACKUP?', 'Removes the backup file from your Drive. Your data on this phone is not touched, and auto-sync is switched off.', 'Delete')) return;
+                  if (!await _confirm('Delete the backup?', 'Removes the backup file from your Drive. Your data on this phone is not touched, and auto-sync is switched off.', 'Delete')) return;
                   await _run(() async {
                     await _sync.deleteBackup();
                     return 'The backup was deleted from Drive.';
@@ -234,7 +234,7 @@ class _DriveSheetState extends State<_DriveSheet> {
       child: Padding(
         padding: const EdgeInsets.only(left: 14, right: 8),
         child: Row(children: <Widget>[
-          Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub.toUpperCase(), style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+          Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub, style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
           VigilSwitch(value: value, onChanged: (bool v) => onChanged(v), semanticLabel: title),
         ]),
       ),
@@ -298,7 +298,7 @@ class _ConflictDialogState extends State<_ConflictDialog> {
     final c = context.vigil;
     final t = context.vtype;
     return AlertDialog(
-      title: const Text('TWO VERSIONS OF YOUR DATA'),
+      title: const Text('Two versions of your data'),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Text('This phone and your Drive backup both changed since the last sync.', style: t.caption.copyWith(color: c.textMuted)),
@@ -312,7 +312,7 @@ class _ConflictDialogState extends State<_ConflictDialog> {
               Widget row(String label, String a, String b) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 3),
                     child: Row(children: <Widget>[
-                      Expanded(child: Text(label.toUpperCase(), style: t.micro.copyWith(color: c.textFaint))),
+                      Expanded(child: Text(label, style: t.micro.copyWith(color: c.textFaint))),
                       SizedBox(width: 64, child: Text(a, style: t.meta, textAlign: TextAlign.right)),
                       SizedBox(width: 64, child: Text(b, style: t.meta, textAlign: TextAlign.right)),
                     ]),

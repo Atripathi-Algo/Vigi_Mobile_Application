@@ -42,7 +42,7 @@ class GroupLabel extends StatelessWidget {
       child: Row(children: <Widget>[
         SizedBox(width: 8, height: 8, child: ColoredBox(color: color)),
         const SizedBox(width: 8),
-        Text(text.toUpperCase(), style: context.vtype.label.copyWith(color: color)),
+        Text(text, style: context.vtype.label.copyWith(color: color)),
       ]),
     );
   }
@@ -109,7 +109,7 @@ class StatusChip extends StatelessWidget {
     return Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
       SizedBox(width: 6, height: 6, child: ColoredBox(color: col)),
       const SizedBox(width: 6),
-      Text(label.toUpperCase(), style: context.vtype.meta.copyWith(color: col)),
+      Text(label, style: context.vtype.meta.copyWith(color: col)),
     ]);
   }
 }
@@ -200,7 +200,7 @@ class VigilField extends StatelessWidget {
     );
     if (label == null) return field;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text(label!.toUpperCase(), style: t.label.copyWith(color: c.textFaint)),
+      Text(label!, style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 6),
       field,
     ]);

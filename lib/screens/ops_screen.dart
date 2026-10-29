@@ -30,7 +30,7 @@ class OpsScreen extends ConsumerStatefulWidget {
 }
 
 class _OpsScreenState extends ConsumerState<OpsScreen> {
-  String _filter = 'ALL';
+  String _filter = 'All';
   bool _showCleared = false;
   bool _search = false;
   final TextEditingController _q = TextEditingController();
@@ -126,10 +126,9 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
     bool match(Objective o) {
       if (q.isNotEmpty && !o.title.toLowerCase().contains(q)) return false;
       return switch (_filter) {
-        'WORK' => o.tag == 'WORK',
-        'HOME' => o.tag == 'HOME',
-        'RECURRING' => o.recurring,
-        'NO DATE' => !o.hasDate,
+        'Work' => o.tag == 'WORK',
+        'Home' => o.tag == 'HOME',
+        'No date' => !o.hasDate,
         _ => true,
       };
     }
@@ -156,7 +155,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(children: <Widget>[
-            for (final String f in <String>['ALL', 'WORK', 'HOME', 'RECURRING', 'NO DATE']) ...<Widget>[
+            for (final String f in <String>['All', 'Work', 'Home', 'No date']) ...<Widget>[
               VigilFilterChip(label: f, selected: _filter == f, onTap: () => setState(() => _filter = f)),
               const SizedBox(width: 8),
             ],
@@ -177,7 +176,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(border: Border.all(color: c.lineStrong)),
                 child: Row(children: <Widget>[
-                  Expanded(child: Text('CLEARED TODAY · ${cleared.length}', style: t.label.copyWith(color: c.textMuted))),
+                  Expanded(child: Text('Cleared today · ${cleared.length}', style: t.label.copyWith(color: c.textMuted))),
                   VigilIcon(_showCleared ? VigilIcons.chevronDown : VigilIcons.chevronRight, size: 18, color: c.textMuted),
                 ]),
               ),
@@ -252,9 +251,9 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-            Text('RESCHEDULE', style: ctx.vtype.section.copyWith(fontSize: 20)),
+            Text('Reschedule', style: ctx.vtype.section.copyWith(fontSize: 20)),
             const SizedBox(height: 12),
-            for (final (String, String) opt in const <(String, String)>[('Tomorrow', 'TOMORROW'), ('Next week', 'NEXT WEEK')]) ...<Widget>[
+            for (final (String, String) opt in const <(String, String)>[('Tomorrow', 'Tomorrow'), ('Next week', 'Next week')]) ...<Widget>[
               VigilButton(
                 label: opt.$1,
                 variant: VigilButtonVariant.secondary,
@@ -441,6 +440,26 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
                     ]),
                   ),
                 for (final Block b in blocks) block(b),
+                // Tasks with a due time show as small markers on the day, so a deadline is visible next to the meetings.
+                if (isToday)
+                  for (final Objective o in s.open.where((Objective o) => o.dueMin != null && o.dueMin! >= h0 * 60 && o.dueMin! <= h1 * 60))
+                    Positioned(
+                      top: (o.dueMin! - h0 * 60) / 60 * hh - 9,
+                      right: 0,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 150),
+                        child: Container(
+                          height: 18,
+                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.violet.withValues(alpha: 0.6)), borderRadius: BorderRadius.circular(KRadius.pill)),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                            Transform.rotate(angle: 0.785398, child: SizedBox.square(dimension: 6, child: ColoredBox(color: c.violet))),
+                            const SizedBox(width: 5),
+                            Flexible(child: Text(o.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.micro.copyWith(color: c.text))),
+                          ]),
+                        ),
+                      ),
+                    ),
                 if (isToday && nowMin >= h0 * 60 && nowMin <= h1 * 60)
                   Positioned(
                     top: (nowMin - h0 * 60) / 60 * hh - 8,
@@ -460,7 +479,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
               VigilCard(
                 borderColor: c.critical,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-                  Text('CONFLICT · ${conflict.$1.endMin - conflict.$2.startMin} MIN OVERLAP${conflict.$1.clashWith(conflict.$2) == null ? '' : ' · ${conflict.$1.clashWith(conflict.$2)}'}', style: t.label.copyWith(color: c.critical)),
+                  Text('Conflict · ${conflict.$1.endMin - conflict.$2.startMin} min overlap${conflict.$1.clashWith(conflict.$2) == null ? '' : ' · ${conflict.$1.clashWith(conflict.$2)}'}', style: t.label.copyWith(color: c.critical)),
                   const SizedBox(height: 6),
                   Text('${conflict.$1.title} (${Fmt.hm(conflict.$1.startMin)}–${Fmt.hm(conflict.$1.endMin)}) runs into ${conflict.$2.title}. Recommend moving ${conflict.$2.title} to ${Fmt.hm(conflict.$1.endMin)}.', style: t.body),
                   const SizedBox(height: 12),
@@ -468,7 +487,7 @@ class _OpsScreenState extends ConsumerState<OpsScreen> {
                 ]),
               )
             else if (s.justResolved)
-              VigilCard(child: Row(children: <Widget>[Expanded(child: Text('No conflicts today.', style: t.body.copyWith(color: c.textMuted))), Text('RESOLVED', style: t.label.copyWith(color: c.signal))])),
+              VigilCard(child: Row(children: <Widget>[Expanded(child: Text('No conflicts today.', style: t.body.copyWith(color: c.textMuted))), Text('Resolved', style: t.label.copyWith(color: c.signal))])),
         ],
       ),
     );

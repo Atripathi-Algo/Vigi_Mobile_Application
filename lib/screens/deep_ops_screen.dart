@@ -161,7 +161,7 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('ABORT SESSION?'),
+        title: const Text('Abort session?'),
         content: const Text('The session is not counted toward today\'s deep ops.'),
         actions: <Widget>[
           VigilButton(label: 'Keep going', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx, false)),
@@ -223,10 +223,10 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
             child: Row(children: <Widget>[
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                  Text('TARGET', style: t.micro.copyWith(color: c.textFaint)),
+                  Text('Target', style: t.micro.copyWith(color: c.textFaint)),
                   const SizedBox(height: 3),
                   Text(widget.workout ? 'Workout 30 min' : (target?.title ?? 'Free session'), style: t.rowTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (target != null) Text('${target.threat.name.toUpperCase()} · ${target.meta}', style: t.meta.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (target != null) Text('${target.threat == Threat.crit ? 'Urgent' : (target.threat == Threat.high ? 'High' : 'Normal')} · ${target.meta}', style: t.meta.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ]),
               ),
               if (!widget.workout)
@@ -245,7 +245,7 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
                 Text(_phase == _Phase.done ? 'DEBRIEF' : 'REMAINING', style: t.micro.copyWith(color: c.textFaint)),
                 Semantics(label: '${Fmt.mmss(left)} remaining', child: Text(Fmt.mmss(left), style: t.display)),
                 const SizedBox(height: 4),
-                Text('SESSION $_session / 4', style: t.micro.copyWith(color: c.textMuted)),
+                Text('Session $_session / 4', style: t.micro.copyWith(color: c.textMuted)),
                 const SizedBox(height: 8),
                 Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
                   for (int i = 1; i <= 4; i++) Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: SizedBox(width: 18, height: 4, child: ColoredBox(color: i < _session || _phase == _Phase.done && i == _session ? c.signal : (i == _session ? c.text : c.line)))),
@@ -267,19 +267,19 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
             },
           ),
           const SizedBox(height: 14),
-          Text('SHIELDS', style: t.label.copyWith(color: c.textFaint)),
+          Text('Shields', style: t.label.copyWith(color: c.textFaint)),
           const SizedBox(height: 8),
           RowList(children: <Widget>[
-            _shield(context, 'Silence alerts', 'CRITICAL ALERTS AND FAMILY STILL BREAK THROUGH', s.shieldSilence, (bool v) { s.shieldSilence = v; s.changed(); }),
-            _shield(context, 'Block distractors', 'NEEDS ACCESSIBILITY BRIDGE · NOT BUILT', s.shieldBlock, (bool v) { s.shieldBlock = v; s.changed(); }),
-            _shield(context, 'Ambient: rain', 'SOUND OFF IN THIS BUILD', s.shieldRain, (bool v) { s.shieldRain = v; s.changed(); }),
+            _shield(context, 'Silence alerts', 'Critical alerts and family still break through', s.shieldSilence, (bool v) { s.shieldSilence = v; s.changed(); }),
+            _shield(context, 'Block distractors', 'Needs accessibility bridge · Not built', s.shieldBlock, (bool v) { s.shieldBlock = v; s.changed(); }),
+            _shield(context, 'Ambient: rain', 'Sound off in this build', s.shieldRain, (bool v) { s.shieldRain = v; s.changed(); }),
           ]),
           const SizedBox(height: 16),
           if (_phase == _Phase.done)
             VigilCard(
               borderColor: c.signal,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-                Text('SESSION COMPLETE', style: t.label.copyWith(color: c.signal)),
+                Text('Session complete', style: t.label.copyWith(color: c.signal)),
                 const SizedBox(height: 6),
                 Text('${_lengths[_len].$1} min logged. Today ${Fmt.durCompact(s.focusTodayMin)} of ${Fmt.durCompact(s.focusTargetMin)}. Take ${_lengths[_len].$2} min.', style: t.body),
               ]),
@@ -351,7 +351,7 @@ class _DeepOpsScreenState extends ConsumerState<DeepOpsScreen> {
       context: context,
       builder: (BuildContext ctx) => SafeArea(
         child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(20, 0, 20, 16), children: <Widget>[
-          Text('CHOOSE TARGET', style: ctx.vtype.section.copyWith(fontSize: 20)),
+          Text('Choose target', style: ctx.vtype.section.copyWith(fontSize: 20)),
           const SizedBox(height: 10),
           for (final Objective o in s.open)
             ListTile(

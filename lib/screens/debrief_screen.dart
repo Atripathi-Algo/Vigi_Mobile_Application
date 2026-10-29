@@ -75,7 +75,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
           brackets: true,
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-            Text('MISSION SCORE', style: t.label.copyWith(color: c.textFaint)),
+            Text('Mission score', style: t.label.copyWith(color: c.textFaint)),
             const SizedBox(height: 8),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
               Text('$score', style: t.hero.copyWith(fontSize: 64, color: c.signal)),
@@ -115,7 +115,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
           Expanded(child: _metric(context, 'Hydration', '${Fmt.litres(s.waterMl)} L', water / 100, color: c.steel)),
         ]),
         const SizedBox(height: 16),
-        Text('CARRY OVER', style: t.label.copyWith(color: c.textFaint)),
+        Text('Carry over', style: t.label.copyWith(color: c.textFaint)),
         const SizedBox(height: 8),
         if (carry.isEmpty)
           VigilCard(child: Text('Clean sweep. Nothing carries over.', style: t.body.copyWith(color: c.textMuted)))
@@ -131,7 +131,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
                     if (s.carry[o.id] == 'moved')
                       Text('MOVED → ${o.dueLabel ?? ''}', style: t.meta.copyWith(color: c.signal))
                     else if (s.carry[o.id] == 'dropped')
-                      Text('DROPPED', style: t.meta.copyWith(color: c.textMuted))
+                      Text('Dropped', style: t.meta.copyWith(color: c.textMuted))
                     else ...<Widget>[
                       VigilButton(label: '→ ${Fmt.dayStamp(now.add(const Duration(days: 1))).substring(0, 3)}', variant: VigilButtonVariant.accent, onPressed: () { s.carry[o.id] = 'moved'; s.rescheduleObjective(o.id, Fmt.dayStamp(now.add(const Duration(days: 1))).substring(0, 3)); }),
                       const SizedBox(width: 6),
@@ -176,7 +176,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
           },
         ),
         const SizedBox(height: 8),
-        Center(child: Text('ALERTS SILENT UNTIL ${Fmt.hm(s.wakeMin)}', style: t.micro.copyWith(color: c.textFaint))),
+        Center(child: Text('Alerts silent until ${Fmt.hm(s.wakeMin)}', style: t.micro.copyWith(color: c.textFaint))),
       ]),
     );
   }
@@ -187,7 +187,7 @@ class _DebriefScreenState extends ConsumerState<DebriefScreen> {
     return VigilCard(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-        Text(label.toUpperCase(), style: t.micro.copyWith(color: c.textFaint)),
+        Text(label, style: t.micro.copyWith(color: c.textFaint)),
         const SizedBox(height: 4),
         Text(value, style: t.metric),
         const SizedBox(height: 8),

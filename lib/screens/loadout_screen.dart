@@ -47,14 +47,14 @@ class LoadoutScreen extends ConsumerWidget {
       return s.verbosity == Verbosity.detailed ? '$base Next check at 20:00.' : base;
     }
 
-    Widget head(String text) => Padding(padding: const EdgeInsets.only(top: 18, bottom: 8), child: Text(text.toUpperCase(), style: t.label.copyWith(color: c.textFaint)));
+    Widget head(String text) => Padding(padding: const EdgeInsets.only(top: 18, bottom: 8), child: Text(text, style: t.label.copyWith(color: c.textFaint)));
 
     Widget toggleRow(String key, String title, String sub) => SizedBox(
           height: 60,
           child: Padding(
             padding: const EdgeInsets.only(left: 14, right: 8),
             child: Row(children: <Widget>[
-              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub.toUpperCase(), style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub, style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
               VigilSwitch(value: s.toggles[key] ?? false, onChanged: (bool v) => s.setToggle(key, v), semanticLabel: title),
             ]),
           ),
@@ -67,7 +67,7 @@ class LoadoutScreen extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(children: <Widget>[
-                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub.toUpperCase(), style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(title, style: t.rowTitle), Text(sub, style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
                 StatusChip(status, on: status == 'LINKED' || status == 'ON' || status == 'OK'),
               ]),
             ),
@@ -89,7 +89,7 @@ class LoadoutScreen extends ConsumerWidget {
           child: Row(children: <Widget>[
             Container(width: 48, height: 48, decoration: BoxDecoration(border: Border.all(color: c.lineStrong), color: c.surfaceHigh), child: const Center(child: VigilEmblem(size: 28, semanticLabel: ''))),
             const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(s.fullName.isEmpty ? s.nickname : s.fullName, style: t.title), Text('${s.nickname.isEmpty ? 'NO NICKNAME' : s.nickname.toUpperCase()} · ${s.clock24 ? '24H' : '12H'} CLOCK · ₹ INR · EDIT', style: t.micro.copyWith(color: c.textFaint))])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text(s.fullName.isEmpty ? s.nickname : s.fullName, style: t.title), Text('${s.nickname.isEmpty ? 'No nickname' : s.nickname} · ${s.clock24 ? '24H' : '12H'} CLOCK · ₹ INR · EDIT', style: t.micro.copyWith(color: c.textFaint))])),
           ]),
         ),
         head('$kAssistantName · Brain'),
@@ -110,22 +110,37 @@ class LoadoutScreen extends ConsumerWidget {
         head('$kAssistantName · Voice'),
         VigilCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-            Text('PERSONA', style: t.micro.copyWith(color: c.textFaint)),
+            Text('Persona', style: t.micro.copyWith(color: c.textFaint)),
             const SizedBox(height: 6),
-            VigilSegmented<Persona>(segments: const <(Persona, String)>[(Persona.tactical, 'TACTICAL'), (Persona.butler, 'BUTLER'), (Persona.quiet, 'QUIET')], selected: s.persona, onSelected: s.setPersona),
+            VigilSegmented<Persona>(segments: const <(Persona, String)>[(Persona.tactical, 'Tactical'), (Persona.butler, 'Butler'), (Persona.quiet, 'Quiet')], selected: s.persona, onSelected: s.setPersona),
             const SizedBox(height: 10),
             Text(sample(), style: t.caption.copyWith(color: c.textMuted)),
             const SizedBox(height: 14),
-            Text('VERBOSITY', style: t.micro.copyWith(color: c.textFaint)),
+            Text('Verbosity', style: t.micro.copyWith(color: c.textFaint)),
             const SizedBox(height: 6),
-            VigilSegmented<Verbosity>(segments: const <(Verbosity, String)>[(Verbosity.terse, 'TERSE'), (Verbosity.standard, 'STANDARD'), (Verbosity.detailed, 'DETAILED')], selected: s.verbosity, onSelected: s.setVerbosity),
+            VigilSegmented<Verbosity>(segments: const <(Verbosity, String)>[(Verbosity.terse, 'Terse'), (Verbosity.standard, 'Standard'), (Verbosity.detailed, 'Detailed')], selected: s.verbosity, onSelected: s.setVerbosity),
           ]),
         ),
         head('API keys'),
         RowList(children: <Widget>[
           linkRow('API keys & services', 'Cloud AI · Calendar · Weather · Backend', 'EDIT', onTap: () => context.push('/loadout/keys')),
         ]),
-        head('Notifications'),
+        head('Appearance'),
+        RowList(children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+              Text('Theme', style: t.label.copyWith(color: c.textMuted)),
+              const SizedBox(height: 6),
+              VigilSegmented<int>(
+                segments: const <(int, String)>[(0, 'Light'), (1, 'Dark'), (2, 'System')],
+                selected: s.appearance,
+                onSelected: s.setAppearance,
+              ),
+            ]),
+          ),
+        ]),
+        head('Alerts'),
         RowList(children: <Widget>[
           linkRow('Notifications', 'Reminders, wind-down, briefings', s.linkStatus['Notifications'] ?? 'ASK', onTap: () async {
             final bool ok = await NotificationService.requestPermission();
@@ -143,21 +158,6 @@ class LoadoutScreen extends ConsumerWidget {
           }),
           linkRow('Background & battery', 'ColorOS: allow auto-start, no restrictions', 'OPEN', onTap: () => openAppSettings()),
         ]),
-        head('Appearance'),
-        RowList(children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-              Text('Theme', style: t.label.copyWith(color: c.textMuted)),
-              const SizedBox(height: 6),
-              VigilSegmented<int>(
-                segments: const <(int, String)>[(0, 'Light'), (1, 'Dark'), (2, 'System')],
-                selected: s.appearance,
-                onSelected: s.setAppearance,
-              ),
-            ]),
-          ),
-        ]),
         head('Sounds'),
         RowList(children: <Widget>[
           toggleRow('sfx', 'Sound effects', 'Thunder cues · original audio'),
@@ -166,10 +166,10 @@ class LoadoutScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-              Text('EFFECT VOLUME', style: t.micro.copyWith(color: c.textFaint)),
+              Text('Effect volume', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 6),
               VigilSegmented<int>(
-                segments: const <(int, String)>[(0, 'LOW'), (1, 'MEDIUM'), (2, 'HIGH')],
+                segments: const <(int, String)>[(0, 'Low'), (1, 'Medium'), (2, 'High')],
                 selected: s.sfxLevel,
                 onSelected: (int v) {
                   s.setSfxLevel(v);
@@ -178,13 +178,13 @@ class LoadoutScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 4),
-              Text('PREVIEWS PLAY AT MEDIA VOLUME. REAL ALERTS FOLLOW THE NOTIFICATION VOLUME', style: t.micro.copyWith(color: c.textFaint, fontSize: 9)),
+              Text('Previews play at media volume. Real alerts follow the notification volume', style: t.micro.copyWith(color: c.textFaint, fontSize: 9)),
             ]),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text('PREVIEW EFFECTS', style: t.micro.copyWith(color: c.textFaint)),
+              Text('Preview effects', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
                 for (final Sfx e in Sfx.values)
@@ -195,7 +195,7 @@ class LoadoutScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text('PREVIEW ALERT SOUNDS', style: t.micro.copyWith(color: c.textFaint)),
+              Text('Preview alert sounds', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
                 for (final (String, String) a in const <(String, String)>[('k_critical', 'critical'), ('k_ops', 'ops'), ('k_sleep', 'sleep'), ('k_brief', 'briefing'), ('k_soft', 'soft')])
@@ -212,7 +212,7 @@ class LoadoutScreen extends ConsumerWidget {
           linkRow('Open dawn briefing', 'Preview now', 'OPEN', onTap: () => context.push('/briefing')),
           linkRow('Open night debrief', 'Preview now', 'OPEN', onTap: () => context.push('/debrief')),
         ]),
-        head('Links'),
+        head('Permissions and links'),
         RowList(children: <Widget>[
           linkRow('Step sensor', 'Phone step counter', s.linkStatus['Step sensor'] ?? 'ASK', onTap: () async {
             final bool ok = await StepService.start(s, request: true);
@@ -252,7 +252,7 @@ class LoadoutScreen extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.only(left: 14, right: 8),
               child: Row(children: <Widget>[
-                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Cloud AI for hard requests', style: t.rowTitle), Text(Env.hasCloudAi ? 'SENDS ONLY YOUR QUESTION · ${Env.cloudAiProvider.toUpperCase()}' : 'ADD CLOUD_AI_API_KEY TO .ENV', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Cloud AI for hard requests', style: t.rowTitle), Text(Env.hasCloudAi ? 'SENDS ONLY YOUR QUESTION · ${Env.cloudAiProvider}' : 'ADD CLOUD_AI_API_KEY TO .ENV', style: t.micro.copyWith(color: c.textFaint), maxLines: 1, overflow: TextOverflow.ellipsis)])),
                 VigilSwitch(
                   value: s.toggles['cloudAi'] ?? false,
                   semanticLabel: 'Cloud AI for hard requests',
@@ -289,7 +289,7 @@ class LoadoutScreen extends ConsumerWidget {
           linkRow('Assistant log', '${s.chat.length} messages · on this phone', 'OPEN', onTap: () => context.go('/vigil')),
           InkWell(
             onTap: () => _erase(context, s),
-            child: SizedBox(height: 56, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: Align(alignment: Alignment.centerLeft, child: Text('ERASE ALL', style: t.button.copyWith(color: c.critical))))),
+            child: SizedBox(height: 56, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: Align(alignment: Alignment.centerLeft, child: Text('Erase all', style: t.button.copyWith(color: c.critical))))),
           ),
         ]),
         const SizedBox(height: 22),
@@ -306,7 +306,7 @@ class LoadoutScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('ERASE ALL'),
+        title: const Text('Erase all'),
         content: const Text('Erase all K data on this phone? This can\'t be undone.'),
         actions: <Widget>[
           VigilButton(label: 'Cancel', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx)),
@@ -352,7 +352,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     final t = context.vtype;
     final VigilStore s = widget.store;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('PROFILE', style: t.h2),
+      Text('Profile', style: t.h2),
       const SizedBox(height: 6),
       Text('Your nickname is used in greetings and briefings; your full name for formal moments.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),
@@ -360,7 +360,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
       const SizedBox(height: 12),
       VigilField(controller: _full, label: 'Full name', hint: 'Used by the Butler persona and on exports'),
       const SizedBox(height: 14),
-      Text('24-HOUR CLOCK', style: t.label.copyWith(color: c.textFaint)),
+      Text('24-hour clock', style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 6),
       VigilSegmented<bool>(segments: const <(bool, String)>[(true, '24 H · 19:42'), (false, '12 H · 7:42 PM')], selected: s.clock24, onSelected: s.setClock24),
       const SizedBox(height: 14),

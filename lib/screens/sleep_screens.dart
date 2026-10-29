@@ -31,11 +31,11 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
     final VigilStore s = ref.watch(storeProvider);
     return VigilScaffold(
       title: 'Sleep',
-      subtitle: widget.schedule ? 'WEEKLY SCHEDULE · ALARMS ON-DEVICE' : 'NEED ${Fmt.dur(s.needMin)} · ${s.healthSyncedAt == null ? 'MANUAL LOG' : 'SYNCED ${Fmt.time(s.healthSyncedAt!)}'}',
+      subtitle: widget.schedule ? 'Weekly schedule · Alarms on-device' : 'NEED ${Fmt.dur(s.needMin)} · ${s.healthSyncedAt == null ? 'Manual log' : 'SYNCED ${Fmt.time(s.healthSyncedAt!)}'}',
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         VigilSegmented<bool>(
-          segments: const <(bool, String)>[(false, 'TRACKER'), (true, 'SCHEDULE')],
+          segments: const <(bool, String)>[(false, 'Tracker'), (true, 'Schedule')],
           selected: widget.schedule,
           onSelected: (bool v) => v == widget.schedule ? null : context.pushReplacement(v ? '/protocols/vitals/sleep/schedule' : '/protocols/vitals/sleep'),
         ),
@@ -74,17 +74,17 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
           Row(children: <Widget>[
             Expanded(child: Text('K // TONIGHT · ${Fmt.dayStamp(DateTime.now()).substring(0, 3)} → ${Fmt.dayStamp(DateTime.now().add(const Duration(days: 1))).substring(0, 3)}', style: t.label.copyWith(color: c.signal))),
-            Text('PLAN ${Fmt.hm(plan)}', style: t.meta.copyWith(color: c.textFaint)),
+            Text('Plan ${Fmt.hm(plan)}', style: t.meta.copyWith(color: c.textFaint)),
           ]),
           const SizedBox(height: 12),
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('LIGHTS OUT', style: t.micro.copyWith(color: c.textFaint)), Text(Fmt.hm(rec), style: t.hero.copyWith(color: c.signal))])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Lights out', style: t.micro.copyWith(color: c.textFaint)), Text(Fmt.hm(rec), style: t.hero.copyWith(color: c.signal))])),
             VigilIcon(VigilIcons.arrowRight, color: c.textMuted),
             const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('WAKE', style: t.micro.copyWith(color: c.textFaint)), Text(Fmt.hm(wake), style: t.hero)])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('Wake', style: t.micro.copyWith(color: c.textFaint)), Text(Fmt.hm(wake), style: t.hero)])),
           ]),
           const SizedBox(height: 6),
-          Text('${Fmt.dur(inBed)} IN BED', style: t.meta.copyWith(color: c.textMuted)),
+          Text('${Fmt.dur(inBed)} in bed', style: t.meta.copyWith(color: c.textMuted)),
           const SizedBox(height: 10),
           Text(
             s.hasSleepStats && s.debtMin > 0
@@ -95,7 +95,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
           const SizedBox(height: 14),
           if (s.armedTonight)
             Row(children: <Widget>[
-              Expanded(child: Text('ARMED · WIND-DOWN ${Fmt.hm(s.windDownAt)}', style: t.label.copyWith(color: c.signal))),
+              Expanded(child: Text('Armed · Wind-down ${Fmt.hm(s.windDownAt)}', style: t.label.copyWith(color: c.signal))),
               VigilButton(label: 'Undo', variant: VigilButtonVariant.secondary, onPressed: () { s.armedTonight = false; s.changed(); }),
             ])
           else
@@ -120,7 +120,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
       ),
       const SizedBox(height: 12),
       Row(children: <Widget>[
-        Expanded(child: StatTile(label: 'AVG · ${s.nights.isEmpty ? 7 : s.nights.length}N', value: s.nights.isEmpty ? '—' : Fmt.dur(s.avgSleep))),
+        Expanded(child: StatTile(label: 'Avg · ${s.nights.isEmpty ? 7 : s.nights.length}N', value: s.nights.isEmpty ? '—' : Fmt.dur(s.avgSleep))),
         const SizedBox(width: 8),
         Expanded(child: StatTile(label: 'Debt', value: !s.hasSleepStats ? '—' : (s.debtMin == 0 ? '0h 00m' : '−${Fmt.dur(s.debtMin)}'), valueColor: s.hasSleepStats && s.debtMin > 0 ? c.critical : null)),
         const SizedBox(width: 8),
@@ -130,11 +130,11 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
       VigilCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
           Row(children: <Widget>[
-            Expanded(child: Text(s.nights.length == 1 ? 'LAST NIGHT' : 'LAST ${s.nights.isEmpty ? 7 : s.nights.length} NIGHTS', style: t.label.copyWith(color: c.textFaint))),
+            Expanded(child: Text(s.nights.length == 1 ? 'Last night' : 'LAST ${s.nights.isEmpty ? 7 : s.nights.length} NIGHTS', style: t.label.copyWith(color: c.textFaint))),
             if (s.nights.isNotEmpty) ...<Widget>[
               SizedBox(width: 8, height: 8, child: ColoredBox(color: c.steel)),
-              Text(' ASLEEP  ', style: t.micro.copyWith(color: c.textFaint)),
-              Text('PLAN', style: t.micro.copyWith(color: c.signal)),
+              Text(' Asleep  ', style: t.micro.copyWith(color: c.textFaint)),
+              Text('Plan', style: t.micro.copyWith(color: c.signal)),
               const SizedBox(width: 10),
             ],
             VigilButton(label: 'Log night', variant: VigilButtonVariant.secondary, onPressed: () => showLogSleepSheet(context)),
@@ -222,9 +222,9 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
         child: Row(children: <Widget>[
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text('SLEEP NEED', style: t.label.copyWith(color: c.textFaint)),
+              Text('Sleep need', style: t.label.copyWith(color: c.textFaint)),
               const SizedBox(height: 2),
-              Text('+15 MIN TO FALL ASLEEP IS ADDED', style: t.micro.copyWith(color: c.textMuted)),
+              Text('+15 min to fall asleep is added', style: t.micro.copyWith(color: c.textMuted)),
             ]),
           ),
           VigilStepper(
@@ -240,10 +240,10 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(children: <Widget>[
-          Expanded(flex: 4, child: Text('NIGHT', style: t.micro.copyWith(color: c.textFaint))),
-          Expanded(flex: 2, child: Text('BED', style: t.micro.copyWith(color: c.textFaint))),
-          Expanded(flex: 2, child: Text('WAKE', style: t.micro.copyWith(color: c.textFaint))),
-          Expanded(flex: 2, child: Text('IN BED', textAlign: TextAlign.right, style: t.micro.copyWith(color: c.textFaint))),
+          Expanded(flex: 4, child: Text('Night', style: t.micro.copyWith(color: c.textFaint))),
+          Expanded(flex: 2, child: Text('Bed', style: t.micro.copyWith(color: c.textFaint))),
+          Expanded(flex: 2, child: Text('Wake', style: t.micro.copyWith(color: c.textFaint))),
+          Expanded(flex: 2, child: Text('In bed', textAlign: TextAlign.right, style: t.micro.copyWith(color: c.textFaint))),
         ]),
       ),
       const SizedBox(height: 6),
@@ -269,14 +269,14 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(border: Border.all(color: drift > 60 ? c.critical : c.lineStrong)),
-          child: Text('DRIFT $drift MIN', style: t.micro.copyWith(color: drift > 60 ? c.critical : c.textMuted)),
+          child: Text('Drift $drift min', style: t.micro.copyWith(color: drift > 60 ? c.critical : c.textMuted)),
         ),
       ]),
       const SizedBox(height: 16),
       RowList(children: <Widget>[
         _opt(context, s, 'ramp', 'Gentle alarm ramp', '10 MIN'),
-        _opt(context, s, 'windDown', 'Wind-down', '30 MIN BEFORE BED · MUTE + NIGHT SHIELD'),
-        _opt(context, s, 'autoFirstOp', 'Auto-adjust for first op', 'WAKES EARLIER IF THE CALENDAR NEEDS IT'),
+        _opt(context, s, 'windDown', 'Wind-down', '30 min before bed · Mute + night shield'),
+        _opt(context, s, 'autoFirstOp', 'Auto-adjust for first op', 'Wakes earlier if the calendar needs it'),
       ]),
     ];
   }
@@ -303,7 +303,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                     Flexible(child: Text(r.night, style: t.meta.copyWith(color: c.text, fontSize: 12))),
                     if (tonight) ...<Widget>[
                       const SizedBox(width: 6),
-                      Container(height: 18, padding: const EdgeInsets.symmetric(horizontal: 5), alignment: Alignment.center, color: c.signal, child: Text('TONIGHT', style: t.micro.copyWith(fontSize: 9, color: c.onSignal, fontWeight: FontWeight.w600))),
+                      Container(height: 18, padding: const EdgeInsets.symmetric(horizontal: 5), alignment: Alignment.center, color: c.signal, child: Text('Tonight', style: t.micro.copyWith(fontSize: 9, color: c.onSignal, fontWeight: FontWeight.w600))),
                     ],
                   ]),
                 ),
@@ -322,7 +322,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Column(children: <Widget>[
-                    Text('BED', style: t.micro.copyWith(color: c.textFaint)),
+                    Text('Bed', style: t.micro.copyWith(color: c.textFaint)),
                     VigilStepper(valueLabel: Fmt.hm(r.bed), semanticName: 'Bed time ${r.night}', valueWidth: 64, onDecrement: () { r.bed -= 15; s.changed(); }, onIncrement: () { r.bed += 15; s.changed(); }),
                   ]),
                 ),
@@ -331,7 +331,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Column(children: <Widget>[
-                    Text('WAKE', style: t.micro.copyWith(color: c.textFaint)),
+                    Text('Wake', style: t.micro.copyWith(color: c.textFaint)),
                     VigilStepper(valueLabel: Fmt.hm(r.wake), semanticName: 'Wake time ${r.night}', valueWidth: 64, onDecrement: () { r.wake -= 15; s.changed(); }, onIncrement: () { r.wake += 15; s.changed(); }),
                   ]),
                 ),

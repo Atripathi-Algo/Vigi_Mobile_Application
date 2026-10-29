@@ -102,14 +102,14 @@ class _ModelSheetState extends State<_ModelSheet> {
     final List<Object> rows = <Object>[];
     final List<AiModel> live = _live.where(keep).toList();
     if (cur != null && live.isNotEmpty) {
-      rows.add('LIVE · ${cur.label.toUpperCase()} · ${live.length}');
+      rows.add('LIVE · ${cur.label} · ${live.length}');
       rows.addAll(live);
     }
     for (final AiService s in <AiService>[if (cur != null) cur, ...AiService.values.where((AiService x) => x != cur)]) {
       if (_live.isNotEmpty && s == cur) continue; // the live list replaces the curated one for this service
       final List<AiModel> ms = modelsFor(s).where(keep).toList();
       if (ms.isEmpty) continue;
-      rows.add('${s.label.toUpperCase()} · ${_serviceNote(s)}');
+      rows.add('${s.label} · ${_serviceNote(s)}');
       rows.addAll(ms);
     }
     return rows;

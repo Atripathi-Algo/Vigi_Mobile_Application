@@ -17,7 +17,7 @@ abstract final class Fmt {
 
   static String time(DateTime d) => DateFormat(use24h ? 'HH:mm' : 'h:mm a').format(d);
 
-  static String dayStamp(DateTime d) => DateFormat('EEE dd MMM').format(d).toUpperCase();
+  static String dayStamp(DateTime d) => DateFormat('EEE d MMM').format(d);
 
   /// `7h 12m`
   static String dur(int minutes) {

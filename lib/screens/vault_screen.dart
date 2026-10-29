@@ -83,7 +83,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     return VigilScaffold(
       title: 'Money',
       mark: true,
-      subtitle: widget.log ? 'STORED ON THIS PHONE' : 'BIOMETRIC · LOCKS ON EXIT',
+      subtitle: widget.log ? 'Stored on this phone' : 'Biometric · Locks on exit',
       actions: <Widget>[
         VigilIconButton(
           icon: widget.log ? VigilIcons.tag : VigilIcons.plus,
@@ -138,8 +138,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
           Row(children: <Widget>[
-            Expanded(child: Text('${DateFormatMonth.name(now)} · DAY ${now.day} / $daysInMonth', style: t.label.copyWith(color: c.textFaint))),
-            Text(hasBudget ? (overPace ? 'OVER PACE' : 'UNDER PACE') : 'NO BUDGET', style: t.label.copyWith(color: hasBudget ? (overPace ? c.critical : c.signal) : c.textFaint)),
+            Expanded(child: Text('${DateFormatMonth.name(now)} · day ${now.day} of $daysInMonth', style: t.label.copyWith(color: c.textFaint))),
+            Text(hasBudget ? (overPace ? 'Over pace' : 'Under pace') : 'No budget', style: t.label.copyWith(color: hasBudget ? (overPace ? c.critical : c.signal) : c.textFaint)),
           ]),
           const SizedBox(height: 10),
           Text.rich(TextSpan(children: <InlineSpan>[
@@ -155,8 +155,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
               const SizedBox(height: 8),
             ],
             Row(children: <Widget>[
-              Expanded(child: Text('SAFE TO SPEND TODAY ${Fmt.money(s.safeToSpendPaise)}', style: t.meta.copyWith(color: c.text))),
-              Text('PACE ${(pace * 100).round()}%', style: t.meta.copyWith(color: c.textMuted)),
+              Expanded(child: Text('Safe to spend today ${Fmt.money(s.safeToSpendPaise)}', style: t.meta.copyWith(color: c.text))),
+              Text('${(pace * 100).round()}% of the month gone', style: t.meta.copyWith(color: c.textMuted)),
             ]),
           ] else
             Text('Set a monthly budget to see pace and a safe daily spend.', style: t.caption.copyWith(color: c.textMuted)),
@@ -187,24 +187,24 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                 ),
             ]),
             const SizedBox(height: 2),
-            Text('TOTAL ${Fmt.money(totalCats)}', style: t.micro.copyWith(color: c.textFaint)),
+            Text('Total ${Fmt.money(totalCats)}', style: t.micro.copyWith(color: c.textFaint)),
           ]),
         ),
       ],
       const SizedBox(height: 14),
       Row(children: <Widget>[
-        Expanded(child: Text('BILLS DUE', style: t.label.copyWith(color: c.textFaint))),
+        Expanded(child: Text('Bills due', style: t.label.copyWith(color: c.textFaint))),
         VigilIconButton(icon: VigilIcons.plus, semanticLabel: 'Add bill', onPressed: () => showAddBillSheet(context, s)),
       ]),
       const SizedBox(height: 8),
       if (s.bills.isEmpty)
-        const EmptyState(message: 'No bills added. Tap + to track one.')
+        Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text('No bills yet. Tap + to track one.', style: t.caption.copyWith(color: c.textFaint)))
       else
         RowList(children: <Widget>[
           for (final Bill b in s.bills)
             InkWell(
               onLongPress: () async {
-                if (await confirmDelete(context, title: 'DELETE BILL?', message: '${b.name} is removed from the list.')) s.removeBill(b.id);
+                if (await confirmDelete(context, title: 'Delete bill?', message: '${b.name} is removed from the list.')) s.removeBill(b.id);
               },
               child: _bill(context, s, b),
             ),
@@ -213,7 +213,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       if (recent.isEmpty)
         const EmptyState(message: 'Nothing spent yet. Log the first expense.')
       else ...<Widget>[
-        Text('RECENT', style: t.label.copyWith(color: c.textFaint)),
+        Text('Recent', style: t.label.copyWith(color: c.textFaint)),
         const SizedBox(height: 8),
         RowList(children: <Widget>[
           for (final Txn x in recent)
@@ -255,11 +255,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
             : Row(children: <Widget>[
                 Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
                   Text(b.name, style: t.rowTitle),
-                  Text('DUE ${b.due}', style: t.meta.copyWith(color: b.dueToday && !b.paid ? c.critical : c.textFaint)),
+                  Text('Due ${b.due}', style: t.meta.copyWith(color: b.dueToday && !b.paid ? c.critical : c.textFaint)),
                 ])),
                 Text(Fmt.money(b.paise), style: t.metric.copyWith(fontSize: 15)),
                 const SizedBox(width: 10),
-                if (b.paid) Text('PAID ✓', style: t.button.copyWith(color: c.signal)) else VigilButton(label: 'Pay', onPressed: () => setState(() => _confirmBill = b.id)),
+                if (b.paid) Text('Paid ✓', style: t.button.copyWith(color: c.signal)) else VigilButton(label: 'Pay', onPressed: () => setState(() => _confirmBill = b.id)),
               ]),
       ),
     );
@@ -280,7 +280,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
             brackets: true,
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-              Row(children: <Widget>[Expanded(child: Text('NIGHT LOG · ${Fmt.dayStamp(now)}', style: t.label.copyWith(color: c.textFaint))), Text('STREAK ${s.logStreak}', style: t.meta.copyWith(color: c.signal))]),
+              Row(children: <Widget>[Expanded(child: Text('Night log · ${Fmt.dayStamp(now)}', style: t.label.copyWith(color: c.textFaint))), Text('Streak ${s.logStreak}', style: t.meta.copyWith(color: c.signal))]),
               const SizedBox(height: 12),
               Row(children: <Widget>[
                 for (int i = 0; i < 5; i++) ...<Widget>[
@@ -335,7 +335,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
       const SizedBox(height: 12),
       VigilField(controller: _search, hint: 'Search notes', semanticLabel: 'Search notes', onChanged: (_) => setState(() {}), prefix: Padding(padding: const EdgeInsets.all(14), child: VigilIcon(VigilIcons.search, size: 18, color: c.textFaint))),
       const SizedBox(height: 14),
-      Text('FIELD NOTES · ${notes.length}', style: t.label.copyWith(color: c.textFaint)),
+      Text('Field notes · ${notes.length}', style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 8),
       if (notes.isEmpty)
         const EmptyState(message: 'No notes yet.')
@@ -349,12 +349,12 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
                 child: Row(children: <Widget>[
                   SizedBox(
                     width: 64,
-                    child: Text(n.kind.name.toUpperCase(), style: t.micro.copyWith(color: n.kind == NoteKind.pinned ? c.signal : (n.kind == NoteKind.voice ? c.steel : c.neutral), fontWeight: FontWeight.w600)),
+                    child: Text(n.kind.name, style: t.micro.copyWith(color: n.kind == NoteKind.pinned ? c.signal : (n.kind == NoteKind.voice ? c.steel : c.neutral), fontWeight: FontWeight.w600)),
                   ),
                   Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
                     Text(n.title, style: t.rowTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
-                    Text(n.body, style: t.caption.copyWith(color: c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    if (n.body.trim().isNotEmpty && n.body.trim() != n.title.trim()) Text(n.body, style: t.caption.copyWith(color: c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ])),
                   Text(_age(now.difference(n.at)), style: t.meta.copyWith(color: c.textFaint)),
                 ]),
@@ -364,9 +364,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with WidgetsBindingOb
     ];
   }
 
-  String _age(Duration d) => d.inHours < 24 ? '${d.inHours.clamp(0, 99)}H' : '${d.inDays}D';
+  String _age(Duration d) => d.inMinutes < 2 ? 'just now' : (d.inHours < 1 ? '${d.inMinutes} min' : (d.inHours < 24 ? '${d.inHours} h' : '${d.inDays} d'));
 }
 
 abstract final class DateFormatMonth {
-  static String name(DateTime d) => const <String>['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'][d.month - 1];
+  static String name(DateTime d) => const <String>['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.month - 1];
 }

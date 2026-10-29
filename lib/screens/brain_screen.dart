@@ -98,7 +98,7 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
     final bool installed = st == BrainStatus.ready || st == BrainStatus.loading || st == BrainStatus.busy;
     return VigilScaffold(
       title: '$kAssistantName brain',
-      subtitle: 'ON THIS PHONE · NO KEY · NO COST',
+      subtitle: 'On this phone · No key · No cost',
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
       body: ListView(
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 28),
@@ -107,7 +107,7 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
               Row(children: <Widget>[
-                Expanded(child: Text('MINICPM5-1B', style: t.label.copyWith(color: c.text))),
+                Expanded(child: Text('MiniCPM5-1B', style: t.label.copyWith(color: c.text))),
                 StatusChip(switch (st) {
                   BrainStatus.notInstalled => 'NOT DOWNLOADED',
                   BrainStatus.downloading => 'DOWNLOADING',
@@ -128,7 +128,7 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
           VigilCard(
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-              Text('MODEL FILE', style: t.label.copyWith(color: c.textFaint)),
+              Text('Model file', style: t.label.copyWith(color: c.textFaint)),
               const SizedBox(height: 8),
               VigilSegmented<BrainVariant>(
                 segments: <(BrainVariant, String)>[for (final BrainVariant v in BrainVariant.values) (v, '${v.label} · ${v.sizeText}')],
@@ -190,7 +190,7 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
                 VigilSwitch(value: b.enabled, onChanged: (bool v) => b.setEnabled(v), semanticLabel: 'Answer on this phone'),
               ]),
               const SizedBox(height: 14),
-              Text('FREE THE MEMORY AFTER', style: t.label.copyWith(color: c.textFaint)),
+              Text('Free the memory after', style: t.label.copyWith(color: c.textFaint)),
               const SizedBox(height: 6),
               VigilSegmented<int>(
                 segments: const <(int, String)>[(1, '1 MIN'), (2, '2 MIN'), (5, '5 MIN')],
@@ -198,10 +198,10 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
                 onSelected: (int v) => b.setIdleMinutes(v),
               ),
               const SizedBox(height: 14),
-              Text('CPU THREADS', style: t.label.copyWith(color: c.textFaint)),
+              Text('CPU threads', style: t.label.copyWith(color: c.textFaint)),
               const SizedBox(height: 6),
               VigilSegmented<int>(
-                segments: const <(int, String)>[(0, 'AUTO'), (2, '2'), (3, '3'), (4, '4')],
+                segments: const <(int, String)>[(0, 'Auto'), (2, '2'), (3, '3'), (4, '4')],
                 selected: b.threads,
                 onSelected: (int v) => b.setThreads(v),
               ),
@@ -217,7 +217,7 @@ class _BrainScreenState extends ConsumerState<BrainScreen> {
           VigilCard(
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-              Text('CHECK THIS PHONE', style: t.label.copyWith(color: c.textFaint)),
+              Text('Check this phone', style: t.label.copyWith(color: c.textFaint)),
               const SizedBox(height: 6),
               Text('Measures how fast the model starts and writes, and how often it picks the right action on ${kEvalCases.length} sample requests. Nothing is saved or changed.', style: t.caption.copyWith(color: c.textMuted)),
               const SizedBox(height: 12),
@@ -246,7 +246,7 @@ Future<bool> confirmDeleteModel(BuildContext context) async {
   final bool? ok = await showDialog<bool>(
     context: context,
     builder: (BuildContext ctx) => AlertDialog(
-      title: const Text('DELETE MODEL?'),
+      title: const Text('Delete model?'),
       content: Text('$kAssistantName stops answering on this phone until you download the model again.'),
       actions: <Widget>[
         VigilButton(label: 'Keep', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx, false)),

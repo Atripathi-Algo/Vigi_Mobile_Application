@@ -69,22 +69,22 @@ class _LogSleepSheetState extends ConsumerState<_LogSleepSheet> {
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + MediaQuery.paddingOf(context).bottom + 20),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-        Text('LOG A NIGHT', style: t.section.copyWith(fontSize: 22)),
-        Text('FOR WHEN NO WATCH OR BAND WRITES SLEEP DATA', style: t.micro.copyWith(color: c.textFaint)),
+        Text('Log a night', style: t.section.copyWith(fontSize: 22)),
+        Text('For when no watch or band writes sleep data', style: t.micro.copyWith(color: c.textFaint)),
         const SizedBox(height: 16),
         Row(children: <Widget>[
           VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Earlier night', onPressed: canPrev ? () => setState(() { _night = _night.subtract(const Duration(days: 1)); _load(s); }) : null),
-          Expanded(child: Center(child: Text('NIGHT OF ${Fmt.dayStamp(_night)}', style: t.label.copyWith(color: c.text)))),
+          Expanded(child: Center(child: Text('Night of ${Fmt.dayStamp(_night)}', style: t.label.copyWith(color: c.text)))),
           VigilIconButton(icon: VigilIcons.chevronRight, semanticLabel: 'Later night', onPressed: canNext ? () => setState(() { _night = _night.add(const Duration(days: 1)); _load(s); }) : null),
         ]),
         const SizedBox(height: 16),
         Row(children: <Widget>[
-          Expanded(child: Text('LIGHTS OUT', style: t.label.copyWith(color: c.textFaint))),
+          Expanded(child: Text('Lights out', style: t.label.copyWith(color: c.textFaint))),
           VigilStepper(valueLabel: Fmt.hm(_bed), semanticName: 'Lights out', valueWidth: 76, onDecrement: _bed > 1080 ? () => setState(() => _bed -= 15) : null, onIncrement: _bed < 1800 ? () => setState(() => _bed += 15) : null),
         ]),
         const SizedBox(height: 10),
         Row(children: <Widget>[
-          Expanded(child: Text('WAKE', style: t.label.copyWith(color: c.textFaint))),
+          Expanded(child: Text('Wake', style: t.label.copyWith(color: c.textFaint))),
           VigilStepper(valueLabel: Fmt.hm(_wake), semanticName: 'Wake', valueWidth: 76, onDecrement: _wake > 0 ? () => setState(() => _wake -= 15) : null, onIncrement: _wake < 720 ? () => setState(() => _wake += 15) : null),
         ]),
         const SizedBox(height: 14),
@@ -145,8 +145,8 @@ class _LogWeightSheetState extends ConsumerState<_LogWeightSheet> {
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + MediaQuery.paddingOf(context).bottom + 20),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-        Text('LOG WEIGHT', style: t.section.copyWith(fontSize: 22)),
-        Text('KEPT ON THIS PHONE', style: t.micro.copyWith(color: c.textFaint)),
+        Text('Log weight', style: t.section.copyWith(fontSize: 22)),
+        Text('Kept on this phone', style: t.micro.copyWith(color: c.textFaint)),
         const SizedBox(height: 18),
         Center(
           child: VigilStepper(

@@ -121,7 +121,7 @@ class _AddProtocolState extends State<_AddProtocol> {
       const SizedBox(height: 14),
       VigilField(controller: _name, label: 'Name', hint: 'Read', autofocus: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
       const SizedBox(height: 12),
-      Text('UNIT (OPTIONAL)', style: t.label.copyWith(color: c.textFaint)),
+      Text('Unit (optional)', style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: <Widget>[for (final String u in _units) SizedBox(width: (MediaQuery.sizeOf(context).width - 40 - 16) / 3, child: VigilFilterChip(label: u, selected: _unit == u, onTap: () => setState(() => _unit = _unit == u ? null : u)))]),
       if (_unit != null) ...<Widget>[
@@ -129,7 +129,7 @@ class _AddProtocolState extends State<_AddProtocol> {
         VigilField(controller: _target, label: 'Daily target (${_unit!.toLowerCase()})', hint: '20', keyboardType: TextInputType.number, onChanged: (_) => setState(() {})),
       ],
       const SizedBox(height: 14),
-      Text('DAYS', style: t.label.copyWith(color: c.textFaint)),
+      Text('Days', style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 6),
       Row(children: <Widget>[
         for (int i = 0; i < 7; i++) ...<Widget>[
@@ -220,7 +220,7 @@ class _AddBillState extends State<_AddBill> {
     final t = context.vtype;
     final Bill preview = Bill(id: '', name: '', dueAt: _due, paise: 0);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('NEW BILL', style: t.h2),
+      Text('New bill', style: t.h2),
       const SizedBox(height: 6),
       Text('K only tracks it. It never moves money.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),
@@ -269,7 +269,7 @@ class _BudgetState extends State<_Budget> {
     final int? paise = parseRupees(_amount.text);
     final int spent = s.monthSpentPaise;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('MONTHLY BUDGET', style: t.h2),
+      Text('Monthly budget', style: t.h2),
       const SizedBox(height: 6),
       Text('Your own limit for this month\'s spending. Money measures pace against it. Bills count toward it when you log them as expenses.', style: t.caption.copyWith(color: c.textMuted)),
       const SizedBox(height: 14),

@@ -44,7 +44,7 @@ class GarageView extends ConsumerWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            Text('GARAGE EMPTY', style: t.micro.copyWith(color: c.signal)),
+            Text('Garage empty', style: t.micro.copyWith(color: c.signal)),
             const SizedBox(height: 6),
             Text('No bikes in the garage.', style: t.h2),
             const SizedBox(height: 8),
@@ -90,7 +90,7 @@ class GarageView extends ConsumerWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text('${longMonths[now.month - 1].toUpperCase()} FUEL · ${s.bikes.length == 1 ? s.bikes.first.name.toUpperCase() : 'BOTH BIKES'}', style: t.micro.copyWith(color: c.textFaint)),
+              Text('${longMonths[now.month - 1]} fuel · ${s.bikes.length == 1 ? s.bikes.first.name : 'Both bikes'}', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 2),
               Text(fuel.litres == 0 ? 'No fill-ups yet this month' : '${_l(fuel.litres)} L · ${_rs(fuel.paise)} · counted in Money › Transport', style: t.caption.copyWith(color: c.textMuted)),
             ]),
@@ -123,7 +123,7 @@ class _BikeCard extends ConsumerWidget {
     final List<MileagePoint> pts = st.points.length > 8 ? st.points.sublist(st.points.length - 8) : st.points;
     Widget stat(String label, String value, String unit) => Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text(label.toUpperCase(), style: t.micro.copyWith(color: c.textFaint, fontSize: 9.5)),
+            Text(label, style: t.micro.copyWith(color: c.textFaint, fontSize: 9.5)),
             const SizedBox(height: 3),
             Text.rich(TextSpan(style: t.title.copyWith(color: c.steel), children: <InlineSpan>[TextSpan(text: value), TextSpan(text: ' $unit', style: t.micro.copyWith(color: c.textMuted))])),
           ]),
@@ -155,7 +155,7 @@ class _BikeCard extends ConsumerWidget {
         ]),
         if (anyOverdue) ...<Widget>[
           const SizedBox(height: 8),
-          Text('${due.firstWhere((x) => x.d.level == DueLevel.overdue).r.title} overdue'.toUpperCase(), style: t.micro.copyWith(color: c.critical)),
+          Text('${due.firstWhere((x) => x.d.level == DueLevel.overdue).r.title} overdue', style: t.micro.copyWith(color: c.critical)),
         ],
         if (due.isNotEmpty) ...<Widget>[
           const SizedBox(height: 10),
@@ -164,7 +164,7 @@ class _BikeCard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(border: Border.all(color: x.d.level == DueLevel.ok ? c.lineStrong : _levelColor(context, x.d.level).withValues(alpha: 0.6))),
-                child: Text('${x.r.title.split(' ').first} · ${dueText(x.d)}'.toUpperCase(), style: t.micro.copyWith(color: _levelColor(context, x.d.level), fontSize: 9.5)),
+                child: Text('${x.r.title.split(' ').first} · ${dueText(x.d)}', style: t.micro.copyWith(color: _levelColor(context, x.d.level), fontSize: 9.5)),
               ),
           ]),
         ],
@@ -203,7 +203,7 @@ class BikeScreen extends ConsumerWidget {
 
     Widget stat(String label, String value, String unit) => Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text(label.toUpperCase(), style: t.micro.copyWith(color: c.textFaint, fontSize: 9.5)),
+            Text(label, style: t.micro.copyWith(color: c.textFaint, fontSize: 9.5)),
             const SizedBox(height: 3),
             Text.rich(TextSpan(style: t.title.copyWith(color: c.steel), children: <InlineSpan>[TextSpan(text: value), TextSpan(text: ' $unit', style: t.micro.copyWith(color: c.textMuted))])),
           ]),
@@ -220,7 +220,7 @@ class BikeScreen extends ConsumerWidget {
               child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                    Text(bike.make.isEmpty ? 'ODOMETER' : '${bike.make} · ODOMETER'.toUpperCase(), style: t.micro.copyWith(color: c.textFaint)),
+                    Text(bike.make.isEmpty ? 'Odometer' : '${bike.make} · odometer', style: t.micro.copyWith(color: c.textFaint)),
                     const SizedBox(height: 4),
                     Text.rich(TextSpan(style: t.hero.copyWith(fontSize: 34), children: <InlineSpan>[TextSpan(text: _km(bike.odometer)), TextSpan(text: ' km', style: t.body.copyWith(color: c.textMuted))])),
                   ]),
@@ -282,8 +282,8 @@ class BikeScreen extends ConsumerWidget {
             VigilCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
                 Row(children: <Widget>[
-                  Expanded(child: Text('REMINDERS', style: t.label.copyWith(color: c.textFaint))),
-                  Text('BY KM OR DATE', style: t.micro.copyWith(color: c.textFaint, fontSize: 9.5)),
+                  Expanded(child: Text('Reminders', style: t.label.copyWith(color: c.textFaint))),
+                  Text('By km or date', style: t.micro.copyWith(color: c.textFaint, fontSize: 9.5)),
                 ]),
                 const SizedBox(height: 6),
                 if (rows.isEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('No reminders. Add one for service, oil, tyres, insurance or anything else.', style: t.caption.copyWith(color: c.textMuted))),
@@ -300,7 +300,7 @@ class BikeScreen extends ConsumerWidget {
                               Text(_reminderSub(x.r), style: t.caption.copyWith(color: c.textFaint)),
                             ]),
                           ),
-                          Text(dueText(x.d).toUpperCase(), style: t.meta.copyWith(color: _levelColor(context, x.d.level))),
+                          Text(dueText(x.d), style: t.meta.copyWith(color: _levelColor(context, x.d.level))),
                         ]),
                         const SizedBox(height: 6),
                         ClipRect(child: LinearProgressIndicator(value: x.d.fraction.clamp(0.0, 1.0), minHeight: 3, color: x.d.level == DueLevel.ok ? c.signal : _levelColor(context, x.d.level), backgroundColor: c.line)),
@@ -315,7 +315,7 @@ class BikeScreen extends ConsumerWidget {
             VigilCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
                 Row(children: <Widget>[
-                  Expanded(child: Text('FILL-UPS', style: t.label.copyWith(color: c.textFaint))),
+                  Expanded(child: Text('Fill-ups', style: t.label.copyWith(color: c.textFaint))),
                   if (fills.isNotEmpty) Text('${rupees2(fills.first.pricePerLitrePaise)} / L', style: t.micro.copyWith(color: c.textFaint, fontSize: 9.5)),
                 ]),
                 const SizedBox(height: 4),
@@ -323,7 +323,7 @@ class BikeScreen extends ConsumerWidget {
                 for (final FillUp f in fills.take(8))
                   InkWell(
                     onLongPress: () async {
-                      if (await confirmDelete(context, title: 'DELETE FILL-UP?', message: 'Removes this fill-up and its ₹ from Money › Transport.')) s.removeFillUp(f.id);
+                      if (await confirmDelete(context, title: 'Delete fill-up?', message: 'Removes this fill-up and its ₹ from Money › Transport.')) s.removeFillUp(f.id);
                     },
                     child: SizedBox(
                       height: 44,
@@ -354,7 +354,7 @@ class BikeScreen extends ConsumerWidget {
                 label: 'Delete this bike',
                 variant: VigilButtonVariant.ghost,
                 onPressed: () async {
-                  if (!await confirmDelete(context, title: 'DELETE ${bike.name.toUpperCase()}?', message: 'Removes the bike, its reminders and its fill-ups, including their ₹ in Money › Transport. This cannot be undone.')) return;
+                  if (!await confirmDelete(context, title: 'Delete ${bike.name}?', message: 'Removes the bike, its reminders and its fill-ups, including their ₹ in Money › Transport. This cannot be undone.')) return;
                   s.removeBike(bike.id);
                   if (context.mounted) context.pop();
                 },
@@ -416,7 +416,7 @@ Widget _dateButton(BuildContext context, String label, DateTime? value, VoidCall
   final c = context.vigil;
   final t = context.vtype;
   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-    Text(label.toUpperCase(), style: t.label.copyWith(color: c.textFaint)),
+    Text(label, style: t.label.copyWith(color: c.textFaint)),
     const SizedBox(height: 6),
     InkWell(
       onTap: onTap,
@@ -474,7 +474,7 @@ class _AddBikeState extends State<_AddBike> {
     final c = context.vigil;
     final t = context.vtype;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('ADD BIKE', style: t.h2),
+      Text('Add bike', style: t.h2),
       const SizedBox(height: 4),
       Text('${widget.store.bikes.length + 1} of ${VigilStore.kMaxBikes} bikes', style: t.micro.copyWith(color: c.textFaint)),
       const SizedBox(height: 14),
@@ -500,7 +500,7 @@ class _AddBikeState extends State<_AddBike> {
         if (d != null) setState(() => _puc = d);
       }),
       const SizedBox(height: 12),
-      Text('SERVICE EVERY', style: t.label.copyWith(color: c.textFaint)),
+      Text('Service every', style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 6),
       VigilSegmented<int>(segments: const <(int, String)>[(3000, '3,000 KM'), (5000, '5,000 KM'), (10000, '10,000 KM')], selected: _service, onSelected: (int v) => setState(() => _service = v)),
       const SizedBox(height: 8),
@@ -572,11 +572,11 @@ class _FillUpState extends State<_FillUp> {
     final int? paise = _paise;
     final int budget = widget.store.effectiveBudgetPaise;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('LOG FILL-UP', style: t.h2),
+      Text('Log fill-up', style: t.h2),
       const SizedBox(height: 12),
       if (widget.store.bikes.length > 1) ...<Widget>[
         VigilSegmented<String>(
-          segments: <(String, String)>[for (final Bike b in widget.store.bikes) (b.id, b.name.toUpperCase())],
+          segments: <(String, String)>[for (final Bike b in widget.store.bikes) (b.id, b.name)],
           selected: _bike.id,
           onSelected: (String id) => setState(() {
             _bike = widget.store.bikeById(id)!;
@@ -605,7 +605,7 @@ class _FillUpState extends State<_FillUp> {
       if (prev != null)
         VigilCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text('THIS TANK', style: t.micro.copyWith(color: c.textFaint)),
+            Text('This tank', style: t.micro.copyWith(color: c.textFaint)),
             const SizedBox(height: 2),
             Text('${_l(prev.kmPerLitre)} km/l', style: t.title.copyWith(color: c.steel)),
             Text(
@@ -694,11 +694,11 @@ class _ReminderSheetState extends State<_ReminderSheet> {
     final t = context.vtype;
     final Reminder? old = widget.reminder;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text(old == null ? 'NEW REMINDER' : 'EDIT REMINDER', style: t.h2),
+      Text(old == null ? 'New reminder' : 'Edit reminder', style: t.h2),
       const SizedBox(height: 4),
       Text(widget.bike.name, style: t.micro.copyWith(color: c.textFaint)),
       const SizedBox(height: 12),
-      Text('TYPE', style: t.label.copyWith(color: c.textFaint)),
+      Text('Type', style: t.label.copyWith(color: c.textFaint)),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: <Widget>[for (final ReminderKind k in ReminderKind.values) SizedBox(width: (MediaQuery.sizeOf(context).width - 40 - 8) / 2, child: VigilFilterChip(label: k.label, selected: _kind == k, onTap: () => setState(() => _kind = k)))]),
       if (_kind == ReminderKind.custom) ...<Widget>[
@@ -712,9 +712,9 @@ class _ReminderSheetState extends State<_ReminderSheet> {
           if (d != null) setState(() => _dueDate = d);
         })
       else ...<Widget>[
-        Text('REMIND ME', style: t.label.copyWith(color: c.textFaint)),
+        Text('Remind me', style: t.label.copyWith(color: c.textFaint)),
         const SizedBox(height: 6),
-        VigilSegmented<ReminderMode>(segments: const <(ReminderMode, String)>[(ReminderMode.km, 'BY KM'), (ReminderMode.date, 'BY DATE'), (ReminderMode.both, 'FIRST OF BOTH')], selected: _mode, onSelected: (ReminderMode m) => setState(() => _mode = m)),
+        VigilSegmented<ReminderMode>(segments: const <(ReminderMode, String)>[(ReminderMode.km, 'By km'), (ReminderMode.date, 'By date'), (ReminderMode.both, 'First of both')], selected: _mode, onSelected: (ReminderMode m) => setState(() => _mode = m)),
         const SizedBox(height: 12),
         Row(children: <Widget>[
           if (_mode != ReminderMode.date) Expanded(child: VigilField(controller: _everyKm, label: 'Every (km)', hint: '5000', keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
@@ -728,7 +728,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
       ],
       if (_mode != ReminderMode.date || _paper == false) ...<Widget>[
         const SizedBox(height: 12),
-        Text('HEADS-UP', style: t.label.copyWith(color: c.textFaint)),
+        Text('Heads-up', style: t.label.copyWith(color: c.textFaint)),
         const SizedBox(height: 6),
         VigilSegmented<int>(segments: const <(int, String)>[(100, '100 KM'), (300, '300 KM'), (500, '500 KM')], selected: _headsUp, onSelected: (int v) => setState(() => _headsUp = v)),
       ],
@@ -783,7 +783,7 @@ class _OdometerSheetState extends State<_OdometerSheet> {
   Widget build(BuildContext context) {
     final t = context.vtype;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Text('ODOMETER', style: t.h2),
+      Text('Odometer', style: t.h2),
       const SizedBox(height: 4),
       Text(widget.bike.name, style: t.micro.copyWith(color: context.vigil.textFaint)),
       const SizedBox(height: 12),

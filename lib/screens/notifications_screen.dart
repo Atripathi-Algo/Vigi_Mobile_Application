@@ -138,7 +138,7 @@ class NotificationsScreen extends ConsumerWidget {
 
     return VigilScaffold(
       title: 'Notifications',
-      subtitle: items.isEmpty ? 'ALL CLEAR' : (unread == 0 ? 'ALL READ' : '$unread UNREAD'),
+      subtitle: items.isEmpty ? 'All clear' : (unread == 0 ? 'All read' : '$unread UNREAD'),
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.canPop() ? context.pop() : context.go('/')),
       body: items.isEmpty
           ? Center(
@@ -154,7 +154,7 @@ class NotificationsScreen extends ConsumerWidget {
               if (unread > 0)
                 Align(
                   alignment: Alignment.centerRight,
-                  child: TextButton(onPressed: () => markInboxRead(s, items.map((InboxItem it) => it.id)), child: Text('MARK ALL READ', style: t.button.copyWith(fontSize: 11, color: c.signal))),
+                  child: TextButton(onPressed: () => markInboxRead(s, items.map((InboxItem it) => it.id)), child: Text('Mark all read', style: t.button.copyWith(fontSize: 11, color: c.signal))),
                 ),
               ...children,
               const SizedBox(height: 16),

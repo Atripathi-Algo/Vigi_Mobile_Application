@@ -56,7 +56,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('UNLINK ACCOUNT?'),
+        title: const Text('Unlink account?'),
         content: Text('${a.email} is removed from K and its calendar access is revoked. Events already in Google stay where they are.'),
         actions: <Widget>[
           VigilButton(label: 'Keep', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx, false)),
@@ -97,7 +97,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final GoogleAccounts g = ref.watch(googleAccountsProvider);
     return VigilScaffold(
       title: 'Google accounts',
-      subtitle: 'UP TO TWO · CALENDAR',
+      subtitle: 'Up to two · Calendar',
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
       body: ListView(
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 28),
@@ -147,7 +147,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         Row(children: <Widget>[
           Expanded(child: Text(GoogleAccounts.defaultLabels[slot], style: t.label.copyWith(color: c.text))),
-          StatusChip(a == null ? 'NOT LINKED' : (note == null ? 'LINKED' : 'ATTENTION'), on: a != null && note == null, color: note != null ? c.critical : null),
+          StatusChip(a == null ? 'Not linked' : (note == null ? 'LINKED' : 'ATTENTION'), on: a != null && note == null, color: note != null ? c.critical : null),
         ]),
         const SizedBox(height: 8),
         if (a != null) ...<Widget>[
@@ -190,7 +190,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     return VigilCard(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-        Text('ONE-TIME SETUP · FREE', style: t.label.copyWith(color: c.text)),
+        Text('One-time setup · Free', style: t.label.copyWith(color: c.text)),
         const SizedBox(height: 8),
         Text('Google only lets an app use calendars once its owner registers it. This takes about five minutes and costs nothing.', style: t.caption.copyWith(color: c.textMuted)),
         const SizedBox(height: 12),
@@ -200,14 +200,14 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         step('4', 'Credentials, Create credentials, OAuth client ID, type Android. Use the package name and SHA-1 below.'),
         step('5', 'Come back here and link each account.'),
         const SizedBox(height: 4),
-        Text('PACKAGE NAME', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
+        Text('Package name', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
         const SizedBox(height: 4),
         Row(children: <Widget>[
           Expanded(child: SelectableText(kAppPackage, style: t.meta.copyWith(color: c.text))),
           VigilButton(label: 'Copy', variant: VigilButtonVariant.secondary, onPressed: () => _copy('Package name', kAppPackage)),
         ]),
         const SizedBox(height: 10),
-        Text('SHA-1 OF THIS APP', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
+        Text('SHA-1 of this app', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
         const SizedBox(height: 4),
         Row(children: <Widget>[
           Expanded(child: SelectableText(_sha1 ?? 'Not available', style: t.meta.copyWith(color: c.text, fontSize: 11))),

@@ -50,10 +50,10 @@ class Objective {
 
   String get meta {
     final List<String> p = <String>[
-      if (dueMin != null) 'DUE ${_hm(dueMin!)}' else if (dueLabel != null) 'DUE $dueLabel' else 'NO DATE',
-      tag,
+      if (dueMin != null) 'Due ${_hm(dueMin!)}' else if (dueLabel != null) 'Due ${dueLabel!.toLowerCase()}' else 'No date',
+      '${tag.isEmpty ? '' : tag[0].toUpperCase()}${tag.length > 1 ? tag.substring(1).toLowerCase() : ''}',
       if (sub != null) sub!,
-      if (estimate != null) '~${estimate}M',
+      if (estimate != null) '~$estimate min',
     ];
     return p.join(' · ');
   }
@@ -157,6 +157,7 @@ class Protocol {
     this.unit,
     this.target,
     this.remindMin,
+    this.createdAt,
     List<int>? days,
   }) : days = days ?? <int>[];
 
@@ -176,6 +177,18 @@ class Protocol {
   /// Minutes after midnight for a daily reminder, or null for none.
   int? remindMin;
 
+  /// When it was added (ms since epoch). Null for habits from older builds, which count all seven days.
+  int? createdAt;
+
+  /// How many of the last seven days (today included) this habit has existed, 1 to 7.
+  int activeDays(DateTime now) {
+    final int? c = createdAt;
+    if (c == null) return 7;
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime made = DateTime.fromMillisecondsSinceEpoch(c);
+    return (today.difference(DateTime(made.year, made.month, made.day)).inDays + 1).clamp(1, 7);
+  }
+
   /// Weekdays it applies to (1 = Monday ... 7 = Sunday); empty means every day.
   List<int> days;
 
@@ -194,6 +207,7 @@ class Protocol {
         if (unit != null) 'unit': unit,
         if (target != null) 'target': target,
         if (remindMin != null) 'remindMin': remindMin,
+        if (createdAt != null) 'created': createdAt,
         if (days.isNotEmpty) 'days': days,
       };
 
@@ -207,6 +221,7 @@ class Protocol {
         unit: j['unit'] as String?,
         target: j['target'] as int?,
         remindMin: (j['remindMin'] as num?)?.toInt(),
+        createdAt: (j['created'] as num?)?.toInt(),
         days: <int>[for (final dynamic d in (j['days'] as List<dynamic>? ?? <dynamic>[])) (d as num).toInt()],
       );
 

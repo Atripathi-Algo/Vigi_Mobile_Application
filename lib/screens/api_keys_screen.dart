@@ -178,7 +178,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: Text(m.tier == ModelTier.unrated ? 'PRICE UNKNOWN' : 'PAID MODEL'),
+        title: Text(m.tier == ModelTier.unrated ? 'Price unknown' : 'Paid model'),
         content: Text('${m.label} is not on a free tier (${m.price}). Calls are billed to the account behind your ${m.service.label} key. Use it?'),
         actions: <Widget>[
           VigilButton(label: 'Keep current', variant: VigilButtonVariant.secondary, onPressed: () => Navigator.pop(ctx, false)),
@@ -202,7 +202,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
         ModelTierBadge(rateModel(svc, id)),
         const SizedBox(width: 8),
         Expanded(
-          child: Text('${_ctl['CLOUD_AI_MODEL']!.text.trim().isEmpty ? 'DEFAULT · ' : ''}$id · $line', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
+          child: Text('${_ctl['CLOUD_AI_MODEL']!.text.trim().isEmpty ? 'Default · ' : ''}$id · $line', style: t.micro.copyWith(color: c.textFaint, fontSize: 10)),
         ),
       ]),
     );
@@ -319,7 +319,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
     final t = context.vtype;
     return VigilScaffold(
       title: 'API keys',
-      subtitle: 'SAVED ON THIS PHONE · ENCRYPTED',
+      subtitle: 'Saved on this phone · Encrypted',
       leading: VigilIconButton(icon: VigilIcons.chevronLeft, semanticLabel: 'Back', onPressed: () => context.pop()),
       body: ListView(
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 28),
@@ -347,17 +347,17 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         Row(children: <Widget>[
-          Expanded(child: Text(g.title.toUpperCase(), style: t.label.copyWith(color: c.text))),
+          Expanded(child: Text(g.title, style: t.label.copyWith(color: c.text))),
           StatusChip(g.required.isEmpty ? (src == 'NONE' ? 'DEFAULT' : 'SET · $src') : (ready ? 'READY · $src' : 'NOT SET'), on: ready || (g.required.isEmpty && src != 'NONE')),
         ]),
         const SizedBox(height: 6),
         Text(g.blurb, style: t.caption.copyWith(color: c.textMuted)),
         const SizedBox(height: 12),
         if (g.id == 'ai') ...<Widget>[
-          Text('PROVIDER', style: t.label.copyWith(color: c.textFaint)),
+          Text('Provider', style: t.label.copyWith(color: c.textFaint)),
           const SizedBox(height: 6),
           VigilSegmented<String>(
-            segments: const <(String, String)>[('gemini', 'GEMINI'), ('openai', 'OPENAI API'), ('anthropic', 'ANTHROPIC')],
+            segments: const <(String, String)>[('gemini', 'Gemini'), ('openai', 'OpenAI API'), ('anthropic', 'Anthropic')],
             selected: _provider,
             onSelected: (String v) {
               if (v == _provider) return;

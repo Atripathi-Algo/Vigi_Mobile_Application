@@ -78,8 +78,7 @@ class ProtocolsScreen extends ConsumerWidget {
     final t = context.vtype;
     final List<int> levels = s.weekLevels;
     Color lvl(int v) => v == 0 ? c.line : c.signal.withValues(alpha: <double>[0, 0.28, 0.5, 0.75, 1][v.clamp(0, 4)]);
-    final int doneCells = s.protocols.fold(0, (int a, Protocol p) => a + p.week.where((bool d) => d).length);
-    final int pct = s.protocols.isEmpty ? 0 : (doneCells * 100 / (s.protocols.length * 7)).round();
+    final int pct = s.consistencyPercent;
     return <Widget>[
       if (s.protocols.isNotEmpty) ...<Widget>[
         VigilCard(
@@ -108,8 +107,8 @@ class ProtocolsScreen extends ConsumerWidget {
         const SizedBox(height: 14),
       ],
       Row(children: <Widget>[
-        Expanded(child: Text('DAILY', style: t.label.copyWith(color: c.textFaint))),
-        Text('LAST 7 DAYS', style: t.label.copyWith(color: c.textFaint)),
+        Expanded(child: Text('Daily', style: t.label.copyWith(color: c.textFaint))),
+        Text('Last 7 days', style: t.label.copyWith(color: c.textFaint)),
       ]),
       const SizedBox(height: 8),
       if (s.protocols.isEmpty)
@@ -170,6 +169,24 @@ class ProtocolsScreen extends ConsumerWidget {
   }
 
   // ------------------------------------------------------------------ vitals
+  /// One card in place of the empty Sleep and Steps cards: where the numbers come from, and how to start.
+  Widget _connectHealth(BuildContext context, VigilStore s) {
+    final c = context.vigil;
+    final t = context.vtype;
+    return VigilCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Text('Connect your health data', style: t.title),
+        const SizedBox(height: 4),
+        Text('Steps come from this phone. Sleep and weight can come from Health Connect, or you can log a night yourself.', style: t.caption.copyWith(color: c.textMuted)),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
+          VigilButton(label: 'Connect', onPressed: () => _syncVitals(context, s)),
+          VigilButton(label: 'Log a night', variant: VigilButtonVariant.secondary, onPressed: () => showLogSleepSheet(context)),
+        ]),
+      ]),
+    );
+  }
+
   List<Widget> _vitals(BuildContext context, VigilStore s, VigilColors c) {
     final t = context.vtype;
     final int tanks = 12;
@@ -207,18 +224,21 @@ class ProtocolsScreen extends ConsumerWidget {
         ]),
       ),
       const SizedBox(height: 12),
+      if (last == null && s.steps == null)
+        _connectHealth(context, s)
+      else
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
         Expanded(
           child: VigilCard(
             onTap: () => context.push('/protocols/vitals/sleep'),
             semanticLabel: last == null ? 'Sleep, no data' : 'Sleep ${Fmt.dur(last.asleep)}',
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Row(children: <Widget>[Expanded(child: Text('SLEEP', style: t.micro.copyWith(color: c.textFaint))), VigilIcon(VigilIcons.chevronRight, size: 16, color: c.textMuted)]),
+              Row(children: <Widget>[Expanded(child: Text('Sleep', style: t.micro.copyWith(color: c.textFaint))), VigilIcon(VigilIcons.chevronRight, size: 16, color: c.textMuted)]),
               const SizedBox(height: 4),
               if (last == null) ...<Widget>[
                 Text('No data', style: t.metric.copyWith(color: c.textMuted)),
                 const SizedBox(height: 4),
-                Text('CONNECT OR LOG A NIGHT', style: t.micro.copyWith(color: c.textMuted)),
+                Text('Connect or log a night', style: t.micro.copyWith(color: c.textMuted)),
               ] else ...<Widget>[
                 Text(Fmt.dur(last.asleep), style: t.metric),
                 Text('${Fmt.hm(last.bed)} → ${Fmt.hm(last.wake)}', style: t.meta.copyWith(color: c.textMuted)),
@@ -243,12 +263,12 @@ class ProtocolsScreen extends ConsumerWidget {
             semanticLabel: s.steps == null ? 'Steps, no data' : 'Steps ${s.steps}',
             child: s.steps == null
                 ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                    Text('STEPS', style: t.micro.copyWith(color: c.textFaint)),
+                    Text('Steps', style: t.micro.copyWith(color: c.textFaint)),
                     const SizedBox(height: 4),
                     Text(s.linkStatus['Step sensor'] == 'OK' ? (StepService.noSensor.value ? 'No sensor' : 'Waiting') : 'No data', style: t.metric.copyWith(color: c.textMuted)),
                     const SizedBox(height: 8),
                     if (s.linkStatus['Step sensor'] == 'OK')
-                      Text(StepService.noSensor.value ? 'THIS DEVICE HAS NO STEP COUNTER' : 'WALK A FEW STEPS', style: t.micro.copyWith(color: c.textMuted))
+                      Text(StepService.noSensor.value ? 'This device has no step counter' : 'Walk a few steps', style: t.micro.copyWith(color: c.textMuted))
                     else
                       VigilButton(
                       label: 'Connect',
@@ -261,14 +281,14 @@ class ProtocolsScreen extends ConsumerWidget {
                     ),
                   ])
                 : Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                    Text('STEPS', style: t.micro.copyWith(color: c.textFaint)),
+                    Text('Steps', style: t.micro.copyWith(color: c.textFaint)),
                     const SizedBox(height: 4),
                     Text(_grouped(s.steps!), style: t.metric),
                     Text('/ ${_grouped(s.stepTarget)}', style: t.meta.copyWith(color: c.textMuted)),
                     const SizedBox(height: 8),
                     Center(child: ReadinessRing(value: (s.steps! * 100 / s.stepTarget).round().clamp(0, 100), caption: '', size: 60, stroke: 6)),
                     const SizedBox(height: 6),
-                    Text(s.steps! >= s.stepTarget ? 'TARGET MET' : '${_grouped(s.stepTarget - s.steps!)} TO TARGET', style: t.micro.copyWith(color: c.textMuted)),
+                    Text(s.steps! >= s.stepTarget ? 'Target met' : '${_grouped(s.stepTarget - s.steps!)} TO TARGET', style: t.micro.copyWith(color: c.textMuted)),
                   ]),
           ),
         ),
@@ -280,7 +300,7 @@ class ProtocolsScreen extends ConsumerWidget {
         child: Row(children: <Widget>[
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text('WORKOUT', style: t.micro.copyWith(color: c.textFaint)),
+              Text('Workout', style: t.micro.copyWith(color: c.textFaint)),
               const SizedBox(height: 4),
               Text(workout.doneToday ? 'Done today' : (workout.atRisk ? 'AT RISK · ${workout.missedDays} DAYS MISSED' : 'Not done yet'),
                   style: t.rowTitle.copyWith(color: workout.atRisk ? c.critical : c.text)),
@@ -294,7 +314,7 @@ class ProtocolsScreen extends ConsumerWidget {
       VigilCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Row(children: <Widget>[
-            Expanded(child: Text('BODY', style: t.micro.copyWith(color: c.textFaint))),
+            Expanded(child: Text('Body', style: t.micro.copyWith(color: c.textFaint))),
             VigilButton(label: 'Log weight', variant: VigilButtonVariant.secondary, onPressed: () => showLogWeightSheet(context)),
           ]),
           const SizedBox(height: 4),
@@ -306,7 +326,7 @@ class ProtocolsScreen extends ConsumerWidget {
               if (s.weightKg != null) const SizedBox(width: 8),
               if (s.weightDelta != null) Text('${s.weightDelta! < 0 ? '\u2212' : '+'}${s.weightDelta!.abs().toStringAsFixed(1)} KG', style: t.meta.copyWith(color: c.steel)),
               const Spacer(),
-              if (s.restingHr != null) Text('RESTING HR ${s.restingHr}', style: t.meta.copyWith(color: c.textMuted)),
+              if (s.restingHr != null) Text('Resting HR ${s.restingHr}', style: t.meta.copyWith(color: c.textMuted)),
             ]),
             if (s.weightSeries.length >= 2) ...<Widget>[
               const SizedBox(height: 10),

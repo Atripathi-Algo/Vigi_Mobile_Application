@@ -76,7 +76,7 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
               ]),
             ),
             const SizedBox(width: 12),
-            Text(_playing ? 'SPEAKING' : 'SPOKEN BY K', style: t.meta.copyWith(color: c.textMuted)),
+            Text(_playing ? 'SPEAKING' : 'Spoken by K', style: t.meta.copyWith(color: c.textMuted)),
           ]),
         ),
         const SizedBox(height: 16),
@@ -113,11 +113,11 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Expanded(
             child: (_wx == null)
-                ? StatTile(label: _wxDone ? 'Sleep' : 'Conditions', value: _wxDone ? (s.lastNight == null ? 'No data' : Fmt.dur(s.lastNight!.asleep)) : '…', caption: _wxDone ? (s.lastNight == null ? 'LOG OR CONNECT' : (!s.hasSleepStats ? 'BUILDING' : (s.debtMin == 0 ? 'NO DEBT' : 'DEBT −${Fmt.dur(s.debtMin)}'))) : 'LOADING')
+                ? StatTile(label: _wxDone ? 'Sleep' : 'Conditions', value: _wxDone ? (s.lastNight == null ? 'No data' : Fmt.dur(s.lastNight!.asleep)) : '…', caption: _wxDone ? (s.lastNight == null ? 'Log or connect' : (!s.hasSleepStats ? 'BUILDING' : (s.debtMin == 0 ? 'No debt' : 'DEBT −${Fmt.dur(s.debtMin)}'))) : 'LOADING')
                 : StatTile(label: 'Conditions', value: '${_wx!.tempC.round()}°C', caption: _wx!.summary),
           ),
           const SizedBox(width: 8),
-          Expanded(child: StatTile(label: 'Money', value: Fmt.money(s.yesterdaySpendPaise(now)), caption: s.monthSpentPercent == null ? 'YESTERDAY · NO BUDGET' : 'YESTERDAY · MONTH ${s.monthSpentPercent}%')),
+          Expanded(child: StatTile(label: 'Money', value: Fmt.money(s.yesterdaySpendPaise(now)), caption: s.monthSpentPercent == null ? 'Yesterday · No budget' : 'YESTERDAY · MONTH ${s.monthSpentPercent}%')),
         ]),
         const SizedBox(height: 20),
         VigilButton(label: 'Acknowledge · Deploy', size: VigilButtonSize.large, expand: true, onPressed: () => context.go('/')),
@@ -146,7 +146,7 @@ class _BriefingScreenState extends ConsumerState<BriefingScreen> {
         const SizedBox(height: 6),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[for (final String h in <String>['06', '09', '12', '15', '18', '21', '24']) Text(h, style: t.micro.copyWith(color: c.textFaint))]),
         const SizedBox(height: 6),
-        Text('FOCUS ${Fmt.durCompact(s.focusMinPlanned)} · ${s.todayBlocks.where((Block b) => b.kind == BlockKind.event).length} MEETINGS', style: t.meta.copyWith(color: c.textMuted)),
+        Text('Focus ${Fmt.durCompact(s.focusMinPlanned)} · ${s.todayBlocks.where((Block b) => b.kind == BlockKind.event).length} meetings', style: t.meta.copyWith(color: c.textMuted)),
       ]);
     });
   }

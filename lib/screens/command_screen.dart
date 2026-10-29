@@ -138,7 +138,7 @@ class _CommandScreenState extends ConsumerState<CommandScreen> {
                     listenable: DriveSync.instance,
                     builder: (BuildContext ctx, Widget? _) {
                       final DriveSync d = DriveSync.instance;
-                      if (!d.configured) return SectionLabel('Today\'s readiness', trailing: 'UPD ${Fmt.time(now)}');
+                      if (!d.configured) return SectionLabel('Today\'s readiness', trailing: 'Updated ${Fmt.time(now)}');
                       return InkWell(
                         onTap: () => openSyncStatus(context, s),
                         child: Semantics(
