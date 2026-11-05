@@ -50,7 +50,7 @@ kotlin {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     // Google's Authorization API: per-account access tokens for Calendar, no redirect URI or secret.
     implementation("com.google.android.gms:play-services-auth:22.0.0")
 }
